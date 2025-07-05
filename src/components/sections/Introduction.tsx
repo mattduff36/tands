@@ -20,10 +20,12 @@ const features = [
 
 const Introduction = () => {
   return (
-    <section className="bg-white py-20 sm:py-28">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center">
-          <h2 className="text-base font-semibold leading-7 text-blue-600">Welcome to T&S Bouncy Castle Hire</h2>
+    <section className="container mx-auto my-12 rounded-xl border bg-white/30 p-8 shadow-lg backdrop-blur-sm">
+      <div className="grid grid-cols-1 items-center gap-8 md:grid-cols-2">
+        <div className="text-center md:text-left">
+          <h2 className="mb-4 text-3xl font-bold">
+            Welcome to T&S Bouncy Castle Hire
+          </h2>
           <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
             Making Your Events Unforgettable
           </p>
@@ -56,10 +58,13 @@ const Introduction = () => {
                 Contact us today to book your castle!
             </p>
             <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-6">
-                <a href="tel:07935094187" className="flex items-center gap-2 text-lg font-medium text-blue-600 hover:text-blue-800">
-                    <Phone className="h-5 w-5" />
-                    07935094187
-                </a>
+                <div className="flex items-center gap-4">
+                  <Phone className="h-6 w-6 text-blue-600" />
+                  <a href="tel:07835094187" className="flex items-center gap-2 text-lg font-medium text-blue-600 hover:text-blue-800">
+                    <span className="sr-only">Call us at 07835 094187</span>
+                    07835 094187
+                  </a>
+                </div>
                 <a href="mailto:tsbouncycastlehire@gmail.com" className="flex items-center gap-2 text-lg font-medium text-blue-600 hover:text-blue-800">
                     <Mail className="h-5 w-5" />
                     tsbouncycastlehire@gmail.com

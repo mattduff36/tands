@@ -13,7 +13,7 @@ const Footer = () => {
 
   const companyInfo = {
     name: "T&S Bouncy Castle Hire",
-    phone: "07935094187",
+    phone: "07835 094187",
     email: "tsbouncycastlehire@gmail.com",
     facebookUrl: "https://www.facebook.com", // Replace with actual Facebook page URL
   };

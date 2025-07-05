@@ -35,14 +35,12 @@ const ContactPage = () => {
                                 </p>
                             </div>
                             <div className="space-y-4">
-                                <div className="flex items-start">
-                                    <div className="flex-shrink-0">
-                                        <Phone className="h-6 w-6 text-blue-600" />
-                                    </div>
-                                    <div className="ml-4">
-                                        <h3 className="text-lg font-medium text-gray-900">Phone</h3>
-                                        <a href="tel:07935094187" className="text-base text-gray-600 hover:text-blue-600">
-                                            07935094187
+                                <div className="flex items-start gap-4">
+                                    <Phone className="h-6 w-6 text-blue-600 mt-1" />
+                                    <div>
+                                        <h3 className="text-lg font-semibold">Phone</h3>
+                                        <a href="tel:07835094187" className="text-base text-gray-600 hover:text-blue-600">
+                                            07835 094187
                                         </a>
                                     </div>
                                 </div>
