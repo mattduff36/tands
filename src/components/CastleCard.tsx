@@ -1,4 +1,4 @@
-import { Castle } from "@/data/castles";
+import { Castle } from "@/lib/castle-data";
 import Image from "next/image";
 
 export const CastleCard = ({ castle }: { castle: Castle }) => {
