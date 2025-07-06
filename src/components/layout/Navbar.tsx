@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -24,12 +25,7 @@ const Navbar = () => {
   return (
     <header className="bg-gradient-nav shadow-md">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20">
-          <div className="flex-shrink-0">
-            <Link href="/" className="text-2xl font-bold text-gray-800 hover:text-gray-600">
-              T&S Bouncy Castle Hire
-            </Link>
-          </div>
+        <div className="flex items-center justify-center h-20">
           <nav className="hidden md:flex items-center space-x-6">
             {navLinks.map((link) => (
               <Link

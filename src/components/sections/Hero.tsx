@@ -39,6 +39,15 @@ const Hero = () => {
       ))}
       <div className="absolute inset-0 bg-black/50" />
       <div className="relative z-10 text-center p-4">
+        <div className="mb-4 flex justify-center">
+          <Image
+            src="/tands_logo.png"
+            alt="T&S Bouncy Castle Hire Logo"
+            width={300}
+            height={80}
+            priority
+          />
+        </div>
         <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight drop-shadow-md">
           The Best Bouncy Castles in Town!
         </h1>
