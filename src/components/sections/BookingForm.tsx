@@ -37,6 +37,8 @@ export function BookingForm() {
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   // This is a mock of unavailable dates. In a real app, this would come from a database.
   const unavailableDates = [
@@ -45,41 +47,15 @@ export function BookingForm() {
     new Date(2024, 8, 5),
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!selectedCastleId || !date || !name || !email || !address) {
-        toast.error("Please fill out all required fields.");
-        return;
-    }
-
-    const selectedCastle = castles.find(c => c.id.toString() === selectedCastleId);
-
-    const bookingDetails = {
-        castle: selectedCastle?.name,
-        date: format(date, "PPP"),
-        name,
-        email,
-        phone,
-        address,
-        paymentMethod,
-        price: `£${selectedCastle?.price}`
-    };
-
-    console.log("Booking Submitted:", bookingDetails);
-
-    toast.success("Booking Request Sent!", {
-        description: `We've received your request for the ${selectedCastle?.name} on ${format(date, "PPP")}. We will contact you shortly to confirm.`,
-    });
-
-    // Reset form
-    setSelectedCastleId(undefined);
-    setDate(undefined);
-    setName("");
-    setEmail("");
-    setPhone("");
-    setAddress("");
-    setPaymentMethod("cash");
+    setIsSubmitting(true);
+    
+    // Simulate form submission
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    setIsSubmitting(false);
+    setIsSubmitted(true);
   };
 
   return (
@@ -179,8 +155,8 @@ export function BookingForm() {
       </div>
 
       {/* Submit Button */}
-      <Button type="submit" size="lg" className="w-full">
-        Request to Book
+      <Button type="submit" size="lg" className="w-full" disabled={isSubmitting}>
+        {isSubmitting ? "Submitting..." : "Request to Book"}
       </Button>
     </form>
   );
