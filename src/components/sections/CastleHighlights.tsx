@@ -1,4 +1,4 @@
-import { CastleCard } from "@/components/CastleCard";
+import CastleCard from "@/components/sections/CastleCard";
 import { castles } from "@/lib/castle-data";
 
 export const CastleHighlights = () => {

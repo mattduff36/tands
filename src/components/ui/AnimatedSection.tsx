@@ -1,16 +1,16 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { MotionDiv } from "@/components/motion/MotionDiv";
 
 export const AnimatedSection = ({ children }: { children: React.ReactNode }) => {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
+    <MotionDiv
+      initial={{ opacity: 0, y: 50 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      transition={{ duration: 0.5 }}
+      transition={{ type: "spring", stiffness: 100, damping: 20 }}
     >
       {children}
-    </motion.div>
+    </MotionDiv>
   );
 }; 

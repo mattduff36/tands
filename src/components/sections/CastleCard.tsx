@@ -1,8 +1,11 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import type { Castle } from "@/lib/castle-data";
 import { Button } from "@/components/ui/button";
 import { Tag } from "lucide-react";
+import { MotionDiv } from "@/components/motion/MotionDiv";
 
 interface CastleCardProps {
   castle: Castle;
@@ -10,7 +13,11 @@ interface CastleCardProps {
 
 const CastleCard = ({ castle }: CastleCardProps) => {
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white">
+    <MotionDiv
+      className="group relative flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white"
+      whileHover={{ y: -8, scale: 1.05 }}
+      transition={{ type: "spring", stiffness: 300 }}
+    >
       <div className="aspect-h-3 aspect-w-4 bg-gray-200 sm:aspect-none group-hover:opacity-75 sm:h-60 relative">
         <Image
           src={castle.imageUrl}
@@ -42,7 +49,7 @@ const CastleCard = ({ castle }: CastleCardProps) => {
           </Button>
         </div>
       </div>
-    </div>
+    </MotionDiv>
   );
 };
 

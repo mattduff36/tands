@@ -4,6 +4,9 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
+import { MotionDiv } from "@/components/motion/MotionDiv";
+import { MotionH1 } from "@/components/motion/MotionH1";
+import { MotionP } from "@/components/motion/MotionP";
 
 const images = [
   "/bouncy-castle-1.jpg",
@@ -40,20 +43,36 @@ const Hero = () => {
       <div className="absolute inset-0 bg-black/50" />
       <div className="relative z-10 text-center p-4">
         <div className="mb-4 flex justify-center">
-          <Image
-            src="/tands_logo.png"
-            alt="T&S Bouncy Castle Hire Logo"
-            width={300}
-            height={80}
-            priority
-          />
+          <MotionDiv
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.2 }}
+          >
+            <Image
+              src="/tands_logo.png"
+              alt="T&S Bouncy Castle Hire Logo"
+              width={300}
+              height={80}
+              priority
+            />
+          </MotionDiv>
         </div>
-        <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight drop-shadow-md">
+        <MotionH1
+          className="text-4xl md:text-6xl font-extrabold tracking-tight drop-shadow-md"
+          initial={{ scale: 0.5, opacity: 0, y: 20 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.4 }}
+        >
           The Best Bouncy Castles in Town!
-        </h1>
-        <p className="mt-4 max-w-2xl mx-auto text-lg md:text-xl drop-shadow">
+        </MotionH1>
+        <MotionP
+          className="mt-4 max-w-2xl mx-auto text-lg md:text-xl drop-shadow"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.6 }}
+        >
           Fun, Safe, and Fully Insured. We bring the party to you!
-        </p>
+        </MotionP>
         <div className="mt-8 flex justify-center gap-4">
           <Button asChild size="lg">
             <Link href="/castles">View Our Castles</Link>
