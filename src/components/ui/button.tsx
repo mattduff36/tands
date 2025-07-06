@@ -67,7 +67,20 @@ function Button({
   }
 
   // Filter out HTML button props that conflict with framer-motion
-  const { onAnimationStart, onAnimationEnd, onAnimationIteration, ...buttonProps } = props;
+  const { 
+    onAnimationStart, 
+    onAnimationEnd, 
+    onAnimationIteration,
+    onDrag,
+    onDragEnd,
+    onDragEnter,
+    onDragExit,
+    onDragLeave,
+    onDragOver,
+    onDragStart,
+    onDrop,
+    ...buttonProps 
+  } = props;
 
   return (
     <MotionButton
