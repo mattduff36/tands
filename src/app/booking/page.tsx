@@ -1,4 +1,4 @@
-import BookingForm from "@/components/sections/BookingForm";
+import { BookingForm } from "@/components/sections/BookingForm";
 
 const BookingPage = () => {
   return (
