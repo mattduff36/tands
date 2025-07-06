@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { BookingForm } from "@/components/sections/BookingForm";
 
 const BookingPage = () => {
@@ -14,7 +15,9 @@ const BookingPage = () => {
             </p>
           </div>
           <div className="mt-12 max-w-4xl mx-auto">
-            <BookingForm />
+            <Suspense fallback={<div>Loading form...</div>}>
+              <BookingForm />
+            </Suspense>
           </div>
         </div>
       </main>
