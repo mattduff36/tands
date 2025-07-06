@@ -66,11 +66,14 @@ function Button({
     )
   }
 
+  // Filter out HTML button props that conflict with framer-motion
+  const { onAnimationStart, onAnimationEnd, onAnimationIteration, onAnimationCancel, ...buttonProps } = props;
+
   return (
     <MotionButton
       className={cn(buttonVariants({ variant, size, className }))}
       {...motionProps}
-      {...props}
+      {...buttonProps}
     />
   )
 }
