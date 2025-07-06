@@ -79,10 +79,12 @@
 
 @layer utilities {
   .bg-gradient-nav {
-    background: linear-gradient(to right, #d3cce3, #e9e4f0);
+    background: rgba(102, 126, 234, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
   }
   .bg-gradient-footer {
-    background: linear-gradient(to right, #e9e4f0, #d3cce3);
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   }
   .bg-gradient-home {
     background: linear-gradient(120deg, #f94144, #f3722c, #f8961e, #f9c74f, #90be6d, #43aa8b, #577590);
@@ -104,5 +106,10 @@
   }
   .bg-gradient-health {
     background: linear-gradient(120deg, #89f7fe 0%, #66a6ff 100%);
+  }
+  .text-shadow-white {
+    text-shadow: 
+      2px 2px 4px rgba(0, 0, 0, 0.7),
+      0 0 6px rgba(255, 255, 255, 0.8);
   }
 }

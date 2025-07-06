@@ -29,9 +29,7 @@ const HealthAndSafetyPage = () => {
       <main className="container mx-auto">
         <div className="rounded-xl border bg-white/30 p-8 shadow-lg backdrop-blur-sm">
           <div className="text-center">
-            <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
-              Our Commitment to Health & Safety
-            </h1>
+            
           </div>
           {/* Hero Section */}
           <div className="relative bg-gray-900">
@@ -43,7 +41,7 @@ const HealthAndSafetyPage = () => {
                 className="object-cover opacity-50"
               />
             </div>
-            <div className="relative container mx-auto py-24 px-4 sm:py-32 sm:px-6 lg:px-8 text-center">
+            <div className="relative container mx-auto pt-32 px-4 sm:pt-40 sm:px-6 lg:px-8 text-center">
               <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl">
                 Your Safety is Our Priority
               </h1>

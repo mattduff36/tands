@@ -3,7 +3,7 @@ import { castles } from "@/lib/castle-data";
 
 const CastlesPage = () => {
   return (
-    <div className="bg-gradient-castles py-12">
+    <div className="bg-gradient-castles py-12 pt-24">
       <main className="container mx-auto">
         <div className="rounded-xl border bg-white/30 p-8 shadow-lg backdrop-blur-sm">
           <div className="text-center">

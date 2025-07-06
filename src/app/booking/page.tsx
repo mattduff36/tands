@@ -3,7 +3,7 @@ import { BookingForm } from "@/components/sections/BookingForm";
 
 const BookingPage = () => {
   return (
-    <div className="bg-gradient-booking py-12">
+    <div className="bg-gradient-booking py-12 pt-24">
       <main className="container mx-auto">
         <div className="rounded-xl border bg-white/30 p-8 shadow-lg backdrop-blur-sm">
           <div className="text-center">

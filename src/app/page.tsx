@@ -5,7 +5,7 @@ import { AnimatedSection } from "@/components/ui/AnimatedSection";
 
 export default function Home() {
   return (
-    <div className="bg-gradient-home">
+    <div className="bg-gradient-home pb-12">
       <main>
         <Hero />
         <AnimatedSection>

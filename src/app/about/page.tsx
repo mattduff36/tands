@@ -7,9 +7,7 @@ const AboutPage = () => {
       <main className="container mx-auto">
         <div className="rounded-xl border bg-white/30 p-8 shadow-lg backdrop-blur-sm">
           <div className="text-center">
-            <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
-              About T&S Bouncy Castle Hire
-            </h1>
+            
           </div>
           {/* Hero Section */}
           <div className="relative">
@@ -22,7 +20,7 @@ const AboutPage = () => {
               />
               <div className="absolute inset-0 bg-blue-500 mix-blend-multiply" />
             </div>
-            <div className="relative container mx-auto py-24 px-4 sm:py-32 sm:px-6 lg:px-8 text-center">
+            <div className="relative container mx-auto pt-32 px-4 sm:pt-40 sm:px-6 lg:px-8 text-center">
               <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl">About T&S Bouncy Castle Hire</h1>
               <p className="mt-6 max-w-3xl mx-auto text-xl text-blue-100">
                 Your local, friendly, and reliable source for unforgettable fun.
@@ -46,10 +44,10 @@ const AboutPage = () => {
           {/* Delivery Information Section */}
           <div className="bg-gray-50 py-16 sm:py-24">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+              <div className="max-w-3xl mx-auto">
                 <div>
-                  <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">Delivery Information</h2>
-                  <p className="mt-4 text-lg text-gray-600">We are proud to serve Edwinstowe and the surrounding areas. Here's how our delivery works:</p>
+                  <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl text-center">Delivery Information</h2>
+                  <p className="mt-4 text-lg text-gray-600 text-center">We are proud to serve Edwinstowe and the surrounding areas. Here's how our delivery works:</p>
                   <dl className="mt-8 space-y-6">
                     <div className="flex items-start">
                       <div className="flex-shrink-0">
@@ -80,13 +78,6 @@ const AboutPage = () => {
                     </div>
                   </dl>
                 </div>
-                <div className="mt-10 md:mt-0">
-                  {/* Placeholder for a map or an image of the delivery area */}
-                  <div className="aspect-w-1 aspect-h-1 rounded-lg bg-gray-200 overflow-hidden">
-                     <Image src="/placeholders/map-placeholder.png" alt="Map of delivery area" fill className="object-cover"/>
-                  </div>
-                  <p className="text-center mt-2 text-sm text-gray-500">Our 20-mile delivery radius from Edwinstowe.</p>
-                </div>
               </div>
             </div>
           </div>
@@ -100,7 +91,10 @@ const AboutPage = () => {
                 </p>
               </div>
               <div className="relative h-80 w-full rounded-lg shadow-md overflow-hidden">
-                {/* The map placeholder was here and has been removed */}
+                <div className="aspect-w-1 aspect-h-1 rounded-lg bg-gray-200 overflow-hidden">
+                    <Image src="/service-area-map.png" alt="Map of delivery area" fill className="object-cover"/>
+                </div>
+                <p className="text-center mt-2 text-sm text-gray-500">Our 20-mile delivery radius from Edwinstowe.</p>
               </div>
             </div>
           </div>

@@ -27,7 +27,7 @@ const Hero = () => {
   }, []);
 
   return (
-    <section className="relative h-[calc(60vh+3rem)] min-h-[448px] w-full flex items-center justify-center text-white">
+    <section className="relative h-[80vh] w-full flex items-center justify-center text-white">
       {images.map((src, index) => (
         <Image
           key={src}
@@ -41,30 +41,39 @@ const Hero = () => {
         />
       ))}
       <div className="absolute inset-0 bg-black/50" />
+      <div className="absolute inset-0 bg-[#37B8D4]/50" />
       <div className="relative z-10 text-center p-4">
         <div className="mb-4 flex justify-center pt-12">
           <MotionDiv
             initial={{ scale: 0.5, opacity: 0 }}
-            animate={{ scale: [1, 1.1, 1], opacity: 1 }}
-            transition={{
-              scale: {
-                delay: 0.5,
-                duration: 0.3,
-                times: [0, 0.5, 1],
-              },
-              opacity: { duration: 0.5, delay: 0.2 },
-            }}
-            whileHover={{
+            animate={{ 
+              opacity: 1,
               scale: 1.1,
-              rotate: 5,
-              transition: { type: "spring", stiffness: 260, damping: 10 },
+              rotate: 5
+            }}
+            transition={{
+              opacity: { duration: 0.5, delay: 0.2 },
+              scale: { 
+                delay: 1.5, 
+                duration: 0.5, 
+                type: "spring", 
+                stiffness: 260, 
+                damping: 10 
+              },
+              rotate: { 
+                delay: 1.5, 
+                duration: 0.5, 
+                type: "spring", 
+                stiffness: 260, 
+                damping: 10 
+              }
             }}
           >
             <Image
               src="/tands_logo.png"
               alt="T&S Bouncy Castle Hire Logo"
-              width={300}
-              height={80}
+              width={240}
+              height={64}
               priority
             />
           </MotionDiv>
@@ -86,12 +95,36 @@ const Hero = () => {
           Fun, Safe, and Fully Insured. We bring the party to you!
         </MotionP>
         <div className="mt-8 flex justify-center gap-4">
-          <Button asChild size="lg">
-            <Link href="/castles">View Our Castles</Link>
-          </Button>
-          <Button asChild size="lg" variant="secondary">
-            <Link href="/booking">Book Now</Link>
-          </Button>
+          <MotionDiv
+            initial={{ x: -200, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{
+              delay: 0.8,
+              duration: 0.6,
+              type: "spring",
+              stiffness: 200,
+              damping: 15
+            }}
+          >
+            <Button asChild size="lg">
+              <Link href="/castles">View Our Castles</Link>
+            </Button>
+          </MotionDiv>
+          <MotionDiv
+            initial={{ x: 200, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{
+              delay: 0.8,
+              duration: 0.6,
+              type: "spring",
+              stiffness: 200,
+              damping: 15
+            }}
+          >
+            <Button asChild size="lg" variant="secondary">
+              <Link href="/booking">Book Now</Link>
+            </Button>
+          </MotionDiv>
         </div>
       </div>
     </section>
