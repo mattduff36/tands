@@ -27,7 +27,7 @@ const Hero = () => {
   }, []);
 
   return (
-    <section className="relative h-[60vh] min-h-[400px] w-full flex items-center justify-center text-white">
+    <section className="relative h-[calc(60vh+3rem)] min-h-[448px] w-full flex items-center justify-center text-white">
       {images.map((src, index) => (
         <Image
           key={src}
@@ -42,12 +42,23 @@ const Hero = () => {
       ))}
       <div className="absolute inset-0 bg-black/50" />
       <div className="relative z-10 text-center p-4">
-        <div className="mb-4 flex justify-center">
+        <div className="mb-4 flex justify-center pt-12">
           <MotionDiv
             initial={{ scale: 0.5, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.2 }}
-            whileHover={{ scale: 1.1, rotate: 5, transition: { type: "spring", stiffness: 260, damping: 10 } }}
+            animate={{ scale: [1, 1.1, 1], opacity: 1 }}
+            transition={{
+              scale: {
+                delay: 0.5,
+                duration: 0.3,
+                times: [0, 0.5, 1],
+              },
+              opacity: { duration: 0.5, delay: 0.2 },
+            }}
+            whileHover={{
+              scale: 1.1,
+              rotate: 5,
+              transition: { type: "spring", stiffness: 260, damping: 10 },
+            }}
           >
             <Image
               src="/tands_logo.png"
