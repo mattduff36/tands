@@ -34,23 +34,20 @@ import {
   
   const FAQPage = () => {
     return (
-      <div className="bg-white">
-        <main>
-          {/* Header */}
-          <div className="bg-gray-50 py-16 sm:py-20 text-center">
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-              <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl">
+      <div className="bg-gradient-faq py-12">
+        <main className="container mx-auto">
+          <div className="rounded-xl border bg-white/30 p-8 shadow-lg backdrop-blur-sm">
+            <div className="text-center">
+              <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
                 Frequently Asked Questions
               </h1>
               <p className="mt-4 max-w-2xl mx-auto text-lg text-gray-600">
                 Have a question? We've got answers. If you can't find what you're looking for, feel free to contact us directly.
               </p>
             </div>
-          </div>
   
-          {/* FAQ Accordion */}
-          <div className="container mx-auto py-16 sm:py-24 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-3xl mx-auto">
+            {/* FAQ Accordion */}
+            <div className="max-w-3xl mx-auto mt-8">
               <Accordion type="single" collapsible className="w-full">
                 {faqs.map((faq, index) => (
                   <AccordionItem key={index} value={`item-${index}`}>

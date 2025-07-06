@@ -5,14 +5,16 @@ import { AnimatedSection } from "@/components/ui/AnimatedSection";
 
 export default function Home() {
   return (
-    <main>
-      <Hero />
-      <AnimatedSection>
-        <Introduction />
-      </AnimatedSection>
-      <AnimatedSection>
-        <CastleHighlights />
-      </AnimatedSection>
-    </main>
+    <div className="bg-gradient-home">
+      <main>
+        <Hero />
+        <AnimatedSection>
+          <Introduction />
+        </AnimatedSection>
+        <AnimatedSection>
+          <CastleHighlights />
+        </AnimatedSection>
+      </main>
+    </div>
   );
 }

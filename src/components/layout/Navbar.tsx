@@ -22,11 +22,11 @@ const Navbar = () => {
   };
 
   return (
-    <header className="bg-white shadow-md">
+    <header className="bg-gradient-nav shadow-md">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           <div className="flex-shrink-0">
-            <Link href="/" className="text-2xl font-bold text-blue-600">
+            <Link href="/" className="text-2xl font-bold text-gray-800 hover:text-gray-600">
               T&S Bouncy Castle Hire
             </Link>
           </div>
@@ -35,7 +35,7 @@ const Navbar = () => {
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-gray-600 hover:text-blue-600 transition-colors"
+                className="text-gray-700 hover:text-gray-900 transition-colors"
               >
                 {link.label}
               </Link>
