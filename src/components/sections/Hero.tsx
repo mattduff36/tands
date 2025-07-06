@@ -47,6 +47,7 @@ const Hero = () => {
             initial={{ scale: 0.5, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.2 }}
+            whileHover={{ scale: 1.1, rotate: 5, transition: { type: "spring", stiffness: 260, damping: 10 } }}
           >
             <Image
               src="/tands_logo.png"
