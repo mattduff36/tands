@@ -22,7 +22,7 @@ export const metadata: Metadata = {
       { rel: 'icon', url: '/favicon/favicon.ico' },
     ],
   },
-  manifest: '/site.webmanifest',
+  manifest: '/favicon/site.webmanifest',
 };
 
 export default function RootLayout({
