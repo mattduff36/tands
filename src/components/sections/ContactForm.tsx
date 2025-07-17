@@ -37,58 +37,62 @@ export function ContactForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div>
-        <Label htmlFor="name">Full Name</Label>
-        <Input 
-          id="name" 
-          name="name" 
-          type="text" 
-          autoComplete="name" 
-          required 
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-      </div>
-      <div>
-        <Label htmlFor="email">Email Address</Label>
-        <Input 
-          id="email" 
-          name="email" 
-          type="email" 
-          autoComplete="email" 
-          required 
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-      </div>
-      <div>
-        <Label htmlFor="phone">Phone Number (Optional)</Label>
-        <Input 
-          id="phone" 
-          name="phone" 
-          type="tel" 
-          autoComplete="tel" 
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-        />
-      </div>
-      <div>
-        <Label htmlFor="message">Message</Label>
-        <Textarea 
-          id="message" 
-          name="message" 
-          rows={4} 
-          required 
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-        />
-      </div>
-      <div>
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? "Submitting..." : "Send Message"}
-        </Button>
-      </div>
+    <form className="flex flex-col flex-1 h-full" autoComplete="off" onSubmit={handleSubmit}>
+      <label htmlFor="name" className="mb-1 font-semibold text-blue-900" tabIndex={0} aria-label="Name">Name</label>
+      <input
+        id="name"
+        name="name"
+        type="text"
+        className="bg-white border border-blue-200 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400"
+        required
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        tabIndex={0}
+        aria-label="Name input"
+      />
+      <label htmlFor="email" className="mb-1 font-semibold text-blue-900" tabIndex={0} aria-label="Email">Email</label>
+      <input
+        id="email"
+        name="email"
+        type="email"
+        className="bg-white border border-blue-200 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400"
+        required
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        tabIndex={0}
+        aria-label="Email input"
+      />
+      <label htmlFor="phone" className="mb-1 font-semibold text-blue-900" tabIndex={0} aria-label="Phone number (optional)">Phone number (optional)</label>
+      <input
+        id="phone"
+        name="phone"
+        type="tel"
+        className="bg-white border border-blue-200 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400"
+        value={phone}
+        onChange={(e) => setPhone(e.target.value)}
+        tabIndex={0}
+        aria-label="Phone number input (optional)"
+      />
+      <label htmlFor="message" className="mb-1 font-semibold text-blue-900" tabIndex={0} aria-label="Message">Message</label>
+      <textarea
+        id="message"
+        name="message"
+        className="bg-white border border-blue-200 rounded-lg px-4 py-2 mb-4 min-h-[100px] flex-1 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+        required
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        tabIndex={0}
+        aria-label="Message textarea"
+      />
+      <button
+        type="submit"
+        className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg shadow focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 transition-colors duration-200"
+        tabIndex={0}
+        aria-label="Send Message"
+        disabled={isSubmitting}
+      >
+        {isSubmitting ? "Submitting..." : "Send Message"}
+      </button>
     </form>
   );
 } 

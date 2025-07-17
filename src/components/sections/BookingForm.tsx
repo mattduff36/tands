@@ -59,105 +59,141 @@ export function BookingForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
-      {/* Castle Selection */}
-      <div>
-        <Label className="text-lg font-semibold">1. Choose Your Castle</Label>
-        <Select value={selectedCastleId} onValueChange={setSelectedCastleId} required>
-          <SelectTrigger className="w-full mt-2">
-            <SelectValue placeholder="Select a bouncy castle..." />
-          </SelectTrigger>
-          <SelectContent>
-            {castles.map((castle) => (
-              <SelectItem key={castle.id} value={castle.id.toString()}>
-                {castle.name} - £{castle.price}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+    <form onSubmit={handleSubmit} className="flex flex-col flex-1 h-full" autoComplete="off">
+      <label htmlFor="castle" className="mb-1 font-semibold text-blue-900" tabIndex={0} aria-label="Choose Your Castle">1. Choose Your Castle</label>
+      <Select value={selectedCastleId} onValueChange={setSelectedCastleId} required>
+        <SelectTrigger className="bg-white border border-blue-200 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full">
+          <SelectValue placeholder="Select a bouncy castle..." />
+        </SelectTrigger>
+        <SelectContent>
+          {castles.map((castle) => (
+            <SelectItem key={castle.id} value={castle.id.toString()}>
+              {castle.name} - £{castle.price}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <label htmlFor="date" className="mb-1 font-semibold text-blue-900" tabIndex={0} aria-label="Select Your Date">2. Select Your Date</label>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant={"outline"}
+            className={cn(
+              "bg-white border border-blue-200 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full justify-start text-left font-normal",
+              !date && "text-muted-foreground"
+            )}
+            tabIndex={0}
+            aria-label="Date picker"
+          >
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {date ? format(date, "PPP") : <span>Pick a date</span>}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0">
+          <Calendar
+            mode="single"
+            selected={date}
+            onSelect={setDate}
+            initialFocus
+            disabled={(day) =>
+              day < new Date() ||
+              unavailableDates.some(
+                (unavailableDate) =>
+                  day.getFullYear() === unavailableDate.getFullYear() &&
+                  day.getMonth() === unavailableDate.getMonth() &&
+                  day.getDate() === unavailableDate.getDate()
+              )
+            }
+          />
+        </PopoverContent>
+      </Popover>
+      <label htmlFor="name" className="mb-1 font-semibold text-blue-900" tabIndex={0} aria-label="Full Name">Full Name</label>
+      <input
+        id="name"
+        name="name"
+        type="text"
+        className="bg-white border border-blue-200 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400"
+        required
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        tabIndex={0}
+        aria-label="Full Name input"
+      />
+      <label htmlFor="email" className="mb-1 font-semibold text-blue-900" tabIndex={0} aria-label="Email">Email</label>
+      <input
+        id="email"
+        name="email"
+        type="email"
+        className="bg-white border border-blue-200 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400"
+        required
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        tabIndex={0}
+        aria-label="Email input"
+      />
+      <label htmlFor="phone" className="mb-1 font-semibold text-blue-900" tabIndex={0} aria-label="Phone">Phone</label>
+      <input
+        id="phone"
+        name="phone"
+        type="tel"
+        className="bg-white border border-blue-200 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400"
+        value={phone}
+        onChange={(e) => setPhone(e.target.value)}
+        tabIndex={0}
+        aria-label="Phone input"
+      />
+      <label htmlFor="address" className="mb-1 font-semibold text-blue-900" tabIndex={0} aria-label="Delivery Address">Delivery Address</label>
+      <textarea
+        id="address"
+        name="address"
+        className="bg-white border border-blue-200 rounded-lg px-4 py-2 mb-4 min-h-[100px] flex-1 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+        required
+        value={address}
+        onChange={(e) => setAddress(e.target.value)}
+        tabIndex={0}
+        aria-label="Delivery Address textarea"
+      />
+      <label className="mb-1 font-semibold text-blue-900" tabIndex={0} aria-label="Payment Method">Payment Method</label>
+      <div className="mb-4 flex flex-col gap-3">
+        <label htmlFor="cash" className={`flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 cursor-pointer ${paymentMethod === 'cash' ? 'bg-blue-50 border-blue-400 shadow' : 'border-blue-200 bg-white hover:bg-blue-50'}`} tabIndex={0} aria-label="Cash on Delivery">
+          <input
+            type="radio"
+            id="cash"
+            name="paymentMethod"
+            value="cash"
+            checked={paymentMethod === 'cash'}
+            onChange={() => setPaymentMethod('cash')}
+            className="h-6 w-6 border-2 border-blue-400 focus:ring-2 focus:ring-blue-400 accent-blue-500 transition-all duration-200"
+            aria-checked={paymentMethod === 'cash'}
+          />
+          <span className="font-medium text-blue-900 select-none">Cash on Delivery</span>
+        </label>
+        <label htmlFor="card" className={`flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 cursor-pointer ${paymentMethod === 'card' ? 'bg-blue-50 border-blue-400 shadow' : 'border-blue-200 bg-white hover:bg-blue-50'}`} tabIndex={0} aria-label="Credit/Debit Card (Pay on Delivery)">
+          <input
+            type="radio"
+            id="card"
+            name="paymentMethod"
+            value="card"
+            checked={paymentMethod === 'card'}
+            onChange={() => setPaymentMethod('card')}
+            className="h-6 w-6 border-2 border-blue-400 focus:ring-2 focus:ring-blue-400 accent-blue-500 transition-all duration-200"
+            aria-checked={paymentMethod === 'card'}
+          />
+          <span className="font-medium text-blue-900 select-none">Credit/Debit Card (Pay on Delivery)</span>
+        </label>
       </div>
-
-      {/* Date Selection */}
-      <div>
-        <Label className="text-lg font-semibold">2. Select Your Date</Label>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant={"outline"}
-              className={cn(
-                "w-full justify-start text-left font-normal mt-2",
-                !date && "text-muted-foreground"
-              )}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {date ? format(date, "PPP") : <span>Pick a date</span>}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0">
-            <Calendar
-              mode="single"
-              selected={date}
-              onSelect={setDate}
-              initialFocus
-              disabled={(day) =>
-                day < new Date() ||
-                unavailableDates.some(
-                  (unavailableDate) =>
-                    day.getFullYear() === unavailableDate.getFullYear() &&
-                    day.getMonth() === unavailableDate.getMonth() &&
-                    day.getDate() === unavailableDate.getDate()
-                )
-              }
-            />
-          </PopoverContent>
-        </Popover>
-      </div>
-
-      {/* Personal Details */}
-      <div>
-        <Label className="text-lg font-semibold">3. Your Details</Label>
-        <div className="mt-2 space-y-4">
-            <div>
-                <Label htmlFor="name">Full Name</Label>
-                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
-            </div>
-            <div>
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-            </div>
-            <div>
-                <Label htmlFor="phone">Phone</Label>
-                <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
-            </div>
-            <div>
-                <Label htmlFor="address">Delivery Address</Label>
-                <Textarea id="address" value={address} onChange={(e) => setAddress(e.target.value)} required />
-            </div>
-        </div>
-      </div>
-
-      {/* Payment Method */}
-      <div>
-        <Label className="text-lg font-semibold">4. Payment Method</Label>
-        <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="mt-2">
-            <div className="flex items-center space-x-2">
-                <RadioGroupItem value="cash" id="cash" />
-                <Label htmlFor="cash">Cash on Delivery</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-                <RadioGroupItem value="card" id="card" />
-                <Label htmlFor="card">Credit/Debit Card (Pay on Delivery)</Label>
-            </div>
-        </RadioGroup>
-        <p className="text-sm text-muted-foreground mt-2">
-            Please note: For card payments, we will bring a card machine on the day of delivery. No online payment is taken at this time.
-        </p>
-      </div>
-
-      {/* Submit Button */}
-      <Button type="submit" size="lg" className="w-full" disabled={isSubmitting}>
+      <p className="text-sm text-muted-foreground mb-4">
+        Please note: For card payments, we will bring a card machine on the day of delivery. No online payment is taken at this time.
+      </p>
+      <button
+        type="submit"
+        className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg shadow focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 transition-colors duration-200"
+        tabIndex={0}
+        aria-label="Request to Book"
+        disabled={isSubmitting}
+      >
         {isSubmitting ? "Submitting..." : "Request to Book"}
-      </Button>
+      </button>
     </form>
   );
 } 
