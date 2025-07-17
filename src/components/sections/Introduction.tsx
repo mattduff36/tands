@@ -79,9 +79,9 @@ const Introduction = () => {
                   07835 094187
                 </a>
               </div>
-              <a href="mailto:tsbouncycastlehire@gmail.com" className="flex items-center gap-3 text-lg font-bold text-purple-600 hover:text-purple-800 bg-white/80 rounded-2xl p-3 shadow-lg border-2 border-purple-300 hover:bg-purple-50 transition-all duration-300">
+              <a href="mailto:tsbouncycastlehire@gmail.com" className="flex items-center gap-3 text-xs sm:text-lg font-bold text-purple-600 hover:text-purple-800 bg-white/80 rounded-2xl p-3 shadow-lg border-2 border-purple-300 hover:bg-purple-50 transition-all duration-300 overflow-x-auto">
                 <Mail className="h-6 w-6 animate-pulse flex-shrink-0" />
-                <span className="break-words">tsbouncycastlehire@gmail.com</span>
+                <span className="break-all max-w-full">tsbouncycastlehire@gmail.com</span>
               </a>
             </div>
           </div>

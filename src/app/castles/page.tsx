@@ -3,9 +3,9 @@ import { castles } from "@/lib/castle-data";
 
 const CastlesPage = () => {
   return (
-    <div className="bg-gradient-castles py-12 pt-24">
-      <main className="container mx-auto">
-        <div className="rounded-3xl border-4 border-yellow-300 bg-gradient-to-br from-yellow-100 via-orange-100 to-red-100 p-8 shadow-2xl backdrop-blur-sm">
+    <div className="bg-gradient-castles py-6 pt-20 sm:py-12 sm:pt-24">
+      <main className="container mx-auto px-2 sm:px-8">
+        <div className="rounded-3xl border-4 border-yellow-300 bg-gradient-to-br from-yellow-100 via-orange-100 to-red-100 p-2 sm:p-8 shadow-2xl backdrop-blur-sm">
           <div className="text-center">
             <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 bg-clip-text text-transparent sm:text-5xl animate-pulse mb-6">
               🏰 Our Bouncy Castle Fleet 🎪

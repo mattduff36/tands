@@ -28,9 +28,9 @@ const safetyFeatures = [
 
 const HealthAndSafetyPage = () => {
   return (
-    <div className="bg-gradient-health py-12 pt-24 min-h-screen">
-      <main className="container mx-auto">
-        <div className="rounded-3xl border-4 border-blue-300 bg-white/40 p-8 shadow-2xl backdrop-blur-md">
+    <div className="bg-gradient-health py-6 pt-20 min-h-screen sm:py-12 sm:pt-24">
+      <main className="container mx-auto px-2 sm:px-8">
+        <div className="rounded-3xl border-4 border-blue-300 bg-white/40 p-2 sm:p-8 shadow-2xl backdrop-blur-md">
           {/* Hero Section */}
           <div className="relative rounded-3xl overflow-hidden shadow-2xl mb-16 h-[320px] flex items-center justify-center">
             <div className="absolute inset-0">

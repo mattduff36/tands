@@ -102,13 +102,13 @@ export function BookingForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col flex-1 h-full" autoComplete="off">
-      <label htmlFor="castle" className="mb-1 font-semibold text-blue-900" tabIndex={0} aria-label="Choose Your Castle">Choose Your Castle</label>
+    <form onSubmit={handleSubmit} className="flex flex-col flex-1 h-full w-full max-w-full" autoComplete="off">
+      <label htmlFor="castle" className="mb-1 font-semibold text-blue-900 text-base sm:text-base" tabIndex={0} aria-label="Choose Your Castle">Choose Your Castle</label>
       <Select value={selectedCastleId} onValueChange={setSelectedCastleId} required>
-        <SelectTrigger className="bg-white border border-blue-200 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full text-base">
+        <SelectTrigger className="bg-white border border-blue-200 rounded-lg px-3 py-2 sm:px-4 sm:py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full text-base">
           <SelectValue placeholder={<span className="text-base text-muted-foreground">Select a bouncy castle...</span>} />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="max-w-xs w-full sm:max-w-md">
           {castles.map((castle) => (
             <SelectItem key={castle.id} value={castle.id.toString()}>
               {castle.name} - £{castle.price}
@@ -116,13 +116,13 @@ export function BookingForm() {
           ))}
         </SelectContent>
       </Select>
-      <label htmlFor="date" className="mb-1 font-semibold text-blue-900" tabIndex={0} aria-label="Select Your Date">Select Your Date</label>
+      <label htmlFor="date" className="mb-1 font-semibold text-blue-900 text-base sm:text-base" tabIndex={0} aria-label="Select Your Date">Select Your Date</label>
       <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
         <PopoverTrigger asChild>
           <button
             type="button"
             className={cn(
-              "flex items-center bg-white border border-blue-200 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full justify-start text-left font-normal text-base",
+              "flex items-center bg-white border border-blue-200 rounded-lg px-3 py-2 sm:px-4 sm:py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full justify-start text-left font-normal text-base",
               !date && "text-muted-foreground"
             )}
             tabIndex={0}
@@ -133,7 +133,7 @@ export function BookingForm() {
             {date ? format(date, "PPP") : <span className="text-base text-muted-foreground">Pick a date</span>}
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0">
+        <PopoverContent className="max-w-xs w-full sm:max-w-md p-0">
           <Calendar
             mode="single"
             selected={date}
@@ -154,55 +154,55 @@ export function BookingForm() {
           />
         </PopoverContent>
       </Popover>
-      <label htmlFor="name" className="mb-1 font-semibold text-blue-900" tabIndex={0} aria-label="Full Name">Full Name</label>
+      <label htmlFor="name" className="mb-1 font-semibold text-blue-900 text-base sm:text-base" tabIndex={0} aria-label="Full Name">Full Name</label>
       <input
         id="name"
         name="name"
         type="text"
-        className="bg-white border border-blue-200 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400"
+        className="bg-white border border-blue-200 rounded-lg px-3 py-2 sm:px-4 sm:py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full text-base"
         required
         value={name}
         onChange={(e) => setName(e.target.value)}
         tabIndex={0}
         aria-label="Full Name input"
       />
-      <label htmlFor="email" className="mb-1 font-semibold text-blue-900" tabIndex={0} aria-label="Email">Email</label>
+      <label htmlFor="email" className="mb-1 font-semibold text-blue-900 text-base sm:text-base" tabIndex={0} aria-label="Email">Email</label>
       <input
         id="email"
         name="email"
         type="email"
-        className="bg-white border border-blue-200 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400"
+        className="bg-white border border-blue-200 rounded-lg px-3 py-2 sm:px-4 sm:py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full text-base"
         required
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         tabIndex={0}
         aria-label="Email input"
       />
-      <label htmlFor="phone" className="mb-1 font-semibold text-blue-900" tabIndex={0} aria-label="Phone">Phone</label>
+      <label htmlFor="phone" className="mb-1 font-semibold text-blue-900 text-base sm:text-base" tabIndex={0} aria-label="Phone">Phone</label>
       <input
         id="phone"
         name="phone"
         type="tel"
-        className="bg-white border border-blue-200 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400"
+        className="bg-white border border-blue-200 rounded-lg px-3 py-2 sm:px-4 sm:py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full text-base"
         value={phone}
         onChange={(e) => setPhone(e.target.value)}
         tabIndex={0}
         aria-label="Phone input"
       />
-      <label htmlFor="address" className="mb-1 font-semibold text-blue-900" tabIndex={0} aria-label="Delivery Address">Delivery Address</label>
+      <label htmlFor="address" className="mb-1 font-semibold text-blue-900 text-base sm:text-base" tabIndex={0} aria-label="Delivery Address">Delivery Address</label>
       <textarea
         id="address"
         name="address"
-        className="bg-white border border-blue-200 rounded-lg px-4 py-2 mb-4 min-h-[100px] flex-1 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+        className="bg-white border border-blue-200 rounded-lg px-3 py-2 sm:px-4 sm:py-2 mb-4 min-h-[100px] flex-1 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none w-full text-base"
         required
         value={address}
         onChange={(e) => setAddress(e.target.value)}
         tabIndex={0}
         aria-label="Delivery Address textarea"
       />
-      <label className="mb-1 font-semibold text-blue-900" tabIndex={0} aria-label="Payment Method">Payment Method</label>
+      <label className="mb-1 font-semibold text-blue-900 text-base sm:text-base" tabIndex={0} aria-label="Payment Method">Payment Method</label>
       <div className="mb-4 flex flex-col gap-3">
-        <label htmlFor="cash" className={`flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 cursor-pointer ${paymentMethod === 'cash' ? 'bg-blue-50 border-blue-400 shadow' : 'border-blue-200 bg-white hover:bg-blue-50'}`} tabIndex={0} aria-label="Cash on Delivery">
+        <label htmlFor="cash" className={`flex items-center gap-3 p-2 sm:p-3 rounded-xl border transition-all duration-200 cursor-pointer ${paymentMethod === 'cash' ? 'bg-blue-50 border-blue-400 shadow' : 'border-blue-200 bg-white hover:bg-blue-50'}`} tabIndex={0} aria-label="Cash on Delivery">
           <input
             type="radio"
             id="cash"
@@ -215,7 +215,7 @@ export function BookingForm() {
           />
           <span className="font-medium text-blue-900 select-none">Cash on Delivery</span>
         </label>
-        <label htmlFor="card" className={`flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 cursor-pointer ${paymentMethod === 'card' ? 'bg-blue-50 border-blue-400 shadow' : 'border-blue-200 bg-white hover:bg-blue-50'}`} tabIndex={0} aria-label="Credit/Debit Card (Pay on Delivery)">
+        <label htmlFor="card" className={`flex items-center gap-3 p-2 sm:p-3 rounded-xl border transition-all duration-200 cursor-pointer ${paymentMethod === 'card' ? 'bg-blue-50 border-blue-400 shadow' : 'border-blue-200 bg-white hover:bg-blue-50'}`} tabIndex={0} aria-label="Credit/Debit Card (Pay on Delivery)">
           <input
             type="radio"
             id="card"
@@ -234,7 +234,7 @@ export function BookingForm() {
       </p>
       <button
         type="submit"
-        className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg shadow focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 transition-colors duration-200"
+        className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 sm:px-6 rounded-lg shadow focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 transition-colors duration-200 w-full text-base"
         tabIndex={0}
         aria-label="Request to Book"
         disabled={isSubmitting}

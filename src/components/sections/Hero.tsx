@@ -90,14 +90,14 @@ const Hero = () => {
           The Best Bouncy Castles in Town!
         </MotionH1>
         <MotionP
-          className="mt-4 max-w-2xl mx-auto text-lg md:text-xl drop-shadow font-bold bg-white/20 rounded-2xl p-4 backdrop-blur-sm border-2 border-white/30"
+          className="mt-4 max-w-xs sm:max-w-xl md:max-w-2xl lg:max-w-3xl mx-auto text-base sm:text-lg drop-shadow font-bold bg-white/20 rounded-2xl p-2 sm:p-4 backdrop-blur-sm border-2 border-white/30"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.6 }}
         >
           🎉 Fun, Safe, and Fully Insured. We bring the party to you! 🎉
         </MotionP>
-        <div className="mt-8 flex justify-center gap-4">
+        <div className="mt-8 flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
           <MotionDiv
             initial={{ x: -200, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
@@ -109,7 +109,7 @@ const Hero = () => {
               damping: 15
             }}
           >
-            <Button asChild size="lg" className="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white font-bold text-lg px-8 py-4 rounded-full shadow-lg border-2 border-white/30">
+            <Button asChild size="lg" className="w-full sm:w-auto bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white font-bold text-lg px-8 py-4 rounded-full shadow-lg border-2 border-white/30">
               <Link href="/castles">🏰 View Our Castles</Link>
             </Button>
           </MotionDiv>
@@ -124,7 +124,7 @@ const Hero = () => {
               damping: 15
             }}
           >
-            <Button asChild size="lg" variant="secondary" className="bg-gradient-to-r from-yellow-400 to-orange-400 hover:from-yellow-500 hover:to-orange-500 text-white font-bold text-lg px-8 py-4 rounded-full shadow-lg border-2 border-white/30">
+            <Button asChild size="lg" variant="secondary" className="w-full sm:w-auto bg-gradient-to-r from-yellow-400 to-orange-400 hover:from-yellow-500 hover:to-orange-500 text-white font-bold text-lg px-8 py-4 rounded-full shadow-lg border-2 border-white/30">
               <Link href="/booking">📅 Book Now</Link>
             </Button>
           </MotionDiv>

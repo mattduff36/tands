@@ -40,10 +40,10 @@ const faqs = [
 
 const FAQPage = () => {
   return (
-    <div className="bg-gradient-faq py-12 pt-24 min-h-screen">
-      <main className="container mx-auto">
-        <div className="rounded-3xl border-4 border-purple-300 bg-white/40 p-6 shadow-2xl backdrop-blur-md">
-          <div className="text-center mb-10">
+    <div className="bg-gradient-faq py-6 pt-20 min-h-screen sm:py-12 sm:pt-24">
+      <main className="container mx-auto px-2 sm:px-8">
+        <div className="rounded-3xl border-4 border-purple-300 bg-white/40 p-2 sm:p-6 shadow-2xl backdrop-blur-md">
+          <div className="text-center mb-4 sm:mb-10">
             <h1 className="text-4xl font-extrabold tracking-tight bg-gradient-to-r from-purple-500 via-pink-400 to-yellow-400 bg-clip-text text-transparent sm:text-5xl drop-shadow-lg mb-6">
               ❓ Frequently Asked Questions
             </h1>

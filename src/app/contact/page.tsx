@@ -3,9 +3,9 @@ import { Phone, Mail, MapPin, Facebook } from "lucide-react";
 
 const ContactPage = () => {
     return (
-        <div className="bg-gradient-contact py-12 pt-24">
-            <main className="container mx-auto">
-                <div className="rounded-3xl border-4 border-blue-300 bg-gradient-to-br from-blue-100 via-green-100 to-purple-100 p-8 shadow-2xl backdrop-blur-sm">
+        <div className="bg-gradient-contact py-6 pt-20 sm:py-12 sm:pt-24">
+            <main className="container mx-auto px-2 sm:px-8">
+                <div className="rounded-3xl border-4 border-blue-300 bg-gradient-to-br from-blue-100 via-green-100 to-purple-100 p-2 sm:p-8 shadow-2xl backdrop-blur-sm">
                     <div className="text-center">
                         <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-500 via-green-500 to-purple-500 bg-clip-text text-transparent sm:text-5xl animate-pulse mb-6">
                             📧 Get In Touch 📞

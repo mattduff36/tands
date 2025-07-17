@@ -3,9 +3,9 @@ import { MapPin, Truck, Award } from "lucide-react";
 
 const AboutPage = () => {
   return (
-    <div className="bg-gradient-about py-12 pt-24">
-      <main className="container mx-auto">
-        <div className="rounded-3xl border-4 border-green-300 bg-gradient-to-br from-green-100 via-blue-100 to-purple-100 p-8 shadow-2xl backdrop-blur-md">
+    <div className="bg-gradient-about py-6 pt-20 sm:py-12 sm:pt-24">
+      <main className="container mx-auto px-2 sm:px-8">
+        <div className="rounded-3xl border-4 border-green-300 bg-gradient-to-br from-green-100 via-blue-100 to-purple-100 p-2 sm:p-8 shadow-2xl backdrop-blur-md">
           {/* Hero Section */}
           <div className="relative rounded-3xl overflow-hidden shadow-2xl mb-16 h-[320px] flex items-center justify-center">
             <div className="absolute inset-0">
