@@ -46,49 +46,43 @@ const motionProps = {
 
 const MotionButton = motion.button;
 
-function Button({
-  className,
-  variant,
-  size,
-  asChild = false,
-  ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement> &
-  VariantProps<typeof buttonVariants> & {
-    asChild?: boolean
-  }) {
-  
-  if (asChild) {
+const Button = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement> & VariantProps<typeof buttonVariants> & { asChild?: boolean }>(
+  ({ className, variant, size, asChild = false, ...props }, ref) => {
+    if (asChild) {
+      return (
+        <Slot
+          ref={ref}
+          className={cn(buttonVariants({ variant, size, className }))}
+          {...props}
+        />
+      );
+    }
+    // Filter out HTML button props that conflict with framer-motion
+    const {
+      onAnimationStart,
+      onAnimationEnd,
+      onAnimationIteration,
+      onDrag,
+      onDragEnd,
+      onDragEnter,
+      onDragExit,
+      onDragLeave,
+      onDragOver,
+      onDragStart,
+      onDrop,
+      ...buttonProps
+    } = props;
+
     return (
-      <Slot
+      <MotionButton
+        ref={ref}
         className={cn(buttonVariants({ variant, size, className }))}
-        {...props}
+        {...motionProps}
+        {...buttonProps}
       />
-    )
+    );
   }
-
-  // Filter out HTML button props that conflict with framer-motion
-  const { 
-    onAnimationStart, 
-    onAnimationEnd, 
-    onAnimationIteration,
-    onDrag,
-    onDragEnd,
-    onDragEnter,
-    onDragExit,
-    onDragLeave,
-    onDragOver,
-    onDragStart,
-    onDrop,
-    ...buttonProps 
-  } = props;
-
-  return (
-    <MotionButton
-      className={cn(buttonVariants({ variant, size, className }))}
-      {...motionProps}
-      {...buttonProps}
-    />
-  )
-}
+);
+Button.displayName = "Button";
 
 export { Button, buttonVariants }

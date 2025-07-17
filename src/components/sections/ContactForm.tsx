@@ -18,22 +18,35 @@ export function ContactForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
-    // Simulate form submission
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    setIsSubmitting(false);
-    setIsSubmitted(true);
-
-    toast.success("Form Submitted!", {
-        description: "Thank you for your message. We will get back to you shortly."
-    });
-
-    // Reset form
-    setName("");
-    setEmail("");
-    setPhone("");
-    setMessage("");
+    setIsSubmitted(false);
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, message }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast.success("Form Submitted!", {
+          description: "Thank you for your message. We will get back to you shortly.",
+        });
+        setName("");
+        setEmail("");
+        setPhone("");
+        setMessage("");
+        setIsSubmitted(true);
+      } else {
+        toast.error("Submission failed", {
+          description: data.error || "An error occurred. Please try again.",
+        });
+      }
+    } catch (error: any) {
+      toast.error("Submission failed", {
+        description: error.message || "An error occurred. Please try again.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

@@ -25,6 +25,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { castles, Castle } from "@/lib/castle-data";
+import { motionProps } from "@/components/ui/button";
 
 export function BookingForm() {
   const searchParams = useSearchParams();
@@ -39,6 +40,7 @@ export function BookingForm() {
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [popoverOpen, setPopoverOpen] = useState(false);
 
   // This is a mock of unavailable dates. In a real app, this would come from a database.
   const unavailableDates = [
@@ -47,23 +49,64 @@ export function BookingForm() {
     new Date(2024, 8, 5),
   ];
 
+  // Helper to check if a date is before today (ignoring time)
+  const isBeforeToday = (date: Date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    return d < today;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
-    // Simulate form submission
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    setIsSubmitting(false);
-    setIsSubmitted(true);
+    setIsSubmitted(false);
+    try {
+      const response = await fetch("/api/booking", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          email,
+          phone,
+          date: date ? date.toISOString().split("T")[0] : "",
+          message: `Castle: ${selectedCastleId ? castles.find(c => c.id.toString() === selectedCastleId)?.name : ""}\nAddress: ${address}\nPayment: ${paymentMethod}`
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast.success("Booking request sent!", {
+          description: "Thank you for your booking request. We will contact you soon.",
+        });
+        setSelectedCastleId(undefined);
+        setDate(undefined);
+        setName("");
+        setEmail("");
+        setPhone("");
+        setAddress("");
+        setPaymentMethod("cash");
+        setIsSubmitted(true);
+      } else {
+        toast.error("Booking failed", {
+          description: data.error || "An error occurred. Please try again.",
+        });
+      }
+    } catch (error: any) {
+      toast.error("Booking failed", {
+        description: error.message || "An error occurred. Please try again.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col flex-1 h-full" autoComplete="off">
-      <label htmlFor="castle" className="mb-1 font-semibold text-blue-900" tabIndex={0} aria-label="Choose Your Castle">1. Choose Your Castle</label>
+      <label htmlFor="castle" className="mb-1 font-semibold text-blue-900" tabIndex={0} aria-label="Choose Your Castle">Choose Your Castle</label>
       <Select value={selectedCastleId} onValueChange={setSelectedCastleId} required>
-        <SelectTrigger className="bg-white border border-blue-200 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full">
-          <SelectValue placeholder="Select a bouncy castle..." />
+        <SelectTrigger className="bg-white border border-blue-200 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full text-base">
+          <SelectValue placeholder={<span className="text-base text-muted-foreground">Select a bouncy castle...</span>} />
         </SelectTrigger>
         <SelectContent>
           {castles.map((castle) => (
@@ -73,30 +116,34 @@ export function BookingForm() {
           ))}
         </SelectContent>
       </Select>
-      <label htmlFor="date" className="mb-1 font-semibold text-blue-900" tabIndex={0} aria-label="Select Your Date">2. Select Your Date</label>
-      <Popover>
+      <label htmlFor="date" className="mb-1 font-semibold text-blue-900" tabIndex={0} aria-label="Select Your Date">Select Your Date</label>
+      <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
         <PopoverTrigger asChild>
-          <Button
-            variant={"outline"}
+          <button
+            type="button"
             className={cn(
-              "bg-white border border-blue-200 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full justify-start text-left font-normal",
+              "flex items-center bg-white border border-blue-200 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full justify-start text-left font-normal text-base",
               !date && "text-muted-foreground"
             )}
             tabIndex={0}
             aria-label="Date picker"
+            onClick={() => setPopoverOpen(true)}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
-            {date ? format(date, "PPP") : <span>Pick a date</span>}
-          </Button>
+            {date ? format(date, "PPP") : <span className="text-base text-muted-foreground">Pick a date</span>}
+          </button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0">
           <Calendar
             mode="single"
             selected={date}
-            onSelect={setDate}
+            onSelect={(selectedDate) => {
+              setDate(selectedDate);
+              if (selectedDate) setPopoverOpen(false);
+            }}
             initialFocus
             disabled={(day) =>
-              day < new Date() ||
+              isBeforeToday(day) ||
               unavailableDates.some(
                 (unavailableDate) =>
                   day.getFullYear() === unavailableDate.getFullYear() &&
