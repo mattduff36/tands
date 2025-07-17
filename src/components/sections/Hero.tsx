@@ -7,6 +7,9 @@ import Image from "next/image";
 import { MotionDiv } from "@/components/motion/MotionDiv";
 import { MotionH1 } from "@/components/motion/MotionH1";
 import { MotionP } from "@/components/motion/MotionP";
+import { Bubblegum_Sans } from "next/font/google";
+
+const bubblegumSans = Bubblegum_Sans({ subsets: ["latin"], weight: ["400"] });
 
 const images = [
   "/bouncy-castle-1.jpg",
@@ -43,7 +46,7 @@ const Hero = () => {
       <div className="absolute inset-0 bg-black/50" />
       <div className="absolute inset-0 bg-[#37B8D4]/50" />
       <div className="relative z-10 text-center p-4">
-        <div className="mb-4 flex justify-center pt-12">
+        <div className="mb-4 flex justify-center pt-20">
           <MotionDiv
             initial={{ scale: 0.5, opacity: 0 }}
             animate={{ 
@@ -79,7 +82,7 @@ const Hero = () => {
           </MotionDiv>
         </div>
         <MotionH1
-          className="text-4xl md:text-6xl font-extrabold tracking-tight drop-shadow-md"
+          className={`${bubblegumSans.className} text-4xl md:text-6xl font-extrabold tracking-tight drop-shadow-md`}
           initial={{ scale: 0.5, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.4 }}
@@ -87,12 +90,12 @@ const Hero = () => {
           The Best Bouncy Castles in Town!
         </MotionH1>
         <MotionP
-          className="mt-4 max-w-2xl mx-auto text-lg md:text-xl drop-shadow"
+          className="mt-4 max-w-2xl mx-auto text-lg md:text-xl drop-shadow font-bold bg-white/20 rounded-2xl p-4 backdrop-blur-sm border-2 border-white/30"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.6 }}
         >
-          Fun, Safe, and Fully Insured. We bring the party to you!
+          🎉 Fun, Safe, and Fully Insured. We bring the party to you! 🎉
         </MotionP>
         <div className="mt-8 flex justify-center gap-4">
           <MotionDiv
@@ -106,8 +109,8 @@ const Hero = () => {
               damping: 15
             }}
           >
-            <Button asChild size="lg">
-              <Link href="/castles">View Our Castles</Link>
+            <Button asChild size="lg" className="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white font-bold text-lg px-8 py-4 rounded-full shadow-lg border-2 border-white/30">
+              <Link href="/castles">🏰 View Our Castles</Link>
             </Button>
           </MotionDiv>
           <MotionDiv
@@ -121,8 +124,8 @@ const Hero = () => {
               damping: 15
             }}
           >
-            <Button asChild size="lg" variant="secondary">
-              <Link href="/booking">Book Now</Link>
+            <Button asChild size="lg" variant="secondary" className="bg-gradient-to-r from-yellow-400 to-orange-400 hover:from-yellow-500 hover:to-orange-500 text-white font-bold text-lg px-8 py-4 rounded-full shadow-lg border-2 border-white/30">
+              <Link href="/booking">📅 Book Now</Link>
             </Button>
           </MotionDiv>
         </div>
