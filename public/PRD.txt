@@ -1,0 +1,82 @@
+# Product Requirements Document (PRD)
+
+## Overview
+
+Create an admin management page for TSB Bouncy Castle Hire, linked to the primary Google Calendar (`tsbouncycastlehire@gmail.com`). Authentication will utilize Google Accounts, allowing access for the primary account and an additional admin (`matt.mpdee@gmail.com`). The page will enable streamlined management of bookings, availability, and maintenance status of all bouncy castles.
+
+## Objectives
+
+* Centralize booking management.
+* Simplify visibility of availability for admins and customers.
+* Streamline integration with Google Calendar.
+* Enable secure multi-user admin access via Google authentication.
+
+## Features
+
+### Authentication and User Roles
+
+* Google OAuth authentication supporting:
+
+  * Primary admin (`tsbouncycastlehire@gmail.com`)
+  * Secondary admin (`matt.mpdee@gmail.com`)
+
+### Core Functionality
+
+* **Google Calendar Integration:**
+
+  * Fresh integration setup, syncing bookings directly with the admin calendar.
+  * Automatic calendar updates when bookings are created, edited, or canceled.
+
+* **Bouncy Castle Availability Dashboard:**
+
+  * Clear visual dashboard showing real-time availability.
+  * Status indicators:
+
+    * **Available**: Highlighted clearly.
+    * **Booked Out**: Dates greyed out with booking details.
+    * **Unavailable (maintenance)**: Clearly marked and greyed out to prevent bookings.
+
+### Booking Management
+
+* Manually add, edit, or cancel bookings.
+* Store comprehensive booking details:
+
+  * Customer Name
+  * Contact Details
+  * Location
+  * Notes/Instructions
+  * Duration of Hire
+  * Cost
+  * Payment Method (Cash/Card – noting card payments handled upon delivery)
+* Real-time synchronization ensuring accuracy.
+* Actively prevent double-bookings with validation during booking creation.
+
+### Customer-Facing Visibility
+
+* Reflect accurate availability directly on the customer-facing website.
+* Booked and unavailable dates automatically greyed out.
+
+### Historical Data and Reporting
+
+* Store and provide historical booking data accessible via the admin dashboard.
+
+## Technical Requirements
+
+* Integration with Google Calendar API.
+* Secure Google OAuth authentication.
+* Responsive UI ensuring ease of use on desktop and mobile.
+* Built using modern web technologies (e.g., React, TailwindCSS).
+
+## Success Metrics
+
+* Reduction in booking management time by at least 30%.
+* Zero instances of double bookings.
+* Enhanced user satisfaction due to clarity in availability.
+
+## Future Considerations
+
+* Currently no additional scaling or payment integrations required.
+
+---
+
+This revised PRD incorporates clarified requirements, enhancing accuracy and completeness.
