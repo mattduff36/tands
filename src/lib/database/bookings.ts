@@ -307,10 +307,18 @@ export const createBooking = async (request: CreateBookingRequest, userId?: stri
     throw new Error(`Validation failed: ${validation.errors.map(e => e.message).join(', ')}`);
   }
   
+  // Calculate duration for conflict check
+  const conflictStartTime = new Date(`2000-01-01T${request.timeSlot.startTime}:00`);
+  const conflictEndTime = new Date(`2000-01-01T${request.timeSlot.endTime}:00`);
+  const conflictDuration = (conflictEndTime.getTime() - conflictStartTime.getTime()) / (1000 * 60);
+  
   // Check for conflicts
   const conflictCheck = await checkBookingConflicts({
     castleId: request.castleId,
-    timeSlot: request.timeSlot
+    timeSlot: {
+      ...request.timeSlot,
+      duration: conflictDuration
+    }
   });
   
   if (conflictCheck.hasConflicts) {
@@ -398,9 +406,17 @@ export const updateBooking = async (request: UpdateBookingRequest, userId?: stri
   
   // Check for conflicts if time slot is being changed
   if (request.timeSlot && request.castleId) {
+    // Calculate duration for conflict check
+    const updateStartTime = new Date(`2000-01-01T${request.timeSlot.startTime}:00`);
+    const updateEndTime = new Date(`2000-01-01T${request.timeSlot.endTime}:00`);
+    const updateDuration = (updateEndTime.getTime() - updateStartTime.getTime()) / (1000 * 60);
+    
     const conflictCheck = await checkBookingConflicts({
       castleId: request.castleId,
-      timeSlot: request.timeSlot,
+      timeSlot: {
+        ...request.timeSlot,
+        duration: updateDuration
+      },
       excludeBookingId: request.id
     });
     
