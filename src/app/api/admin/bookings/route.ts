@@ -213,33 +213,5 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/**
- * POST /api/admin/bookings/validate - Validate booking without creating
- */
-export async function POST_VALIDATE(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const bookingData = await request.json();
-    const excludeId = request.nextUrl.searchParams.get('excludeId');
-
-    // Validate booking data
-    const validator = new BookingValidator(mockBookings);
-    const validationResult = validator.validateBooking(bookingData, excludeId || undefined);
-
-    return NextResponse.json({
-      validation: validationResult,
-      suggestions: validationResult.isValid ? [] : validator.suggestAlternativeSlots(bookingData)
-    });
-
-  } catch (error) {
-    console.error('Error validating booking:', error);
-    return NextResponse.json(
-      { error: 'Failed to validate booking' },
-      { status: 500 }
-    );
-  }
-}
+// Note: POST_VALIDATE was removed as it's not a valid Next.js API route export
+// If validation-only functionality is needed, create a separate route at /api/admin/bookings/validate

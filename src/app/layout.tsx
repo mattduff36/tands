@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import "./globals.css";
 import ConditionalLayout from '@/components/layout/ConditionalLayout';
-import { Toaster } from "@/components/ui/sonner"
+import { Toaster } from "@/components/ui/sonner";
+import { Analytics } from '@vercel/analytics/react';
 
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700"] });
 
@@ -36,6 +37,7 @@ export default function RootLayout({
           {children}
         </ConditionalLayout>
         <Toaster />
+      <Analytics />
       </body>
     </html>
   );
