@@ -11,8 +11,10 @@ export interface Castle {
   imageUrl: string;
 }
 
-// Path to the JSON data file
-const DATA_FILE_PATH = path.join(process.cwd(), 'data', 'castles.json');
+// Path to the JSON data file - use /tmp in production for Vercel compatibility
+const DATA_FILE_PATH = process.env.NODE_ENV === 'production'
+  ? path.join('/tmp', 'castles.json')
+  : path.join(process.cwd(), 'data', 'castles.json');
 
 // Ensure data directory exists
 function ensureDataDirectory() {
@@ -162,10 +164,19 @@ export function deleteCastle(id: number): boolean {
 function saveCastles(castles: Castle[]): void {
   try {
     ensureDataDirectory();
+    console.log('Attempting to save castles to:', DATA_FILE_PATH);
     fs.writeFileSync(DATA_FILE_PATH, JSON.stringify(castles, null, 2));
+    console.log('Successfully saved castles data');
   } catch (error) {
-    console.error('Error saving castle data:', error);
-    throw new Error('Failed to save castle data');
+    console.error('Error saving castle data to:', DATA_FILE_PATH);
+    console.error('Error details:', error);
+    
+    // In production, provide more helpful error message
+    if (process.env.NODE_ENV === 'production') {
+      console.error('PRODUCTION STORAGE ISSUE: File-based storage is not persistent in Vercel serverless environment');
+    }
+    
+    throw new Error(`Failed to save castle data: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 

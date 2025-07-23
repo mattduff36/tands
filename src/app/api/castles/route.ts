@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getCastles } from '@/lib/castle-storage';
+import { getCastles } from '@/lib/database/castles';
 
 // GET - Public endpoint to fetch all castles for the main website
 export async function GET() {

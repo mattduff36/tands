@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth/nextauth.config';
-import { getCastleById, updateCastle, deleteCastle } from '@/lib/castle-storage';
+import { getCastleById, updateCastle, deleteCastle } from '@/lib/database/castles';
 
 // PUT - Update castle
 export async function PUT(

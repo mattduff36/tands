@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth/nextauth.config';
-import { getCastles, addCastle } from '@/lib/castle-storage';
+import { getCastles, addCastle } from '@/lib/database/castles';
 
 // GET - Fetch all castles
 export async function GET() {

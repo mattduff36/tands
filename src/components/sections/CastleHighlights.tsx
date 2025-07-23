@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import CastleCard from "@/components/sections/CastleCard";
-import type { Castle } from "@/lib/castle-storage";
+import type { Castle } from "@/lib/database/castles";
 
 export const CastleHighlights = () => {
   const [highlightedCastles, setHighlightedCastles] = useState<Castle[]>([]);

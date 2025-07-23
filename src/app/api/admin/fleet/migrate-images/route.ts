@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth/nextauth.config';
 import { google } from 'googleapis';
 import fs from 'fs';
 import path from 'path';
-import { getCastles, updateCastleImageUrls } from '@/lib/castle-storage';
+import { getCastles, updateCastleImageUrls } from '@/lib/database/castles';
 
 // Google Drive setup
 const SCOPES = ['https://www.googleapis.com/auth/drive.file'];

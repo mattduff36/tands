@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import type { Castle } from "@/lib/castle-storage";
+import type { Castle } from "@/lib/database/castles";
 import { Button } from "@/components/ui/button";
 import { Tag, Star } from "lucide-react";
 import { MotionDiv } from "@/components/motion/MotionDiv";
