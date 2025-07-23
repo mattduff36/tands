@@ -1,4 +1,4 @@
-  port { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth/nextauth.config';
 import { getBookingStats } from '@/lib/database/bookings';
