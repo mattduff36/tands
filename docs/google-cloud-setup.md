@@ -11,9 +11,23 @@
 
 1. Navigate to "APIs & Services" → "Library"
 2. Search for and enable the following APIs:
-   - **Google Calendar API**
-   - **Google+ API** (for OAuth)
+   - **Google Calendar API** ⭐ (Primary requirement for calendar integration)
+   - **Google+ API** (for OAuth user authentication)
    - **People API** (for user profile data)
+
+### Important: Google Calendar API Setup
+
+The **Google Calendar API** is essential for the admin management system. After enabling:
+
+1. Go to "APIs & Services" → "Credentials"
+2. Ensure your OAuth 2.0 client has the following scopes:
+   - `https://www.googleapis.com/auth/calendar`
+   - `https://www.googleapis.com/auth/calendar.events`
+   - `https://www.googleapis.com/auth/calendar.readonly` (for reading calendar data)
+
+3. For service account access (for server-side calendar operations):
+   - The service account created in step 3 will need Calendar API access
+   - Make sure to share your calendar with the service account email
 
 ## 3. Configure OAuth 2.0 Credentials
 
@@ -42,15 +56,33 @@
 
 ### Create Service Account (for Calendar API)
 
+**Important: Service accounts are required for server-side calendar operations**
+
 1. Click "Create Credentials" → "Service Account"
-2. Service account name: "calendar-service"
-3. Service account ID: `calendar-service`
-4. Click "Create and Continue"
-5. Grant roles: "Editor" or "Calendar Admin"
-6. Click "Done"
-7. Click on the created service account
-8. Go to "Keys" tab → "Add Key" → "Create new key"
-9. Choose JSON format and download the key file
+2. Service account name: "TSB Calendar Service"
+3. Service account ID: `tsb-calendar-service`
+4. Service account description: "Service account for TSB Bouncy Castle calendar integration"
+5. Click "Create and Continue"
+
+6. **Grant appropriate roles:**
+   - Skip role assignment for now (we'll use direct calendar sharing)
+   - Click "Continue" → "Done"
+
+7. **Generate and download service account key:**
+   - Click on the created service account
+   - Go to "Keys" tab → "Add Key" → "Create new key"
+   - Choose **JSON format** and download the key file
+   - **Important:** Store this file securely and never commit it to version control
+
+8. **Note the service account email:**
+   - It will look like: `tsb-calendar-service@your-project-id.iam.gserviceaccount.com`
+   - You'll need this email for calendar sharing and environment variables
+
+### Service Account Security Notes:
+- The downloaded JSON file contains private keys - treat it like a password
+- Store the JSON content in your environment variables (see .env.local.example)
+- Never commit the JSON file to your repository
+- Consider using Google Cloud Secret Manager for production deployments
 
 ## 4. Share Calendar with Service Account
 

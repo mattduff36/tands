@@ -10,6 +10,8 @@
 - `middleware.ts` - Global Next.js middleware configuration
 - `src/lib/auth/session-manager.ts` - Session management and token refresh functionality
 - `src/app/api/admin/auth/route.ts` - Admin authentication API endpoints for session management
+- `scripts/setup-service-account.js` - Interactive script to configure Google service account credentials
+- `src/lib/calendar/google-calendar.ts` - Google Calendar API integration utilities and service class
 - `src/app/admin/page.tsx` - Main admin dashboard page component
 - `src/app/admin/layout.tsx` - Admin layout with authentication wrapper
 - `src/components/admin/Dashboard.tsx` - Main dashboard component showing availability calendar
@@ -31,7 +33,7 @@
 
 ## Tasks
 
-- [ ] 1.0 Set up Google OAuth Authentication System
+- [x] 1.0 Set up Google OAuth Authentication System
   - [x] 1.1 Configure Google Cloud Console project and OAuth 2.0 credentials
   - [x] 1.2 Set up environment variables for Google OAuth client ID and secret
   - [x] 1.3 Create authentication utilities in `src/lib/auth/google-auth.ts`
@@ -40,15 +42,15 @@
   - [x] 1.6 Set up session management and token refresh functionality
   - [x] 1.7 Create admin authentication API route in `src/app/api/admin/auth/route.ts`
 
-- [ ] 2.0 Implement Google Calendar API Integration
-  - [ ] 2.1 Enable Google Calendar API in Google Cloud Console
-  - [ ] 2.2 Set up service account credentials for calendar access
-  - [ ] 2.3 Create Google Calendar utilities in `src/lib/calendar/google-calendar.ts`
-  - [ ] 2.4 Implement functions to read events from primary calendar
-  - [ ] 2.5 Implement functions to create, update, and delete calendar events
-  - [ ] 2.6 Create calendar sync API routes in `src/app/api/admin/calendar/route.ts`
-  - [ ] 2.7 Add error handling and retry logic for API calls
-  - [ ] 2.8 Implement real-time sync between booking changes and calendar
+- [x] 2.0 Implement Google Calendar API Integration
+  - [x] 2.1 Enable Google Calendar API in Google Cloud Console
+  - [x] 2.2 Set up service account credentials for calendar access
+  - [x] 2.3 Create Google Calendar utilities in `src/lib/calendar/google-calendar.ts`
+  - [x] 2.4 Implement functions to read events from primary calendar
+  - [x] 2.5 Implement functions to create, update, and delete calendar events
+  - [x] 2.6 Create calendar sync API routes in `src/app/api/admin/calendar/route.ts`
+  - [x] 2.7 Add error handling and retry logic for API calls
+  - [x] 2.8 Implement real-time sync between booking changes and calendar
 
 - [ ] 3.0 Create Admin Dashboard and Booking Management Interface
   - [ ] 3.1 Create admin layout component in `src/app/admin/layout.tsx` with auth wrapper

@@ -169,7 +169,8 @@ export function requireAdmin(handler: any) {
 
 // Client-side admin check hook
 export function useAdminSession() {
-  const { data: session, status } = require('next-auth/react').useSession();
+  const { useSession } = require('next-auth/react');
+  const { data: session, status } = useSession();
   
   return {
     session: session as any,
