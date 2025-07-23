@@ -1,7 +1,7 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +14,7 @@ interface ErrorInfo {
   actionHref?: string;
 }
 
-export default function AdminError() {
+function AdminErrorContent() {
   const searchParams = useSearchParams();
   const [errorInfo, setErrorInfo] = useState<ErrorInfo>({
     title: 'Authentication Error',
@@ -204,5 +204,20 @@ export default function AdminError() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function AdminError() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <AlertCircle className="mx-auto h-12 w-12 text-red-500" />
+          <h2 className="mt-6 text-3xl font-bold text-gray-900">Loading...</h2>
+        </div>
+      </div>
+    }>
+      <AdminErrorContent />
+    </Suspense>
   );
 }
