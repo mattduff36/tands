@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth/nextauth.config';
 import { google } from 'googleapis';
-import fs from 'fs';
-import path from 'path';
 import { Readable } from 'stream';
 
 // Google Drive setup
@@ -12,14 +10,15 @@ const FOLDER_NAME = 'Bouncy Castle Images';
 
 async function getGoogleDriveClient() {
   try {
-    // Load the service account key
-    const keyFilePath = path.join(process.cwd(), 'google-calendar-key.json');
-    const keyFile = JSON.parse(fs.readFileSync(keyFilePath, 'utf8'));
+    // Use environment variables for service account credentials
+    if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
+      throw new Error('Missing Google service account credentials in environment variables');
+    }
 
     // Create JWT client
     const jwtClient = new google.auth.JWT({
-      email: keyFile.client_email,
-      key: keyFile.private_key,
+      email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+      key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
       scopes: SCOPES,
     });
 
