@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
     const folderId = await getOrCreateFolder(drive, FOLDER_NAME);
 
     // Get castles from persistent storage
-    const castles = getCastles();
+    const castles = await getCastles();
 
     // Process each castle's image
     for (const castle of castles) {
@@ -203,7 +203,7 @@ export async function POST(request: NextRequest) {
           imageUrl: upload.newUrl
         }));
         
-        updateCastleImageUrls(updates);
+        await updateCastleImageUrls(updates);
       } catch (error) {
         console.error('Error updating castle data:', error);
         return NextResponse.json({

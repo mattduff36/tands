@@ -33,13 +33,13 @@ export async function PUT(
     }
 
     // Check if castle exists
-    const existingCastle = getCastleById(castleId);
+    const existingCastle = await getCastleById(castleId);
     if (!existingCastle) {
       return NextResponse.json({ error: 'Castle not found' }, { status: 404 });
     }
 
     // Update castle in persistent storage
-    const updatedCastle = updateCastle(castleId, {
+    const updatedCastle = await updateCastle(castleId, {
       name,
       theme,
       size,
@@ -82,13 +82,13 @@ export async function DELETE(
     const castleId = parseInt(params.castleId);
 
     // Check if castle exists
-    const existingCastle = getCastleById(castleId);
+    const existingCastle = await getCastleById(castleId);
     if (!existingCastle) {
       return NextResponse.json({ error: 'Castle not found' }, { status: 404 });
     }
 
     // Delete castle from persistent storage
-    const success = deleteCastle(castleId);
+    const success = await deleteCastle(castleId);
     if (!success) {
       return NextResponse.json({ error: 'Failed to delete castle' }, { status: 500 });
     }

@@ -21,7 +21,7 @@ export async function GET() {
     }
 
     // Get castles from persistent storage
-    const castles = getCastles();
+    const castles = await getCastles();
     return NextResponse.json(castles);
   } catch (error) {
     console.error('Error fetching castles:', error);
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Add castle to persistent storage
-    const newCastle = addCastle({
+    const newCastle = await addCastle({
       name,
       theme,
       size,
