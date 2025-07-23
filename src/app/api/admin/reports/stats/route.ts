@@ -47,9 +47,11 @@ export async function GET(request: NextRequest) {
     // Get statistics with retry logic
     const stats = await RetryHelper.withRetry(
       () => getBookingStats(query),
-      3,
-      1000,
-      'Failed to fetch booking statistics'
+      {
+        maxAttempts: 3,
+        baseDelay: 1000,
+        maxDelay: 5000
+      }
     );
 
     return NextResponse.json(stats);
