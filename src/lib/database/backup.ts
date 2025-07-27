@@ -4,7 +4,7 @@
  */
 
 import { Booking, AuditLog } from '@/lib/types/booking';
-import { queryBookings, updateBooking } from './bookings';
+import { queryBookingsWithFilters, updateBooking } from './bookings';
 import { RetryHelper } from '@/lib/utils/retry-helper';
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -214,7 +214,7 @@ export class BackupManager {
       for (const booking of bookings) {
         try {
           // Check if booking already exists
-          const existingBookings = await queryBookings({ searchTerm: booking.id });
+          const existingBookings = await queryBookingsWithFilters({});
           const exists = existingBookings.bookings.some(b => b.id === booking.id);
 
           if (exists && !overwriteExisting) {
@@ -387,7 +387,7 @@ export class BackupManager {
   private async collectBackupData(): Promise<{ bookings: Booking[], auditLogs: AuditLog[] }> {
     return await RetryHelper.withRetry(async () => {
       // Get all bookings by querying without filters
-      const allBookingsResult = await queryBookings({});
+      const allBookingsResult = await queryBookingsWithFilters({});
       
       // Get all audit logs (mock implementation)
       const auditLogs: AuditLog[] = []; // In real implementation, fetch from audit log store
