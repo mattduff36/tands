@@ -3,8 +3,8 @@
  * Provides automated backup, restore, and data integrity checking functionality
  */
 
-import { Booking, AuditLog } from '@/lib/types/booking';
-import { queryBookingsWithFilters, updateBooking } from './bookings';
+import { AuditLog } from '@/lib/types/booking';
+import { queryBookingsWithFilters, updateBooking, PendingBooking } from './bookings';
 import { RetryHelper } from '@/lib/utils/retry-helper';
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -383,7 +383,7 @@ export class BackupManager {
   /**
    * Collect all data for backup
    */
-  private async collectBackupData(): Promise<{ bookings: Booking[], auditLogs: AuditLog[] }> {
+  private async collectBackupData(): Promise<{ bookings: PendingBooking[], auditLogs: AuditLog[] }> {
     return await RetryHelper.withRetry(async () => {
       // Get all bookings by querying without filters
       const allBookingsResult = await queryBookingsWithFilters({});
