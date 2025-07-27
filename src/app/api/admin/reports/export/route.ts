@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/nextauth.config';
-import { queryBookings } from '@/lib/database/bookings';
+import { queryBookingsWithFilters } from '@/lib/database/bookings';
 import { BookingQuery, BookingStatus } from '@/lib/types/booking';
 import { RetryHelper } from '@/lib/utils/retry-helper';
 
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
 
     // Get bookings with retry logic
     const bookingResult = await RetryHelper.withRetry(
-      () => queryBookings(query),
+      () => queryBookingsWithFilters(query),
       {
         maxAttempts: 3,
         baseDelay: 1000,
@@ -161,7 +161,7 @@ export async function POST(request: NextRequest) {
 
     // Get bookings with retry logic
     const bookingResult = await RetryHelper.withRetry(
-      () => queryBookings(query),
+      () => queryBookingsWithFilters(query),
       {
         maxAttempts: 3,
         baseDelay: 1000,

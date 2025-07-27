@@ -270,6 +270,74 @@ export async function updateBooking(id: number, updates: Partial<Omit<PendingBoo
 // Export queryBookings as an alias for getBookingsByStatus
 export const queryBookings = getBookingsByStatus;
 
+// Query bookings with complex filters
+export async function queryBookingsWithFilters(query: {
+  dateFrom?: string;
+  dateTo?: string;
+  castleId?: string;
+  status?: string[];
+}): Promise<{ bookings: PendingBooking[] }> {
+  const client = await getPool().connect();
+  try {
+    let sqlQuery = 'SELECT * FROM bookings WHERE 1=1';
+    const params: any[] = [];
+    let paramCount = 1;
+
+    // Add date range filter
+    if (query.dateFrom) {
+      sqlQuery += ` AND date >= $${paramCount++}`;
+      params.push(query.dateFrom);
+    }
+    if (query.dateTo) {
+      sqlQuery += ` AND date <= $${paramCount++}`;
+      params.push(query.dateTo);
+    }
+
+    // Add castle filter
+    if (query.castleId) {
+      sqlQuery += ` AND castle_id = $${paramCount++}`;
+      params.push(parseInt(query.castleId));
+    }
+
+    // Add status filter
+    if (query.status && query.status.length > 0) {
+      const statusPlaceholders = query.status.map(() => `$${paramCount++}`).join(',');
+      sqlQuery += ` AND status IN (${statusPlaceholders})`;
+      params.push(...query.status);
+    }
+
+    sqlQuery += ' ORDER BY created_at DESC';
+
+    const result = await client.query(sqlQuery, params);
+    
+    const bookings = result.rows.map(row => ({
+      id: row.id,
+      bookingRef: row.booking_ref,
+      customerName: row.customer_name,
+      customerEmail: row.customer_email,
+      customerPhone: row.customer_phone,
+      customerAddress: row.customer_address,
+      castleId: row.castle_id,
+      castleName: row.castle_name,
+      date: row.date,
+      paymentMethod: row.payment_method,
+      totalPrice: row.total_price,
+      deposit: row.deposit,
+      status: row.status,
+      notes: row.notes,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    }));
+
+    return { bookings };
+  } catch (error) {
+    console.error('Error querying bookings with filters:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 // Get booking statistics
 export async function getBookingStats(): Promise<{
   total: number;
