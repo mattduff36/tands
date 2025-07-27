@@ -222,12 +222,11 @@ export class BackupManager {
             continue;
           }
 
-          if (exists && overwriteExisting) {
-            await updateBooking({
-              id: booking.id,
-              ...booking,
-              updatedBy: 'backup_restore_system'
-            });
+                     if (exists && overwriteExisting) {
+             await updateBooking(booking.id, {
+               ...booking,
+               updatedBy: 'backup_restore_system'
+             });
             warnings.push(`Booking ${booking.id} was overwritten`);
           } else {
             // For mock implementation, we'll add it
