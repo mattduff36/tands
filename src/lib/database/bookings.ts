@@ -275,7 +275,7 @@ export async function queryBookingsWithFilters(query: {
   dateFrom?: string;
   dateTo?: string;
   castleId?: string;
-  status?: string[];
+  status?: string | string[];
 }): Promise<{ bookings: PendingBooking[] }> {
   const client = await getPool().connect();
   try {
@@ -300,10 +300,18 @@ export async function queryBookingsWithFilters(query: {
     }
 
     // Add status filter
-    if (query.status && query.status.length > 0) {
-      const statusPlaceholders = query.status.map(() => `$${paramCount++}`).join(',');
-      sqlQuery += ` AND status IN (${statusPlaceholders})`;
-      params.push(...query.status);
+    if (query.status) {
+      if (Array.isArray(query.status)) {
+        if (query.status.length > 0) {
+          const statusPlaceholders = query.status.map(() => `$${paramCount++}`).join(',');
+          sqlQuery += ` AND status IN (${statusPlaceholders})`;
+          params.push(...query.status);
+        }
+      } else {
+        // Single status string
+        sqlQuery += ` AND status = $${paramCount++}`;
+        params.push(query.status);
+      }
     }
 
     sqlQuery += ' ORDER BY created_at DESC';
