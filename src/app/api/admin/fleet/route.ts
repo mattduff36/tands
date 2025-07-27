@@ -3,6 +3,26 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth/nextauth.config';
 import { getCastles, addCastle } from '@/lib/database/castles';
 
+// Helper function to trigger revalidation
+async function triggerRevalidation() {
+  try {
+    if (process.env.REVALIDATION_SECRET) {
+      await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/revalidate/castles`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          secret: process.env.REVALIDATION_SECRET,
+        }),
+      });
+    }
+  } catch (error) {
+    console.warn('Failed to trigger revalidation:', error);
+    // Don't fail the main operation if revalidation fails
+  }
+}
+
 // GET - Fetch all castles
 export async function GET() {
   try {
@@ -63,6 +83,9 @@ export async function POST(request: NextRequest) {
       description,
       imageUrl
     });
+
+    // Trigger revalidation to clear caches
+    await triggerRevalidation();
 
     return NextResponse.json(newCastle, { status: 201 });
   } catch (error) {

@@ -3,6 +3,26 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth/nextauth.config';
 import { getCastleById, updateCastle, deleteCastle } from '@/lib/database/castles';
 
+// Helper function to trigger revalidation
+async function triggerRevalidation() {
+  try {
+    if (process.env.REVALIDATION_SECRET) {
+      await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/revalidate/castles`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          secret: process.env.REVALIDATION_SECRET,
+        }),
+      });
+    }
+  } catch (error) {
+    console.warn('Failed to trigger revalidation:', error);
+    // Don't fail the main operation if revalidation fails
+  }
+}
+
 // PUT - Update castle
 export async function PUT(
   request: NextRequest,
@@ -52,6 +72,9 @@ export async function PUT(
       return NextResponse.json({ error: 'Failed to update castle' }, { status: 500 });
     }
 
+    // Trigger revalidation to clear caches
+    await triggerRevalidation();
+
     return NextResponse.json(updatedCastle);
   } catch (error) {
     console.error('Error updating castle:', error);
@@ -92,6 +115,9 @@ export async function DELETE(
     if (!success) {
       return NextResponse.json({ error: 'Failed to delete castle' }, { status: 500 });
     }
+
+    // Trigger revalidation to clear caches
+    await triggerRevalidation();
 
     return NextResponse.json({ message: 'Castle deleted successfully' });
   } catch (error) {
