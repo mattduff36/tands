@@ -4,7 +4,7 @@
  */
 
 import { Booking, AuditLog } from '@/lib/types/booking';
-import { queryBookings, createBooking, updateBooking } from './bookings';
+import { queryBookings, updateBooking } from './bookings';
 import { RetryHelper } from '@/lib/utils/retry-helper';
 import { promises as fs } from 'fs';
 import path from 'path';
