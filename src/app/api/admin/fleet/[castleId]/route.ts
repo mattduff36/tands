@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth/nextauth.config';
 import { getCastleById, updateCastle, deleteCastle } from '@/lib/database/castles';
+import { cleanupOldBlobImage, deleteBlobImage } from '@/lib/utils/blob-manager';
 
 // Helper function to trigger revalidation
 async function triggerRevalidation() {
@@ -52,7 +53,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Check if castle exists
+    // Check if castle exists and get current data
     const existingCastle = await getCastleById(castleId);
     if (!existingCastle) {
       return NextResponse.json({ error: 'Castle not found' }, { status: 404 });
@@ -70,6 +71,11 @@ export async function PUT(
 
     if (!updatedCastle) {
       return NextResponse.json({ error: 'Failed to update castle' }, { status: 500 });
+    }
+
+    // Clean up old blob image if the image URL has changed
+    if (existingCastle.imageUrl !== imageUrl) {
+      await cleanupOldBlobImage(existingCastle.imageUrl, imageUrl);
     }
 
     // Trigger revalidation to clear caches
@@ -104,7 +110,7 @@ export async function DELETE(
 
     const castleId = parseInt(params.castleId);
 
-    // Check if castle exists
+    // Check if castle exists and get current data for image cleanup
     const existingCastle = await getCastleById(castleId);
     if (!existingCastle) {
       return NextResponse.json({ error: 'Castle not found' }, { status: 404 });
@@ -116,10 +122,18 @@ export async function DELETE(
       return NextResponse.json({ error: 'Failed to delete castle' }, { status: 500 });
     }
 
+    // Clean up associated blob image
+    if (existingCastle.imageUrl) {
+      await deleteBlobImage(existingCastle.imageUrl);
+    }
+
     // Trigger revalidation to clear caches
     await triggerRevalidation();
 
-    return NextResponse.json({ message: 'Castle deleted successfully' });
+    return NextResponse.json({ 
+      message: 'Castle deleted successfully',
+      deletedImageUrl: existingCastle.imageUrl 
+    });
   } catch (error) {
     console.error('Error deleting castle:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

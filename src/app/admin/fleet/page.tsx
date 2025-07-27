@@ -14,10 +14,13 @@ import {
   Upload,
   Save,
   X,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Wand2,
+  RefreshCw
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
+import { generateCastleDescription, generateAlternativeDescription } from '@/lib/utils/description-generator';
 
 interface Castle {
   id: number;
@@ -53,6 +56,7 @@ export default function FleetManagement() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isMigrating, setIsMigrating] = useState(false);
+  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
 
   // Fetch castles data
   const fetchCastles = async () => {
@@ -75,6 +79,26 @@ export default function FleetManagement() {
   useEffect(() => {
     fetchCastles();
   }, []);
+
+  // Generate description based on form data
+  const handleGenerateDescription = (useAlternative: boolean = false) => {
+    if (!formData.name || !formData.theme || !formData.size || !formData.price) {
+      alert('Please fill in Castle Name, Theme, Size, and Price first to generate a description.');
+      return;
+    }
+
+    setIsGeneratingDescription(true);
+    
+    // Simulate a brief loading state for better UX
+    setTimeout(() => {
+      const newDescription = useAlternative 
+        ? generateAlternativeDescription(formData)
+        : generateCastleDescription(formData);
+      
+      setFormData(prev => ({ ...prev, description: newDescription }));
+      setIsGeneratingDescription(false);
+    }, 500);
+  };
 
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
@@ -363,14 +387,48 @@ export default function FleetManagement() {
                 </div>
 
                 <div>
-                  <Label htmlFor="description">Description</Label>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label htmlFor="description">Description</Label>
+                    <div className="flex space-x-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleGenerateDescription(false)}
+                        disabled={isGeneratingDescription}
+                        className="text-xs"
+                      >
+                        {isGeneratingDescription ? (
+                          <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
+                        ) : (
+                          <Wand2 className="w-3 h-3 mr-1" />
+                        )}
+                        Generate
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleGenerateDescription(true)}
+                        disabled={isGeneratingDescription}
+                        className="text-xs"
+                      >
+                        <RefreshCw className="w-3 h-3 mr-1" />
+                        Alternative
+                      </Button>
+                    </div>
+                  </div>
                   <Textarea
                     id="description"
                     value={formData.description}
                     onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    rows={3}
+                    rows={4}
                     required
+                    placeholder="Enter a description or use the Generate button to auto-create one based on the castle details above..."
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    💡 Tip: Fill in the castle name, theme, size, and price first, then click "Generate" for an automatic description!
+                  </p>
                 </div>
 
                 <div>
