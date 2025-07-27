@@ -266,3 +266,42 @@ export async function updateBooking(id: number, updates: Partial<Omit<PendingBoo
     client.release();
   }
 }
+
+// Export queryBookings as an alias for getBookingsByStatus
+export const queryBookings = getBookingsByStatus;
+
+// Get booking statistics
+export async function getBookingStats(): Promise<{
+  total: number;
+  pending: number;
+  confirmed: number;
+  cancelled: number;
+  revenue: number;
+}> {
+  const client = await getPool().connect();
+  try {
+    const result = await client.query(`
+      SELECT 
+        COUNT(*) as total,
+        COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending,
+        COUNT(CASE WHEN status = 'confirmed' THEN 1 END) as confirmed,
+        COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled,
+        COALESCE(SUM(CASE WHEN status = 'confirmed' THEN total_price ELSE 0 END), 0) as revenue
+      FROM bookings
+    `);
+
+    const stats = result.rows[0];
+    return {
+      total: parseInt(stats.total),
+      pending: parseInt(stats.pending),
+      confirmed: parseInt(stats.confirmed),
+      cancelled: parseInt(stats.cancelled),
+      revenue: parseInt(stats.revenue)
+    };
+  } catch (error) {
+    console.error('Error fetching booking stats:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}

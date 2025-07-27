@@ -68,7 +68,22 @@ export async function POST(
     };
 
     // Add event to Google Calendar
-    const createdEvent = await calendarService.createEvent(calendarEvent);
+    const createdEvent = await calendarService.createBookingEvent({
+      customerName: booking.customerName,
+      contactDetails: {
+        email: booking.customerEmail,
+        phone: booking.customerPhone
+      },
+      location: booking.customerAddress,
+      notes: `Booking Ref: ${booking.bookingRef}\nTotal: £${booking.totalPrice}\nDeposit: £${booking.deposit}\nPayment: ${booking.paymentMethod}\n${booking.notes || ''}`,
+      duration: {
+        start: eventStartDateTime,
+        end: eventEndDateTime
+      },
+      cost: booking.totalPrice,
+      paymentMethod: booking.paymentMethod as 'cash' | 'card',
+      bouncyCastleType: booking.castleName
+    });
 
     // Update booking status to confirmed
     await updateBookingStatus(bookingId, 'confirmed');
@@ -76,7 +91,7 @@ export async function POST(
     return NextResponse.json({ 
       success: true, 
       message: 'Booking confirmed and added to calendar',
-      calendarEventId: createdEvent.id
+      calendarEventId: createdEvent
     });
 
   } catch (error) {
