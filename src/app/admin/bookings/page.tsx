@@ -4,9 +4,24 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { 
   Users, 
-  Plus, 
   Search, 
   Filter, 
   Eye, 
@@ -14,327 +29,421 @@ import {
   Trash2,
   CheckCircle,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Calendar,
+  Loader2
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Booking {
-  id: string;
+  id: number;
   bookingRef: string;
   customerName: string;
-  email: string;
-  phone: string;
+  customerEmail: string;
+  customerPhone: string;
+  customerAddress: string;
+  castleId: number;
+  castleName: string;
   date: string;
-  time: string;
-  location: string;
-  castle: string;
-  duration: string;
-  totalCost: number;
-  status: 'confirmed' | 'pending' | 'cancelled';
-  paymentStatus: 'paid' | 'pending' | 'overdue';
+  paymentMethod: string;
+  totalPrice: number;
+  deposit: number;
+  status: 'pending' | 'confirmed' | 'cancelled';
+  notes?: string;
   createdAt: string;
+  updatedAt: string;
+  source: 'database' | 'calendar';
 }
 
 export default function AdminBookings() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  // Mock bookings data
-  useEffect(() => {
-    const mockBookings: Booking[] = [
-      {
-        id: '1',
-        bookingRef: 'TS-001',
-        customerName: 'Sarah Johnson',
-        email: 'sarah@email.com',
-        phone: '+44 7123 456789',
-        date: '2024-01-25',
-        time: '10:00 AM',
-        location: 'Hyde Park, London',
-        castle: 'Princess Castle',
-        duration: '4 hours',
-        totalCost: 250,
-        status: 'confirmed',
-        paymentStatus: 'paid',
-        createdAt: '2024-01-20'
-      },
-      {
-        id: '2',
-        bookingRef: 'TS-002',
-        customerName: 'Mike Williams',
-        email: 'mike@email.com',
-        phone: '+44 7987 654321',
-        date: '2024-01-26',
-        time: '2:00 PM',
-        location: 'Regent\'s Park, London',
-        castle: 'Superhero Obstacle',
-        duration: '6 hours',
-        totalCost: 350,
-        status: 'pending',
-        paymentStatus: 'pending',
-        createdAt: '2024-01-22'
-      },
-      {
-        id: '3',
-        bookingRef: 'TS-003',
-        customerName: 'Emma Davis',
-        email: 'emma@email.com',
-        phone: '+44 7456 123789',
-        date: '2024-01-28',
-        time: '11:00 AM',
-        location: 'Richmond Park, London',
-        castle: 'Jungle Adventure',
-        duration: '5 hours',
-        totalCost: 300,
-        status: 'confirmed',
-        paymentStatus: 'paid',
-        createdAt: '2024-01-23'
-      },
-      {
-        id: '4',
-        bookingRef: 'TS-004',
-        customerName: 'James Wilson',
-        email: 'james@email.com',
-        phone: '+44 7789 456123',
-        date: '2024-01-30',
-        time: '1:00 PM',
-        location: 'Hampstead Heath, London',
-        castle: 'Medieval Castle',
-        duration: '4 hours',
-        totalCost: 275,
-        status: 'cancelled',
-        paymentStatus: 'overdue',
-        createdAt: '2024-01-18'
+  // Fetch bookings from API
+  const fetchBookings = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/admin/bookings');
+      if (response.ok) {
+        const data = await response.json();
+        setBookings(data.bookings || []);
+      } else {
+        toast.error('Failed to fetch bookings');
       }
-    ];
-
-    setTimeout(() => {
-      setBookings(mockBookings);
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+      toast.error('Error loading bookings');
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
+  };
+
+  useEffect(() => {
+    fetchBookings();
   }, []);
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return <CheckCircle className="w-4 h-4 text-green-600" />;
-      case 'pending':
-        return <Clock className="w-4 h-4 text-yellow-600" />;
-      case 'cancelled':
-        return <AlertCircle className="w-4 h-4 text-red-600" />;
-      default:
-        return <AlertCircle className="w-4 h-4 text-gray-600" />;
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800 border-red-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const getPaymentStatusColor = (status: string) => {
-    switch (status) {
-      case 'paid':
-        return 'bg-green-100 text-green-800';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'overdue':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
+  // Filter bookings based on status and search term
   const filteredBookings = bookings.filter(booking => {
-    if (filter === 'all') return true;
-    return booking.status === filter;
+    const matchesStatus = filter === 'all' || booking.status === filter;
+    const matchesSearch = searchTerm === '' || 
+      booking.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      booking.customerEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      booking.castleName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      booking.bookingRef.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    return matchesStatus && matchesSearch;
   });
 
-  const stats = {
-    total: bookings.length,
-    confirmed: bookings.filter(b => b.status === 'confirmed').length,
-    pending: bookings.filter(b => b.status === 'pending').length,
-    cancelled: bookings.filter(b => b.status === 'cancelled').length
+  // Get status badge color
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+        return <Badge className="bg-green-100 text-green-800">Confirmed</Badge>;
+      case 'pending':
+        return <Badge className="bg-yellow-100 text-yellow-800">Pending</Badge>;
+      case 'cancelled':
+        return <Badge className="bg-red-100 text-red-800">Cancelled</Badge>;
+      default:
+        return <Badge className="bg-gray-100 text-gray-800">{status}</Badge>;
+    }
   };
+
+  // Confirm booking
+  const handleConfirmBooking = async (bookingId: number) => {
+    setIsProcessing(true);
+    try {
+      const response = await fetch(`/api/admin/bookings/${bookingId}/confirm`, {
+        method: 'POST',
+      });
+
+      if (response.ok) {
+        toast.success('Booking confirmed and added to calendar!');
+        await fetchBookings(); // Refresh the list
+        setShowDetailsModal(false);
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Failed to confirm booking');
+      }
+    } catch (error) {
+      console.error('Error confirming booking:', error);
+      toast.error('Error confirming booking');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Update booking status
+  const handleUpdateStatus = async (bookingId: number, status: string) => {
+    setIsProcessing(true);
+    try {
+      const response = await fetch(`/api/admin/bookings/${bookingId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status }),
+      });
+
+      if (response.ok) {
+        toast.success(`Booking ${status}!`);
+        await fetchBookings();
+        setShowDetailsModal(false);
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Failed to update booking');
+      }
+    } catch (error) {
+      console.error('Error updating booking:', error);
+      toast.error('Error updating booking');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Delete booking
+  const handleDeleteBooking = async (bookingId: number) => {
+    if (!confirm('Are you sure you want to delete this booking? This action cannot be undone.')) {
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const response = await fetch(`/api/admin/bookings/${bookingId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        toast.success('Booking deleted successfully');
+        await fetchBookings();
+        setShowDetailsModal(false);
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Failed to delete booking');
+      }
+    } catch (error) {
+      console.error('Error deleting booking:', error);
+      toast.error('Error deleting booking');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-GB', {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  // Get counts for each status
+  const pendingCount = bookings.filter(b => b.status === 'pending').length;
+  const confirmedCount = bookings.filter(b => b.status === 'confirmed').length;
+  const totalCount = bookings.length;
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Bookings</h1>
-          <p className="mt-2 text-gray-600">
-            Manage customer bookings and reservations
+          <h1 className="text-3xl font-bold tracking-tight">Bookings</h1>
+          <p className="text-muted-foreground">
+            Manage pending and confirmed bookings
           </p>
-        </div>
-        <div className="mt-4 sm:mt-0">
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            New Booking
-          </Button>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-600">Total Bookings</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-              </div>
-              <Users className="h-8 w-8 text-blue-600" />
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalCount}</div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-600">Confirmed</p>
-                <p className="text-2xl font-bold text-green-600">{stats.confirmed}</p>
-              </div>
-              <CheckCircle className="h-8 w-8 text-green-600" />
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pending</CardTitle>
+            <Clock className="h-4 w-4 text-yellow-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-yellow-600">{pendingCount}</div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-600">Pending</p>
-                <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
-              </div>
-              <Clock className="h-8 w-8 text-yellow-600" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-600">Cancelled</p>
-                <p className="text-2xl font-bold text-red-600">{stats.cancelled}</p>
-              </div>
-              <AlertCircle className="h-8 w-8 text-red-600" />
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Confirmed</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{confirmedCount}</div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters and Search */}
+      {/* Filters */}
       <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
-            <CardTitle>All Bookings</CardTitle>
-            <div className="flex space-x-2">
-              <div className="flex space-x-1">
-                <Button
-                  variant={filter === 'all' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setFilter('all')}
-                >
-                  All
-                </Button>
-                <Button
-                  variant={filter === 'confirmed' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setFilter('confirmed')}
-                >
-                  Confirmed
-                </Button>
-                <Button
-                  variant={filter === 'pending' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setFilter('pending')}
-                >
-                  Pending
-                </Button>
-                <Button
-                  variant={filter === 'cancelled' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setFilter('cancelled')}
-                >
-                  Cancelled
-                </Button>
+          <CardTitle>Filter & Search</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search bookings..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-8"
+                />
               </div>
             </div>
+            <Select value={filter} onValueChange={setFilter}>
+              <SelectTrigger className="w-[180px]">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Bookings</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="confirmed">Confirmed</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Bookings List */}
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            Bookings ({filteredBookings.length})
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="animate-pulse border rounded-lg p-4">
-                  <div className="h-4 bg-gray-200 rounded w-1/4 mb-2"></div>
-                  <div className="h-3 bg-gray-200 rounded w-1/2 mb-2"></div>
-                  <div className="h-3 bg-gray-200 rounded w-3/4"></div>
-                </div>
-              ))}
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin" />
+              <span className="ml-2">Loading bookings...</span>
             </div>
-          ) : filteredBookings.length > 0 ? (
+          ) : filteredBookings.length === 0 ? (
+            <div className="text-center py-8">
+              <AlertCircle className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No bookings found</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                {searchTerm || filter !== 'all' 
+                  ? 'Try adjusting your search or filter criteria.' 
+                  : 'Customer bookings will appear here once submitted.'}
+              </p>
+            </div>
+          ) : (
             <div className="space-y-4">
               {filteredBookings.map((booking) => (
-                <div key={booking.id} className="border rounded-lg p-4 hover:bg-gray-50">
-                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-3 lg:space-y-0">
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center space-x-3">
-                        <h4 className="font-semibold text-lg">{booking.customerName}</h4>
-                        <Badge variant="outline" className={getStatusColor(booking.status)}>
-                          <div className="flex items-center">
-                            {getStatusIcon(booking.status)}
-                            <span className="ml-1 capitalize">{booking.status}</span>
-                          </div>
-                        </Badge>
-                        <Badge variant="secondary" className={getPaymentStatusColor(booking.paymentStatus)}>
-                          {booking.paymentStatus}
-                        </Badge>
+                <div
+                  key={booking.id}
+                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-4 mb-2">
+                      <h3 className="font-medium">{booking.bookingRef}</h3>
+                      {getStatusBadge(booking.status)}
+                      <Badge variant={booking.source === 'database' ? 'default' : 'secondary'}>
+                        {booking.source === 'database' ? 'DB' : 'Calendar'}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-2 text-sm text-gray-600">
+                      <div>
+                        <strong>Customer:</strong> {booking.customerName}
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
-                        <p><strong>Ref:</strong> {booking.bookingRef}</p>
-                        <p><strong>Castle:</strong> {booking.castle}</p>
-                        <p><strong>Date:</strong> {new Date(booking.date).toLocaleDateString()} at {booking.time}</p>
-                        <p><strong>Duration:</strong> {booking.duration}</p>
-                        <p><strong>Location:</strong> {booking.location}</p>
-                        <p><strong>Cost:</strong> £{booking.totalCost}</p>
+                      <div>
+                        <strong>Castle:</strong> {booking.castleName}
+                      </div>
+                      <div>
+                        <strong>Date:</strong> {formatDate(booking.date)}
+                      </div>
+                      <div>
+                        <strong>Total:</strong> £{booking.totalPrice}
                       </div>
                     </div>
-                    <div className="flex space-x-2">
-                      <Button variant="outline" size="sm">
-                        <Eye className="w-4 h-4 mr-1" />
-                        View
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <Edit className="w-4 h-4 mr-1" />
-                        Edit
-                      </Button>
-                      <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
-                        <Trash2 className="w-4 h-4 mr-1" />
-                        Delete
-                      </Button>
-                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedBooking(booking);
+                        setShowDetailsModal(true);
+                      }}
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      View
+                    </Button>
                   </div>
                 </div>
               ))}
             </div>
-          ) : (
-            <div className="text-center py-12 text-gray-500">
-              <Users className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-              <p className="text-lg font-medium">No bookings found</p>
-              <p className="text-sm">No bookings match your current filter</p>
-            </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Booking Details Modal */}
+      <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Booking Details</DialogTitle>
+            <DialogDescription>
+              {selectedBooking?.bookingRef} - {getStatusBadge(selectedBooking?.status || '')}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedBooking && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-medium mb-2">Customer Information</h4>
+                  <div className="space-y-1 text-sm">
+                    <p><strong>Name:</strong> {selectedBooking.customerName}</p>
+                    <p><strong>Email:</strong> {selectedBooking.customerEmail}</p>
+                    <p><strong>Phone:</strong> {selectedBooking.customerPhone}</p>
+                    <p><strong>Address:</strong> {selectedBooking.customerAddress}</p>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-medium mb-2">Booking Information</h4>
+                  <div className="space-y-1 text-sm">
+                    <p><strong>Castle:</strong> {selectedBooking.castleName}</p>
+                    <p><strong>Date:</strong> {formatDate(selectedBooking.date)}</p>
+                    <p><strong>Payment:</strong> {selectedBooking.paymentMethod}</p>
+                    <p><strong>Total:</strong> £{selectedBooking.totalPrice}</p>
+                    <p><strong>Deposit:</strong> £{selectedBooking.deposit}</p>
+                    <p><strong>Source:</strong> {selectedBooking.source === 'database' ? 'Database' : 'Google Calendar'}</p>
+                  </div>
+                </div>
+              </div>
+              
+              {selectedBooking.notes && (
+                <div>
+                  <h4 className="font-medium mb-2">Notes</h4>
+                  <p className="text-sm bg-gray-50 p-2 rounded">{selectedBooking.notes}</p>
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-2 pt-4 border-t">
+                {selectedBooking.status === 'pending' && (
+                  <Button
+                    onClick={() => handleConfirmBooking(selectedBooking.id)}
+                    disabled={isProcessing}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    {isProcessing ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                    )}
+                    Confirm & Add to Calendar
+                  </Button>
+                )}
+                
+                {selectedBooking.status !== 'cancelled' && (
+                  <Button
+                    variant="outline"
+                    onClick={() => handleUpdateStatus(selectedBooking.id, 'cancelled')}
+                    disabled={isProcessing}
+                  >
+                    <AlertCircle className="h-4 w-4 mr-2" />
+                    Cancel Booking
+                  </Button>
+                )}
+                
+                <Button
+                  variant="destructive"
+                  onClick={() => handleDeleteBooking(selectedBooking.id)}
+                  disabled={isProcessing}
+                >
+                  {isProcessing ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4 mr-2" />
+                  )}
+                  Delete
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

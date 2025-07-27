@@ -45,7 +45,7 @@ const CastleCard = ({ castle }: CastleCardProps) => {
             <span className="font-semibold">{castle.size}</span>
           </div>
           <div className="text-center mb-4 bg-gradient-to-r from-green-100 to-blue-100 rounded-2xl p-4 shadow-sm">
-            <p className="text-3xl font-bold text-gray-900 mb-1">💰 £{castle.price}</p>
+            <p className="text-3xl font-bold text-gray-900 mb-1">💰 £{Math.floor(castle.price)}</p>
             <p className="text-sm text-gray-600 font-medium">per day hire</p>
           </div>
           <Button asChild className="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white font-bold text-lg rounded-full shadow-lg border-2 border-white/30 transform hover:scale-105 transition-all duration-300">

@@ -44,3 +44,7 @@ next-env.d.ts
 google-calendar-key.json
 *.json.key
 service-account-*.json
+
+# Local design files
+/public/leaflet/
+/public/leaflet.html

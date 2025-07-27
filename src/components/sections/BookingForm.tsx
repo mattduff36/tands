@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, AlertCircle, CheckCircle } from "lucide-react";
+import { Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -26,15 +26,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import type { Castle } from "@/lib/database/castles";
 
-// Types for availability data
-interface DayAvailability {
-  date: string;
-  status: 'available' | 'partially_booked' | 'fully_booked' | 'unavailable' | 'maintenance';
-  availableSlots: number;
-  totalSlots: number;
-  reason?: string;
-}
-
 export function BookingForm() {
   const searchParams = useSearchParams();
   const initialCastleId = searchParams.get("castle");
@@ -51,12 +42,6 @@ export function BookingForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
-  
-  // Availability data from API
-  const [availability, setAvailability] = useState<DayAvailability[]>([]);
-  const [isLoadingAvailability, setIsLoadingAvailability] = useState(true);
-  const [availabilityError, setAvailabilityError] = useState<string | null>(null);
-  const [selectedDateAvailability, setSelectedDateAvailability] = useState<string | null>(null);
 
   // Fetch castles data
   const fetchCastles = async () => {
@@ -90,426 +75,258 @@ export function BookingForm() {
     return d < today;
   };
 
-  // Fetch availability data from API
-  const fetchAvailability = async () => {
-    setIsLoadingAvailability(true);
-    setAvailabilityError(null);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     
-    try {
-      const today = new Date();
-      const futureDate = new Date();
-      futureDate.setDate(today.getDate() + 60); // Next 60 days
-      
-      const startDate = today.toISOString().split('T')[0];
-      const endDate = futureDate.toISOString().split('T')[0];
-      
-      const response = await fetch(`/api/availability?start=${startDate}&end=${endDate}&format=summary`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch availability');
-      }
-      
-      const data = await response.json();
-      setAvailability(data.availability || []);
-    } catch (error) {
-      console.error('Error fetching availability:', error);
-      setAvailabilityError('Unable to load availability. Please try again.');
-      toast.error('Failed to load availability', {
-        description: 'Using offline mode. Some dates may not be accurate.',
-      });
-    } finally {
-      setIsLoadingAvailability(false);
+    if (!selectedCastleId || !date || !name || !email || !phone || !address) {
+      toast.error("Please fill in all required fields");
+      return;
     }
-  };
 
-  // Check availability for selected castle and date
-  const checkSelectedDateAvailability = async (selectedDate: Date, castleId: string) => {
+    setIsSubmitting(true);
+
     try {
-      const dateStr = selectedDate.toISOString().split('T')[0];
-      const castle = castles.find(c => c.id.toString() === castleId);
+      const selectedCastle = castles.find(c => c.id.toString() === selectedCastleId);
       
-      const response = await fetch('/api/availability/check', {
+      const bookingData = {
+        castleId: selectedCastleId,
+        castleName: selectedCastle?.name,
+        date: format(date, "yyyy-MM-dd"),
+        customerName: name,
+        customerEmail: email,
+        customerPhone: phone,
+        customerAddress: address,
+        paymentMethod,
+        totalPrice: selectedCastle ? Math.floor(selectedCastle.price) : 0,
+        deposit: selectedCastle ? Math.floor(selectedCastle.price * 0.3) : 0,
+      };
+
+      const response = await fetch('/api/booking', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          date: dateStr,
-          startTime: '10:00',
-          endTime: '16:00',
-          castle: castle?.name
-        }),
+        body: JSON.stringify(bookingData),
       });
-      
-      const result = await response.json();
-      
-      if (result.available) {
-        setSelectedDateAvailability('✅ This date and castle are available!');
-        toast.success('Date available!', {
-          description: `${castle?.name} is available on ${selectedDate.toLocaleDateString()}`,
-        });
-      } else {
-        setSelectedDateAvailability(`⚠️ ${result.reason}`);
-        if (result.type === 'conflict' || result.type === 'castle_unavailable') {
-          toast.warning('Date not available', {
-            description: result.reason,
-          });
-        }
+
+      if (!response.ok) {
+        throw new Error('Failed to submit booking');
       }
+
+      setIsSubmitted(true);
+      toast.success("Booking request submitted successfully!");
+      
     } catch (error) {
-      console.error('Error checking date availability:', error);
-      setSelectedDateAvailability('❓ Unable to check availability');
-    }
-  };
-
-  // Load availability when component mounts and set up real-time synchronization
-  useEffect(() => {
-    fetchAvailability();
-    
-    // Set up polling for real-time synchronization (every 30 seconds)
-    const intervalId = setInterval(() => {
-      fetchAvailability();
-    }, 30000); // 30 seconds
-    
-    // Cleanup interval on unmount
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, []);
-  
-  // Add visibility change listener for immediate refresh when tab becomes visible
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        fetchAvailability();
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, []);
-
-  // Check availability when date and castle are selected
-  useEffect(() => {
-    if (date && selectedCastleId) {
-      checkSelectedDateAvailability(date, selectedCastleId);
-    } else {
-      setSelectedDateAvailability(null);
-    }
-  }, [date, selectedCastleId]);
-
-  // Helper to determine if a date should be disabled
-  const isDateDisabled = (day: Date): boolean => {
-    if (isBeforeToday(day)) return true;
-    
-    const dateStr = day.toISOString().split('T')[0];
-    const dayAvailability = availability.find(a => a.date === dateStr);
-    
-    if (!dayAvailability) {
-      // If we don't have data, allow the date (fail gracefully)
-      return false;
-    }
-    
-    // Disable if fully booked, unavailable, or under maintenance
-    return dayAvailability.status === 'fully_booked' ||
-           dayAvailability.status === 'unavailable' ||
-           dayAvailability.status === 'maintenance';
-  };
-
-  // Get status message for calendar date
-  const getDateStatusMessage = (day: Date): string => {
-    const dateStr = day.toISOString().split('T')[0];
-    const dayAvailability = availability.find(a => a.date === dateStr);
-    
-    if (!dayAvailability) return '';
-    
-    switch (dayAvailability.status) {
-      case 'available':
-        return '✅ Available';
-      case 'partially_booked':
-        return '🟡 Limited availability';
-      case 'fully_booked':
-        return '🔴 Fully booked';
-      case 'unavailable':
-        return `❌ ${dayAvailability.reason || 'Unavailable'}`;
-      case 'maintenance':
-        return `🔧 ${dayAvailability.reason || 'Maintenance'}`;
-      default:
-        return '';
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setIsSubmitted(false);
-    
-    // Double-check availability before submitting
-    if (date && selectedCastleId) {
-      try {
-        const dateStr = date.toISOString().split('T')[0];
-        const castle = castles.find(c => c.id.toString() === selectedCastleId);
-        
-        const availabilityCheck = await fetch('/api/availability/check', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            date: dateStr,
-            startTime: '10:00',
-            endTime: '16:00',
-            castle: castle?.name
-          }),
-        });
-        
-        const availabilityResult = await availabilityCheck.json();
-        
-        if (!availabilityResult.available) {
-          toast.error('Date no longer available', {
-            description: availabilityResult.reason,
-          });
-          setIsSubmitting(false);
-          return;
-        }
-      } catch (error) {
-        console.warn('Could not verify availability, proceeding with booking request');
-      }
-    }
-    
-    try {
-      const response = await fetch("/api/booking", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          email,
-          phone,
-          date: date ? date.toISOString().split("T")[0] : "",
-          message: `Castle: ${selectedCastleId ? castles.find(c => c.id.toString() === selectedCastleId)?.name : ""}\nAddress: ${address}\nPayment: ${paymentMethod}`
-        }),
-      });
-      const data = await response.json();
-      if (data.success) {
-        toast.success("Booking request sent!", {
-          description: "Thank you for your booking request. We will contact you soon.",
-        });
-        setSelectedCastleId(undefined);
-        setDate(undefined);
-        setName("");
-        setEmail("");
-        setPhone("");
-        setAddress("");
-        setPaymentMethod("cash");
-        setSelectedDateAvailability(null);
-        setIsSubmitted(true);
-        // Refresh availability data
-        fetchAvailability();
-      } else {
-        toast.error("Booking failed", {
-          description: data.error || "An error occurred. Please try again.",
-        });
-      }
-    } catch (error: any) {
-      toast.error("Booking failed", {
-        description: error.message || "An error occurred. Please try again.",
-      });
+      console.error('Error submitting booking:', error);
+      toast.error("Failed to submit booking. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  return (
-    <form onSubmit={handleSubmit} className="flex flex-col flex-1 h-full w-full max-w-full" autoComplete="off">
-      <label htmlFor="castle" className="mb-1 font-semibold text-blue-900 text-base sm:text-base" tabIndex={0} aria-label="Choose Your Castle">Choose Your Castle</label>
-      <Select value={selectedCastleId} onValueChange={setSelectedCastleId} required>
-        <SelectTrigger className="bg-white border border-blue-200 rounded-lg px-3 py-2 sm:px-4 sm:py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full text-base">
-          <SelectValue placeholder={<span className="text-base text-muted-foreground">Select a bouncy castle...</span>} />
-        </SelectTrigger>
-        <SelectContent className="max-w-xs w-full sm:max-w-md">
-          {isLoadingCastles ? (
-            <SelectItem value="loading" disabled>
-              Loading castles...
-            </SelectItem>
-          ) : (
-            castles.map((castle) => (
-              <SelectItem key={castle.id} value={castle.id.toString()}>
-                {castle.name} - £{castle.price}
-              </SelectItem>
-            ))
-          )}
-        </SelectContent>
-      </Select>
-      <label htmlFor="date" className="mb-1 font-semibold text-blue-900 text-base sm:text-base" tabIndex={0} aria-label="Select Your Date">Select Your Date</label>
-      
-      {/* Availability status message */}
-      {isLoadingAvailability && (
-        <div className="mb-2 flex items-center text-sm text-blue-600">
-          <div className="animate-spin mr-2 h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
-          Loading availability...
-        </div>
-      )}
-      
-      {availabilityError && (
-        <div className="mb-2 flex items-center text-sm text-orange-600">
-          <AlertCircle className="mr-2 h-4 w-4" />
-          {availabilityError}
-        </div>
-      )}
-      
-      <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            className={cn(
-              "flex items-center bg-white border border-blue-200 rounded-lg px-3 py-2 sm:px-4 sm:py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full justify-start text-left font-normal text-base",
-              !date && "text-muted-foreground"
-            )}
-            tabIndex={0}
-            aria-label="Date picker"
-            onClick={() => setPopoverOpen(true)}
+  if (isSubmitted) {
+    return (
+      <div className="max-w-2xl mx-auto p-8 text-center">
+        <div className="mb-6">
+          <div className="w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
+            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Booking Request Submitted!</h2>
+          <p className="text-gray-600 mb-6">
+            Thank you for your booking request. We'll contact you within 24 hours to confirm your booking and arrange payment.
+          </p>
+          <Button 
+            onClick={() => window.location.reload()} 
+            className="bg-red-600 hover:bg-red-700"
           >
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            {date ? format(date, "PPP") : <span className="text-base text-muted-foreground">Pick a date</span>}
-          </button>
-        </PopoverTrigger>
-        <PopoverContent className="max-w-xs w-full sm:max-w-md p-0">
-          <Calendar
-            mode="single"
-            selected={date}
-            onSelect={(selectedDate) => {
-              setDate(selectedDate);
-              if (selectedDate) setPopoverOpen(false);
-            }}
-            initialFocus
-            disabled={isDateDisabled}
-            modifiers={{
-              available: (day) => {
-                const dateStr = day.toISOString().split('T')[0];
-                const dayAvailability = availability.find(a => a.date === dateStr);
-                return dayAvailability?.status === 'available';
-              },
-              partiallyBooked: (day) => {
-                const dateStr = day.toISOString().split('T')[0];
-                const dayAvailability = availability.find(a => a.date === dateStr);
-                return dayAvailability?.status === 'partially_booked';
-              },
-              fullyBooked: (day) => {
-                const dateStr = day.toISOString().split('T')[0];
-                const dayAvailability = availability.find(a => a.date === dateStr);
-                return dayAvailability?.status === 'fully_booked';
-              }
-            }}
-            modifiersStyles={{
-              available: { backgroundColor: '#dcfce7', color: '#166534' },
-              partiallyBooked: { backgroundColor: '#fef3c7', color: '#92400e' },
-              fullyBooked: { backgroundColor: '#fecaca', color: '#991b1b', textDecoration: 'line-through' }
-            }}
-          />
-        </PopoverContent>
-      </Popover>
-      
-      {/* Selected date availability feedback */}
-      {selectedDateAvailability && (
-        <div className={cn(
-          "mb-4 p-3 rounded-lg text-sm",
-          selectedDateAvailability.includes('✅') ? 'bg-green-50 text-green-800 border border-green-200' :
-          selectedDateAvailability.includes('⚠️') ? 'bg-yellow-50 text-yellow-800 border border-yellow-200' :
-          'bg-blue-50 text-blue-800 border border-blue-200'
-        )}>
-          {selectedDateAvailability}
+            Make Another Booking
+          </Button>
         </div>
-      )}
-      <label htmlFor="name" className="mb-1 font-semibold text-blue-900 text-base sm:text-base" tabIndex={0} aria-label="Full Name">Full Name</label>
-      <input
-        id="name"
-        name="name"
-        type="text"
-        className="bg-white border border-blue-200 rounded-lg px-3 py-2 sm:px-4 sm:py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full text-base"
-        required
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        tabIndex={0}
-        aria-label="Full Name input"
-      />
-      <label htmlFor="email" className="mb-1 font-semibold text-blue-900 text-base sm:text-base" tabIndex={0} aria-label="Email">Email</label>
-      <input
-        id="email"
-        name="email"
-        type="email"
-        className="bg-white border border-blue-200 rounded-lg px-3 py-2 sm:px-4 sm:py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full text-base"
-        required
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        tabIndex={0}
-        aria-label="Email input"
-      />
-      <label htmlFor="phone" className="mb-1 font-semibold text-blue-900 text-base sm:text-base" tabIndex={0} aria-label="Phone">Phone</label>
-      <input
-        id="phone"
-        name="phone"
-        type="tel"
-        className="bg-white border border-blue-200 rounded-lg px-3 py-2 sm:px-4 sm:py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full text-base"
-        value={phone}
-        onChange={(e) => setPhone(e.target.value)}
-        tabIndex={0}
-        aria-label="Phone input"
-      />
-      <label htmlFor="address" className="mb-1 font-semibold text-blue-900 text-base sm:text-base" tabIndex={0} aria-label="Delivery Address">Delivery Address</label>
-      <textarea
-        id="address"
-        name="address"
-        className="bg-white border border-blue-200 rounded-lg px-3 py-2 sm:px-4 sm:py-2 mb-4 min-h-[100px] flex-1 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none w-full text-base"
-        required
-        value={address}
-        onChange={(e) => setAddress(e.target.value)}
-        tabIndex={0}
-        aria-label="Delivery Address textarea"
-      />
-      <label className="mb-1 font-semibold text-blue-900 text-base sm:text-base" tabIndex={0} aria-label="Payment Method">Payment Method</label>
-      <div className="mb-4 flex flex-col gap-3">
-        <label htmlFor="cash" className={`flex items-center gap-3 p-2 sm:p-3 rounded-xl border transition-all duration-200 cursor-pointer ${paymentMethod === 'cash' ? 'bg-blue-50 border-blue-400 shadow' : 'border-blue-200 bg-white hover:bg-blue-50'}`} tabIndex={0} aria-label="Cash on Delivery">
-          <input
-            type="radio"
-            id="cash"
-            name="paymentMethod"
-            value="cash"
-            checked={paymentMethod === 'cash'}
-            onChange={() => setPaymentMethod('cash')}
-            className="h-6 w-6 border-2 border-blue-400 focus:ring-2 focus:ring-blue-400 accent-blue-500 transition-all duration-200"
-            aria-checked={paymentMethod === 'cash'}
-          />
-          <span className="font-medium text-blue-900 select-none">Cash on Delivery</span>
-        </label>
-        <label htmlFor="card" className={`flex items-center gap-3 p-2 sm:p-3 rounded-xl border transition-all duration-200 cursor-pointer ${paymentMethod === 'card' ? 'bg-blue-50 border-blue-400 shadow' : 'border-blue-200 bg-white hover:bg-blue-50'}`} tabIndex={0} aria-label="Credit/Debit Card (Pay on Delivery)">
-          <input
-            type="radio"
-            id="card"
-            name="paymentMethod"
-            value="card"
-            checked={paymentMethod === 'card'}
-            onChange={() => setPaymentMethod('card')}
-            className="h-6 w-6 border-2 border-blue-400 focus:ring-2 focus:ring-blue-400 accent-blue-500 transition-all duration-200"
-            aria-checked={paymentMethod === 'card'}
-          />
-          <span className="font-medium text-blue-900 select-none">Credit/Debit Card (Pay on Delivery)</span>
-        </label>
       </div>
-      <p className="text-sm text-muted-foreground mb-4">
-        Please note: For card payments, we will bring a card machine on the day of delivery. No online payment is taken at this time.
-      </p>
-      <button
-        type="submit"
-        className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 sm:px-6 rounded-lg shadow focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 transition-colors duration-200 w-full text-base"
-        tabIndex={0}
-        aria-label="Request to Book"
-        disabled={isSubmitting}
-      >
-        {isSubmitting ? "Submitting..." : "Request to Book"}
-      </button>
-    </form>
+    );
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto p-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Castle Selection */}
+        <div className="space-y-2">
+          <Label htmlFor="castle" className="text-sm font-medium">
+            Select Bouncy Castle *
+          </Label>
+          <Select value={selectedCastleId} onValueChange={setSelectedCastleId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Choose a bouncy castle" />
+            </SelectTrigger>
+            <SelectContent>
+              {isLoadingCastles ? (
+                <SelectItem value="loading" disabled>Loading castles...</SelectItem>
+              ) : (
+                castles.map((castle) => (
+                  <SelectItem key={castle.id} value={castle.id.toString()}>
+                    {castle.name} - £{Math.floor(castle.price)} per day
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Date Selection */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">
+            Event Date *
+          </Label>
+          <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant={"outline"}
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !date && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {date ? format(date, "PPP") : "Pick a date"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={(selectedDate) => {
+                  setDate(selectedDate);
+                  setPopoverOpen(false);
+                }}
+                disabled={isBeforeToday}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        {/* Customer Details */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="name" className="text-sm font-medium">
+              Full Name *
+            </Label>
+            <Input
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Your full name"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="email" className="text-sm font-medium">
+              Email Address *
+            </Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="your.email@example.com"
+              required
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="phone" className="text-sm font-medium">
+              Phone Number *
+            </Label>
+            <Input
+              id="phone"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="07xxx xxxxxx"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="address" className="text-sm font-medium">
+              Event Address *
+            </Label>
+            <Input
+              id="address"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="Event location address"
+              required
+            />
+          </div>
+        </div>
+
+        {/* Payment Method */}
+        <div className="space-y-3">
+          <Label className="text-sm font-medium">Preferred Payment Method</Label>
+          <RadioGroup 
+            value={paymentMethod} 
+            onValueChange={setPaymentMethod}
+            className="flex flex-col space-y-2"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="cash" id="cash" />
+              <Label htmlFor="cash" className="text-sm">Cash on delivery</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="bank_transfer" id="bank_transfer" />
+              <Label htmlFor="bank_transfer" className="text-sm">Bank transfer</Label>
+            </div>
+          </RadioGroup>
+        </div>
+
+        {/* Pricing Summary */}
+        {selectedCastleId && (
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h3 className="font-medium text-gray-900 mb-2">Booking Summary</h3>
+            {(() => {
+              const selectedCastle = castles.find(c => c.id.toString() === selectedCastleId);
+              if (!selectedCastle) return null;
+              
+              const totalPrice = Math.floor(selectedCastle.price);
+              const deposit = Math.floor(totalPrice * 0.3);
+              
+              return (
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span>Castle: {selectedCastle.name}</span>
+                    <span>£{totalPrice}</span>
+                  </div>
+                  <div className="flex justify-between font-medium">
+                    <span>Deposit (30%):</span>
+                    <span>£{deposit}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-600">
+                    <span>Remaining balance due on delivery:</span>
+                    <span>£{totalPrice - deposit}</span>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
+        {/* Submit Button */}
+        <Button 
+          type="submit" 
+          className="w-full bg-red-600 hover:bg-red-700"
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "Submitting..." : "Submit Booking Request"}
+        </Button>
+
+        <p className="text-xs text-gray-600 text-center">
+          * Required fields. We'll contact you within 24 hours to confirm your booking.
+        </p>
+      </form>
+    </div>
   );
 } 

@@ -16,8 +16,8 @@ export const BookingSchema = z.object({
   castle: z.string().min(1, 'Please select a bouncy castle'),
   location: z.string().min(3, 'Location must be at least 3 characters'),
   address: z.string().min(10, 'Please enter a complete address'),
-  totalPrice: z.number().min(0, 'Total price must be positive'),
-  deposit: z.number().min(0, 'Deposit must be positive'),
+  totalPrice: z.number().int('Price must be a whole number').min(0, 'Total price must be positive'),
+  deposit: z.number().int('Deposit must be a whole number').min(0, 'Deposit must be positive'),
   status: z.enum(['pending', 'confirmed', 'cancelled', 'completed']),
   notes: z.string().optional()
 }).refine(data => {

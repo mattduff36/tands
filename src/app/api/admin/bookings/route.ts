@@ -1,138 +1,196 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
+import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/nextauth.config';
-import { BookingValidator, BookingSchema, type BookingData, type ExistingBooking } from '@/lib/validation/booking-validation';
+import { getBookingsByStatus } from '@/lib/database/bookings';
+import { getCalendarService } from '@/lib/calendar/google-calendar';
 
-// Mock database - in real app, this would be replaced with actual database operations
-let mockBookings: ExistingBooking[] = [
-  {
-    id: '1',
-    date: '2024-01-25',
-    startTime: '10:00',
-    endTime: '16:00',
-    castle: 'Princess Castle',
-    status: 'confirmed'
-  },
-  {
-    id: '2',
-    date: '2024-01-26',
-    startTime: '09:00',
-    endTime: '17:00',
-    castle: 'Superhero Obstacle Course',
-    status: 'pending'
-  }
-];
-
-interface FullBooking extends ExistingBooking {
-  customerName: string;
-  customerEmail: string;
-  customerPhone: string;
-  location: string;
-  address: string;
-  totalPrice: number;
-  deposit: number;
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-let mockFullBookings: FullBooking[] = [
-  {
-    id: '1',
-    customerName: 'Sarah Johnson',
-    customerEmail: 'sarah.johnson@email.com',
-    customerPhone: '+44 7123 456789',
-    date: '2024-01-25',
-    startTime: '10:00',
-    endTime: '16:00',
-    castle: 'Princess Castle',
-    location: 'Hyde Park',
-    address: 'Hyde Park, London W2 2UH',
-    totalPrice: 250,
-    deposit: 50,
-    status: 'confirmed',
-    notes: 'Birthday party for 6-year-old. Need setup by 9:30 AM.',
-    createdAt: '2024-01-15T09:00:00Z',
-    updatedAt: '2024-01-15T09:00:00Z'
-  },
-  {
-    id: '2',
-    customerName: 'Mike Williams',
-    customerEmail: 'mike.williams@email.com',
-    customerPhone: '+44 7234 567890',
-    date: '2024-01-26',
-    startTime: '09:00',
-    endTime: '17:00',
-    castle: 'Superhero Obstacle Course',
-    location: 'Regent\'s Park',
-    address: 'Regent\'s Park, London NW1 4NU',
-    totalPrice: 350,
-    deposit: 70,
-    status: 'pending',
-    notes: 'Corporate team building event.',
-    createdAt: '2024-01-16T14:30:00Z',
-    updatedAt: '2024-01-16T14:30:00Z'
-  }
-];
-
-/**
- * GET /api/admin/bookings - Get all bookings with optional filtering
- */
+// GET /api/admin/bookings - Fetch all bookings (pending from DB, confirmed from calendar)
 export async function GET(request: NextRequest) {
   try {
+    // Check authentication
     const session = await getServerSession(authOptions);
-    if (!session) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Check if user is admin
+    const adminEmails = process.env.ADMIN_EMAILS?.split(',') || [];
+    if (!adminEmails.includes(session.user.email)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const { searchParams } = new URL(request.url);
-    const date = searchParams.get('date');
     const status = searchParams.get('status');
-    const castle = searchParams.get('castle');
-    const search = searchParams.get('search');
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const offset = parseInt(searchParams.get('offset') || '0');
 
-    let filteredBookings = [...mockFullBookings];
+    const bookings = [];
 
-    // Apply filters
-    if (date) {
-      filteredBookings = filteredBookings.filter(booking => booking.date === date);
+    // 1. Get pending bookings from database
+    if (!status || status === 'pending') {
+      const pendingBookings = await getBookingsByStatus('pending');
+      const dbBookings = pendingBookings.map(booking => ({
+        id: booking.id,
+        bookingRef: booking.bookingRef,
+        customerName: booking.customerName,
+        customerEmail: booking.customerEmail,
+        customerPhone: booking.customerPhone,
+        customerAddress: booking.customerAddress,
+        castleId: booking.castleId,
+        castleName: booking.castleName,
+        date: booking.date,
+        paymentMethod: booking.paymentMethod,
+        totalPrice: booking.totalPrice,
+        deposit: booking.deposit,
+        status: booking.status,
+        notes: booking.notes,
+        createdAt: booking.createdAt,
+        updatedAt: booking.updatedAt,
+        source: 'database'
+      }));
+      bookings.push(...dbBookings);
     }
 
-    if (status) {
-      filteredBookings = filteredBookings.filter(booking => booking.status === status);
+    // 2. Get confirmed bookings from Google Calendar
+    if (!status || status === 'confirmed') {
+      try {
+        const calendarService = getCalendarService();
+        
+        // Get events for the next 12 months (to catch all confirmed bookings)
+        const now = new Date();
+        const endDate = new Date();
+        endDate.setMonth(endDate.getMonth() + 12);
+        
+        const calendarEvents = await calendarService.getEventsInRange(now, endDate);
+        
+        // Filter and transform calendar events that represent confirmed bookings
+        const confirmedBookings = calendarEvents
+          .filter(event => {
+            // Include events that look like booking events
+            return event.description && 
+                   event.summary && 
+                   (event.description.includes('🏰 Bouncy Castle Booking') || 
+                    event.description.includes('Booking Ref:')) &&
+                   (event.summary.includes(' - ') || event.summary.includes('🏰'));
+          })
+          .map(event => {
+            // Parse booking information from event description
+            const description = event.description || '';
+            const summary = event.summary || '';
+            
+            // Handle both calendar tab format and database confirmation format
+            let customerName = 'Unknown';
+            let castleName = 'Unknown';
+            let bookingRef = 'N/A';
+            let email = '';
+            let phone = '';
+            let totalPrice = 0;
+            let deposit = 0;
+            let paymentMethod = 'Unknown';
+            let notes = '';
+            
+            // Check if this is a calendar tab format (🏰 Bouncy Castle Booking)
+            if (description.includes('🏰 Bouncy Castle Booking')) {
+              // Parse calendar tab format
+              const customerMatch = description.match(/Customer: ([^\n]+)/);
+              const emailMatch = description.match(/Email: ([^\n]+)/);
+              const phoneMatch = description.match(/Phone: ([^\n]+)/);
+              const castleTypeMatch = description.match(/Castle Type: ([^\n]+)/);
+              const costMatch = description.match(/Cost: £([^\n]+)/);
+              const paymentMatch = description.match(/Payment: ([^\n]+)/);
+              const notesMatch = description.match(/Notes: ([^\n]+)/);
+              
+              customerName = customerMatch?.[1] || 'Unknown';
+              email = emailMatch?.[1] || '';
+              phone = phoneMatch?.[1] || '';
+              castleName = castleTypeMatch?.[1] || 'Bouncy Castle';
+              totalPrice = parseInt(costMatch?.[1] || '0');
+              paymentMethod = paymentMatch?.[1] || 'Unknown';
+              notes = notesMatch?.[1] || '';
+              
+              // Generate a booking ref for calendar events
+              bookingRef = `CAL-${event.id?.slice(-8) || 'UNKNOWN'}`;
+            } else {
+              // Parse database confirmation format
+              const bookingRefMatch = description.match(/Booking Ref: ([^\n]+)/);
+              const castleMatch = description.match(/Castle: ([^\n]+)/);
+              const customerMatch = description.match(/Customer: ([^\n]+)/);
+              const phoneMatch = description.match(/Phone: ([^\n]+)/);
+              const emailMatch = description.match(/Email: ([^\n]+)/);
+              const totalMatch = description.match(/Total: £([^\n]+)/);
+              const depositMatch = description.match(/Deposit: £([^\n]+)/);
+              const paymentMatch = description.match(/Payment: ([^\n]+)/);
+              const notesMatch = description.match(/Notes: ([^\n]+)/);
+              
+              bookingRef = bookingRefMatch?.[1] || 'N/A';
+              customerName = customerMatch?.[1] || 'Unknown';
+              castleName = castleMatch?.[1] || 'Unknown';
+              email = emailMatch?.[1] || '';
+              phone = phoneMatch?.[1] || '';
+              totalPrice = parseInt(totalMatch?.[1] || '0');
+              deposit = parseInt(depositMatch?.[1] || '0');
+              paymentMethod = paymentMatch?.[1] || 'Unknown';
+              notes = notesMatch?.[1] || '';
+            }
+            
+            // Extract customer name from summary if not found in description
+            if (customerName === 'Unknown') {
+              if (summary.includes('🏰')) {
+                // Calendar tab format: "🏰 Customer Name - Castle Type"
+                const summaryParts = summary.replace('🏰 ', '').split(' - ');
+                customerName = summaryParts[0] || 'Unknown';
+                castleName = summaryParts[1] || 'Bouncy Castle';
+              } else if (summary.includes(' - ')) {
+                // Database confirmation format: "Customer Name - Castle Name"
+                const summaryParts = summary.split(' - ');
+                customerName = summaryParts[0] || 'Unknown';
+                castleName = summaryParts[1] || 'Unknown';
+              }
+            }
+            
+            // Parse date from event start time
+            const startDate = event.start?.dateTime || event.start?.date;
+            const date = startDate ? new Date(startDate).toISOString().split('T')[0] : '';
+            
+            return {
+              id: `cal-${event.id}`, // Prefix to distinguish from DB IDs
+              bookingRef: bookingRef,
+              customerName: customerName,
+              customerEmail: email,
+              customerPhone: phone,
+              customerAddress: event.location || '',
+              castleId: 0, // Calendar events don't have castle IDs
+              castleName: castleName,
+              date: date,
+              paymentMethod: paymentMethod,
+              totalPrice: totalPrice,
+              deposit: deposit,
+              status: 'confirmed',
+              notes: notes,
+              createdAt: event.created ? new Date(event.created) : new Date(),
+              updatedAt: event.updated ? new Date(event.updated) : new Date(),
+              source: 'calendar',
+              calendarEventId: event.id
+            };
+          });
+        
+        bookings.push(...confirmedBookings);
+      } catch (calendarError) {
+        console.error('Error fetching calendar events:', calendarError);
+        // Don't fail the entire request if calendar fails, just log the error
+      }
     }
 
-    if (castle) {
-      filteredBookings = filteredBookings.filter(booking => booking.castle === castle);
-    }
+    // Sort bookings by date (most recent first)
+    bookings.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    if (search) {
-      const searchLower = search.toLowerCase();
-      filteredBookings = filteredBookings.filter(booking =>
-        booking.customerName.toLowerCase().includes(searchLower) ||
-        booking.customerEmail.toLowerCase().includes(searchLower) ||
-        booking.castle.toLowerCase().includes(searchLower) ||
-        booking.location.toLowerCase().includes(searchLower)
-      );
-    }
-
-    // Sort by date and start time
-    filteredBookings.sort((a, b) => {
-      const dateComparison = new Date(a.date).getTime() - new Date(b.date).getTime();
-      if (dateComparison !== 0) return dateComparison;
-      return a.startTime.localeCompare(b.startTime);
-    });
-
-    // Apply pagination
-    const paginatedBookings = filteredBookings.slice(offset, offset + limit);
-
-    return NextResponse.json({
-      bookings: paginatedBookings,
-      total: filteredBookings.length,
-      limit,
-      offset
+    return NextResponse.json({ 
+      bookings,
+      summary: {
+        total: bookings.length,
+        pending: bookings.filter(b => b.status === 'pending').length,
+        confirmed: bookings.filter(b => b.status === 'confirmed').length,
+        fromDatabase: bookings.filter(b => b.source === 'database').length,
+        fromCalendar: bookings.filter(b => b.source === 'calendar').length
+      }
     });
 
   } catch (error) {
@@ -143,75 +201,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
-/**
- * POST /api/admin/bookings - Create a new booking
- */
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const bookingData = await request.json();
-
-    // Validate booking data
-    const validator = new BookingValidator(mockBookings);
-    const validationResult = validator.validateBooking(bookingData);
-
-    if (!validationResult.isValid) {
-      return NextResponse.json({
-        error: 'Validation failed',
-        validation: validationResult
-      }, { status: 400 });
-    }
-
-    // Check for critical conflicts
-    const criticalConflicts = validationResult.conflicts.filter(conflict =>
-      conflict.type === 'same_castle' || conflict.type === 'time_overlap'
-    );
-
-    if (criticalConflicts.length > 0) {
-      return NextResponse.json({
-        error: 'Booking conflict detected',
-        conflicts: criticalConflicts,
-        suggestions: validator.suggestAlternativeSlots(bookingData)
-      }, { status: 409 });
-    }
-
-    // Create new booking
-    const newBooking: FullBooking = {
-      id: Date.now().toString(),
-      ...bookingData,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    // Add to mock database
-    mockFullBookings.push(newBooking);
-    mockBookings.push({
-      id: newBooking.id,
-      date: newBooking.date,
-      startTime: newBooking.startTime,
-      endTime: newBooking.endTime,
-      castle: newBooking.castle,
-      status: newBooking.status
-    });
-
-    return NextResponse.json({
-      booking: newBooking,
-      validation: validationResult
-    }, { status: 201 });
-
-  } catch (error) {
-    console.error('Error creating booking:', error);
-    return NextResponse.json(
-      { error: 'Failed to create booking' },
-      { status: 500 }
-    );
-  }
-}
-
-// Note: POST_VALIDATE was removed as it's not a valid Next.js API route export
-// If validation-only functionality is needed, create a separate route at /api/admin/bookings/validate

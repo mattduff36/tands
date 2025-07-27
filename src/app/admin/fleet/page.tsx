@@ -302,7 +302,7 @@ export default function FleetManagement() {
                 <p className="text-sm text-gray-600 mb-2">{castle.size}</p>
                 <p className="text-sm text-gray-700 mb-3 line-clamp-2">{castle.description}</p>
                 <div className="flex justify-between items-center">
-                  <span className="text-lg font-bold text-green-600">£{castle.price}/day</span>
+                  <span className="text-lg font-bold text-green-600">£{Math.floor(castle.price)}/day</span>
                   <div className="flex space-x-2">
                     <Button
                       variant="outline"
@@ -375,13 +375,16 @@ export default function FleetManagement() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="price">Price per Day (£)</Label>
+                    <Label htmlFor="price">Price per Day (£) - whole pounds only</Label>
                     <Input
                       id="price"
                       type="number"
+                      min="0"
+                      step="1"
                       value={formData.price}
-                      onChange={(e) => setFormData(prev => ({ ...prev, price: Number(e.target.value) }))}
+                      onChange={(e) => setFormData(prev => ({ ...prev, price: Math.floor(Number(e.target.value)) }))}
                       required
+                      placeholder="e.g., 75"
                     />
                   </div>
                 </div>

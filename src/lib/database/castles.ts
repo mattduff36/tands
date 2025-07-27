@@ -217,7 +217,7 @@ export async function getCastleStats(): Promise<{
     const statsResult = await query(`
       SELECT 
         COUNT(*) as total_castles,
-        ROUND(AVG(price), 2) as average_price
+        ROUND(AVG(price), 0) as average_price
       FROM castles
     `);
     
@@ -231,7 +231,7 @@ export async function getCastleStats(): Promise<{
     
     return {
       totalCastles: parseInt(statsResult.rows[0].total_castles),
-      averagePrice: parseFloat(statsResult.rows[0].average_price) || 0,
+      averagePrice: parseInt(statsResult.rows[0].average_price) || 0,
       themes: themesResult.rows
     };
   } catch (error) {

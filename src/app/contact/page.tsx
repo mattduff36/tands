@@ -54,8 +54,8 @@ const ContactPage = () => {
                                             <h3 className="text-lg font-bold text-gray-900">
                                                 📧 Email
                                             </h3>
-                                            <a href="mailto:tsbouncycastlehire@gmail.com" className="text-lg text-gray-700 hover:text-purple-600 font-semibold transition-colors duration-300 break-words">
-                                                tsbouncycastlehire@gmail.com
+                                            <a href="mailto:info@bouncy-castle-hire.com" className="text-lg text-gray-700 hover:text-purple-600 font-semibold transition-colors duration-300 break-words">
+                                                info@bouncy-castle-hire.com
                                             </a>
                                         </div>
                                     </div>

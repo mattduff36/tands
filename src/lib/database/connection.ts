@@ -85,9 +85,31 @@ export async function initializeDatabase() {
         name VARCHAR(255) NOT NULL,
         theme VARCHAR(100) NOT NULL,
         size VARCHAR(100) NOT NULL,
-        price DECIMAL(10,2) NOT NULL,
+        price INTEGER NOT NULL,
         description TEXT NOT NULL,
         image_url TEXT NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create bookings table if it doesn't exist
+    await query(`
+      CREATE TABLE IF NOT EXISTS bookings (
+        id SERIAL PRIMARY KEY,
+        booking_ref VARCHAR(50) UNIQUE NOT NULL,
+        customer_name VARCHAR(255) NOT NULL,
+        customer_email VARCHAR(255) NOT NULL,
+        customer_phone VARCHAR(50) NOT NULL,
+        customer_address TEXT NOT NULL,
+        castle_id INTEGER NOT NULL,
+        castle_name VARCHAR(255) NOT NULL,
+        date DATE NOT NULL,
+        payment_method VARCHAR(50) NOT NULL,
+        total_price INTEGER NOT NULL,
+        deposit INTEGER NOT NULL,
+        status VARCHAR(20) DEFAULT 'pending',
+        notes TEXT,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
@@ -169,6 +191,9 @@ export async function initializeDatabase() {
     throw error;
   }
 }
+
+// Export pool for use in other modules
+export { getPool };
 
 /**
  * Test database connection

@@ -1,66 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { BookingValidator, ExistingBooking } from '@/lib/validation/booking-validation';
+import { getCastles } from '@/lib/database/castles';
 
-// Mock database - in real app, this would be replaced with actual database operations
-interface BookingEvent {
+// Interface for calendar events from Google Calendar API
+interface CalendarEvent {
   id: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  castle: string;
-  status: 'confirmed' | 'pending' | 'cancelled' | 'completed';
-  isUnavailable?: boolean;
-  maintenanceNote?: string;
+  summary: string;
+  description?: string;
+  location?: string;
+  start: {
+    dateTime?: string;
+    date?: string;
+  };
+  end: {
+    dateTime?: string;
+    date?: string;
+  };
+  status?: string;
 }
-
-// Mock booking data - this would come from database in real app
-const mockBookings: BookingEvent[] = [
-  {
-    id: '1',
-    date: '2024-01-25',
-    startTime: '10:00',
-    endTime: '16:00',
-    castle: 'Princess Castle',
-    status: 'confirmed'
-  },
-  {
-    id: '2',
-    date: '2024-01-26',
-    startTime: '09:00',
-    endTime: '17:00',
-    castle: 'Superhero Obstacle Course',
-    status: 'pending'
-  },
-  {
-    id: '3',
-    date: '2024-01-28',
-    startTime: '11:00',
-    endTime: '15:00',
-    castle: 'Jungle Adventure',
-    status: 'confirmed'
-  },
-  {
-    id: '4',
-    date: '2024-01-30',
-    startTime: '12:00',
-    endTime: '18:00',
-    castle: 'Medieval Castle',
-    status: 'cancelled'
-  }
-];
-
-// Mock unavailable dates - this would come from admin settings
-const unavailableDates = [
-  {
-    date: '2024-01-27',
-    reason: 'Equipment maintenance',
-    isUnavailable: true
-  },
-  {
-    date: '2024-01-31',
-    reason: 'Weather forecast - high winds',
-    isUnavailable: true
-  }
-];
 
 interface AvailabilityResponse {
   date: string;
@@ -84,15 +41,91 @@ interface DayAvailability {
   reason?: string;
 }
 
-// Available bouncy castles
-const availableCastles = [
-  'Princess Castle',
-  'Superhero Obstacle Course',
-  'Jungle Adventure',
-  'Medieval Castle',
-  'Space Adventure',
-  'Pirate Ship'
-];
+// Convert CalendarEvent to ExistingBooking for validation
+const convertToExistingBooking = (event: CalendarEvent): ExistingBooking => {
+  // Extract castle name from description or summary
+  const castleName = extractCastleFromEvent(event);
+  
+  // Extract date and time from event
+  const startDate = event.start.dateTime || event.start.date;
+  const endDate = event.end.dateTime || event.end.date;
+  
+  let date, startTime, endTime;
+  
+  if (startDate?.includes('T')) {
+    // DateTime format
+    date = startDate.split('T')[0];
+    startTime = startDate.split('T')[1].substring(0, 5);
+    endTime = endDate?.split('T')[1].substring(0, 5) || '18:00';
+  } else {
+    // All-day event format
+    date = startDate || '';
+    startTime = '09:00';
+    endTime = '18:00';
+  }
+
+  return {
+    id: event.id,
+    date,
+    startTime,
+    endTime,
+    castle: castleName,
+    status: 'confirmed' // Assume confirmed for calendar events
+  };
+};
+
+// Extract castle name from event description or summary
+const extractCastleFromEvent = (event: CalendarEvent): string => {
+  const description = event.description || '';
+  const summary = event.summary || '';
+  
+  // Look for "Castle: " pattern in description
+  const castleMatch = description.match(/Castle:\s*([^(\n]+)/);
+  if (castleMatch) {
+    return castleMatch[1].trim();
+  }
+  
+  // Fallback to summary if no castle found in description
+  return summary;
+};
+
+// Fetch calendar events directly from Google Calendar API (bypassing admin auth)
+async function fetchCalendarEvents(startDate: string, endDate: string): Promise<CalendarEvent[]> {
+  try {
+    // Import Google Calendar service directly
+    const { getCalendarService } = await import('@/lib/calendar/google-calendar');
+    const calendarService = getCalendarService();
+    
+    // Convert string dates to Date objects
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    // Fetch events directly from Google Calendar
+    const googleEvents = await calendarService.getEventsInRange(start, end);
+    
+    // Convert Google Calendar events to our CalendarEvent interface
+    const events: CalendarEvent[] = (googleEvents || []).map(event => ({
+      id: event.id || '',
+      summary: event.summary || '',
+      description: event.description || '',
+      location: event.location || '',
+      start: {
+        dateTime: event.start?.dateTime || undefined,
+        date: event.start?.date || undefined
+      },
+      end: {
+        dateTime: event.end?.dateTime || undefined,
+        date: event.end?.date || undefined
+      },
+      status: event.status || 'confirmed'
+    }));
+    
+    return events;
+  } catch (error) {
+    console.error('Failed to fetch calendar events:', error);
+    return []; // Return empty array on error instead of throwing
+  }
+}
 
 /**
  * GET /api/availability - Get availability for dates
@@ -114,13 +147,13 @@ export async function GET(request: NextRequest) {
 
     // Single date query
     if (date) {
-      const availability = getAvailabilityForDate(date, castle);
+      const availability = await getAvailabilityForDate(date, castle);
       return NextResponse.json(availability);
     }
 
     // Date range query
     if (startDate && endDate) {
-      const availability = getAvailabilityForRange(startDate, endDate, castle, format);
+      const availability = await getAvailabilityForRange(startDate, endDate, castle, format);
       return NextResponse.json(availability);
     }
 
@@ -129,7 +162,7 @@ export async function GET(request: NextRequest) {
     const thirtyDaysLater = new Date(today);
     thirtyDaysLater.setDate(today.getDate() + 30);
     
-    const availability = getAvailabilityForRange(
+    const availability = await getAvailabilityForRange(
       today.toISOString().split('T')[0],
       thirtyDaysLater.toISOString().split('T')[0],
       castle,
@@ -156,81 +189,89 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function getAvailabilityForDate(date: string, castleFilter?: string | null): AvailabilityResponse {
-  // Check if date is unavailable due to maintenance/weather
-  const unavailable = unavailableDates.find(u => u.date === date);
-  if (unavailable) {
+async function getAvailabilityForDate(date: string, castleFilter?: string | null): Promise<AvailabilityResponse> {
+  try {
+    // Fetch calendar events for the date
+    const events = await fetchCalendarEvents(date, date);
+    
+    // Convert to ExistingBookings format
+    const existingBookings = events.map(convertToExistingBooking);
+    
+    // Get available castles from database
+    const allCastles = await getCastles();
+    const availableCastles = allCastles.map(c => c.name);
+    
+    // Filter by castle if specified
+    const filteredCastles = castleFilter 
+      ? availableCastles.filter(c => c === castleFilter)
+      : availableCastles;
+
+    // Get bookings for this specific date
+    const dayBookings = existingBookings.filter(booking => booking.date === date);
+    const bookedCastles = dayBookings.map(b => b.castle);
+    const availableCastlesForDay = filteredCastles.filter(c => !bookedCastles.includes(c));
+
+    // Generate time slots (simplified - 4 hour slots from 9 AM to 6 PM)
+    const timeSlots = [];
+    const slots = [
+      { start: '09:00', end: '13:00' },
+      { start: '10:00', end: '14:00' },
+      { start: '11:00', end: '15:00' },
+      { start: '12:00', end: '16:00' },
+      { start: '13:00', end: '17:00' },
+      { start: '14:00', end: '18:00' }
+    ];
+
+    const validator = new BookingValidator(existingBookings);
+
+    for (const slot of slots) {
+      // Check if any booking conflicts with this time slot
+      const conflictingBooking = dayBookings.find(booking => {
+        const bookingStart = booking.startTime;
+        const bookingEnd = booking.endTime;
+        
+        // Check if time ranges overlap
+        return (
+          (slot.start >= bookingStart && slot.start < bookingEnd) ||
+          (slot.end > bookingStart && slot.end <= bookingEnd) ||
+          (slot.start <= bookingStart && slot.end >= bookingEnd)
+        );
+      });
+
+      timeSlots.push({
+        startTime: slot.start,
+        endTime: slot.end,
+        available: !conflictingBooking && availableCastlesForDay.length > 0,
+        castle: conflictingBooking?.castle
+      });
+    }
+
+    return {
+      date,
+      available: availableCastlesForDay.length > 0 && timeSlots.some(slot => slot.available),
+      availableCastles: availableCastlesForDay,
+      bookedCastles: bookedCastles,
+      timeSlots
+    };
+  } catch (error) {
+    console.error(`Error getting availability for date ${date}:`, error);
     return {
       date,
       available: false,
-      reason: unavailable.reason,
+      reason: 'Error checking availability',
       availableCastles: [],
       bookedCastles: [],
       timeSlots: []
     };
   }
-
-  // Get bookings for this date (excluding cancelled)
-  const dayBookings = mockBookings.filter(
-    booking => booking.date === date && booking.status !== 'cancelled'
-  );
-
-  // Filter by castle if specified
-  const filteredCastles = castleFilter 
-    ? availableCastles.filter(c => c === castleFilter)
-    : availableCastles;
-
-  const bookedCastles = dayBookings.map(b => b.castle);
-  const availableCastlesForDay = filteredCastles.filter(c => !bookedCastles.includes(c));
-
-  // Generate time slots (simplified - 4 hour slots from 9 AM to 6 PM)
-  const timeSlots = [];
-  const slots = [
-    { start: '09:00', end: '13:00' },
-    { start: '10:00', end: '14:00' },
-    { start: '11:00', end: '15:00' },
-    { start: '12:00', end: '16:00' },
-    { start: '13:00', end: '17:00' },
-    { start: '14:00', end: '18:00' }
-  ];
-
-  for (const slot of slots) {
-    // Check if any booking conflicts with this time slot
-    const conflictingBooking = dayBookings.find(booking => {
-      const bookingStart = booking.startTime;
-      const bookingEnd = booking.endTime;
-      
-      // Check if time ranges overlap
-      return (
-        (slot.start >= bookingStart && slot.start < bookingEnd) ||
-        (slot.end > bookingStart && slot.end <= bookingEnd) ||
-        (slot.start <= bookingStart && slot.end >= bookingEnd)
-      );
-    });
-
-    timeSlots.push({
-      startTime: slot.start,
-      endTime: slot.end,
-      available: !conflictingBooking && availableCastlesForDay.length > 0,
-      castle: conflictingBooking?.castle
-    });
-  }
-
-  return {
-    date,
-    available: availableCastlesForDay.length > 0 && timeSlots.some(slot => slot.available),
-    availableCastles: availableCastlesForDay,
-    bookedCastles: bookedCastles,
-    timeSlots
-  };
 }
 
-function getAvailabilityForRange(
+async function getAvailabilityForRange(
   startDate: string,
   endDate: string,
   castleFilter?: string | null,
   format: string = 'summary'
-): DayAvailability[] | AvailabilityResponse[] {
+): Promise<DayAvailability[] | AvailabilityResponse[]> {
   const start = new Date(startDate);
   const end = new Date(endDate);
 
@@ -244,7 +285,7 @@ function getAvailabilityForRange(
     const result: AvailabilityResponse[] = [];
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       const dateStr = d.toISOString().split('T')[0];
-      const availability = getAvailabilityForDate(dateStr, castleFilter);
+      const availability = await getAvailabilityForDate(dateStr, castleFilter);
       result.push(availability);
     }
     return result;
@@ -254,16 +295,12 @@ function getAvailabilityForRange(
       const dateStr = d.toISOString().split('T')[0];
       
       // Summary format
-      const availability = getAvailabilityForDate(dateStr, castleFilter);
-      const unavailable = unavailableDates.find(u => u.date === dateStr);
+      const availability = await getAvailabilityForDate(dateStr, castleFilter);
       
       let status: DayAvailability['status'] = 'available';
       let reason: string | undefined;
 
-      if (unavailable) {
-        status = unavailable.reason.toLowerCase().includes('maintenance') ? 'maintenance' : 'unavailable';
-        reason = unavailable.reason;
-      } else if (availability.availableCastles.length === 0) {
+      if (availability.availableCastles.length === 0) {
         status = 'fully_booked';
       } else if (availability.bookedCastles.length > 0) {
         status = 'partially_booked';
@@ -299,89 +336,80 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if date is unavailable
-    const unavailable = unavailableDates.find(u => u.date === date);
-    if (unavailable) {
+    // Fetch calendar events for the date
+    const events = await fetchCalendarEvents(date, date);
+    const existingBookings = events.map(convertToExistingBooking);
+    
+    // Get available castles from database
+    const allCastles = await getCastles();
+    const availableCastles = allCastles.map(c => c.name);
+
+    // Create validator for conflict checking
+    const validator = new BookingValidator(existingBookings);
+
+    // Create validation data for the requested booking
+    const validationData = {
+      customerName: 'Temp Customer',
+      customerEmail: 'temp@example.com',
+      customerPhone: '0000000000',
+      date,
+      startTime,
+      endTime,
+      castle: castle || 'Any Castle',
+      location: 'TBD',
+      address: 'TBD',
+      totalPrice: 100,
+      deposit: 30,
+      status: 'pending' as const,
+      notes: ''
+    };
+
+    // Validate the booking
+    const validationResult = validator.validateBooking(validationData);
+
+    // Check for critical conflicts
+    const criticalConflicts = validationResult.conflicts.filter(
+      conflict => conflict.type === 'same_castle' || conflict.type === 'time_overlap'
+    );
+
+    if (criticalConflicts.length > 0) {
       return NextResponse.json({
         available: false,
-        reason: unavailable.reason,
-        type: 'unavailable'
-      });
-    }
-
-    // Check for conflicting bookings
-    const conflicts = mockBookings.filter(booking => {
-      if (booking.date !== date || booking.status === 'cancelled') {
-        return false;
-      }
-
-      // If castle is specified, only check conflicts with same castle
-      if (castle && booking.castle !== castle) {
-        return false;
-      }
-
-      // Check time overlap
-      return (
-        (startTime >= booking.startTime && startTime < booking.endTime) ||
-        (endTime > booking.startTime && endTime <= booking.endTime) ||
-        (startTime <= booking.startTime && endTime >= booking.endTime)
-      );
-    });
-
-    if (conflicts.length > 0) {
-      return NextResponse.json({
-        available: false,
-        reason: `Time slot conflicts with existing booking${conflicts.length > 1 ? 's' : ''}`,
+        reason: criticalConflicts[0].message,
         type: 'conflict',
-        conflicts: conflicts.map(c => ({
-          castle: c.castle,
-          startTime: c.startTime,
-          endTime: c.endTime,
-          status: c.status
+        conflicts: criticalConflicts.map(c => ({
+          castle: c.conflictingBooking.castle,
+          startTime: c.conflictingBooking.startTime,
+          endTime: c.conflictingBooking.endTime,
+          status: c.conflictingBooking.status
         }))
       });
     }
 
-    // Check castle availability if specified
-    if (castle) {
-      const castleBookedOnDate = mockBookings.some(booking =>
-        booking.date === date &&
-        booking.castle === castle &&
-        booking.status !== 'cancelled' &&
-        (
-          (startTime >= booking.startTime && startTime < booking.endTime) ||
-          (endTime > booking.startTime && endTime <= booking.endTime) ||
-          (startTime <= booking.startTime && endTime >= booking.endTime)
-        )
-      );
-
-      if (castleBookedOnDate) {
-        return NextResponse.json({
-          available: false,
-          reason: `${castle} is already booked for this time slot`,
-          type: 'castle_unavailable'
+    // Get available castles for this time slot
+    const availableCastlesForSlot = castle 
+      ? [castle]
+      : availableCastles.filter(castleName => {
+          // Check if this castle is available at the requested time
+          const castleBookings = existingBookings.filter(booking => 
+            booking.castle === castleName && booking.date === date
+          );
+          
+          return !castleBookings.some(booking => {
+            return (
+              (startTime >= booking.startTime && startTime < booking.endTime) ||
+              (endTime > booking.startTime && endTime <= booking.endTime) ||
+              (startTime <= booking.startTime && endTime >= booking.endTime)
+            );
+          });
         });
-      }
-    }
 
     return NextResponse.json({
-      available: true,
-      message: 'Time slot is available',
-      availableCastles: castle 
-        ? [castle]
-        : availableCastles.filter(c => {
-            // Filter out castles that are booked at this time
-            return !mockBookings.some(booking =>
-              booking.date === date &&
-              booking.castle === c &&
-              booking.status !== 'cancelled' &&
-              (
-                (startTime >= booking.startTime && startTime < booking.endTime) ||
-                (endTime > booking.startTime && endTime <= booking.endTime) ||
-                (startTime <= booking.startTime && endTime >= booking.endTime)
-              )
-            );
-          })
+      available: availableCastlesForSlot.length > 0,
+      message: availableCastlesForSlot.length > 0 
+        ? 'Time slot is available' 
+        : 'No castles available for this time slot',
+      availableCastles: availableCastlesForSlot
     });
 
   } catch (error) {
