@@ -9,7 +9,7 @@ import { getCastles, updateCastleImageUrls, Castle } from '../src/lib/database/c
 import { put } from '@vercel/blob';
 
 function isVercelBlobUrl(url: string): boolean {
-  return url && url.startsWith('https://') && url.includes('.blob.vercel-storage.com/');
+  return Boolean(url && url.startsWith('https://') && url.includes('.blob.vercel-storage.com/'));
 }
 
 function getMimeType(filename: string): string {
