@@ -347,7 +347,12 @@ export async function queryBookingsWithFilters(query: {
 }
 
 // Get booking statistics
-export async function getBookingStats(): Promise<{
+export async function getBookingStats(query?: {
+  dateFrom?: string;
+  dateTo?: string;
+  castleIds?: string[];
+  statuses?: string[];
+}): Promise<{
   total: number;
   pending: number;
   confirmed: number;
@@ -356,7 +361,7 @@ export async function getBookingStats(): Promise<{
 }> {
   const client = await getPool().connect();
   try {
-    const result = await client.query(`
+    let sqlQuery = `
       SELECT 
         COUNT(*) as total,
         COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending,
@@ -364,7 +369,39 @@ export async function getBookingStats(): Promise<{
         COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled,
         COALESCE(SUM(CASE WHEN status = 'confirmed' THEN total_price ELSE 0 END), 0) as revenue
       FROM bookings
-    `);
+    `;
+    
+    const params: any[] = [];
+    let paramCount = 1;
+    let whereClause = '';
+
+    // Add date range filter
+    if (query?.dateFrom) {
+      whereClause += ` WHERE date >= $${paramCount++}`;
+      params.push(query.dateFrom);
+    }
+    if (query?.dateTo) {
+      whereClause += whereClause ? ` AND date <= $${paramCount++}` : ` WHERE date <= $${paramCount++}`;
+      params.push(query.dateTo);
+    }
+
+    // Add castle filter
+    if (query?.castleIds && query.castleIds.length > 0) {
+      const castlePlaceholders = query.castleIds.map(() => `$${paramCount++}`).join(',');
+      whereClause += whereClause ? ` AND castle_id IN (${castlePlaceholders})` : ` WHERE castle_id IN (${castlePlaceholders})`;
+      params.push(...query.castleIds.map(id => parseInt(id)));
+    }
+
+    // Add status filter
+    if (query?.statuses && query.statuses.length > 0) {
+      const statusPlaceholders = query.statuses.map(() => `$${paramCount++}`).join(',');
+      whereClause += whereClause ? ` AND status IN (${statusPlaceholders})` : ` WHERE status IN (${statusPlaceholders})`;
+      params.push(...query.statuses);
+    }
+
+    sqlQuery += whereClause;
+
+    const result = await client.query(sqlQuery, params);
 
     const stats = result.rows[0];
     return {
