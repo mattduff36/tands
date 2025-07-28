@@ -101,7 +101,7 @@ export default function AdminBookings() {
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
@@ -328,7 +328,7 @@ export default function AdminBookings() {
   // Helper to convert Booking to CalendarEvent
   function bookingToCalendarEvent(booking: Booking): CalendarEvent {
     return {
-      id: booking.id.toString(),
+      id: `db_${booking.id}`, // Prefix to identify database bookings
       summary: booking.customerName + ' - ' + booking.castleName,
       description: booking.notes || '',
       location: booking.customerAddress,
@@ -344,8 +344,9 @@ export default function AdminBookings() {
 
   // Handle edit booking
   const handleEditBooking = (event: CalendarEvent) => {
-    // Find the booking by ID
-    const booking = bookings.find(b => b.id.toString() === event.id);
+    // Find the booking by ID (remove db_ prefix if present)
+    const bookingId = event.id.startsWith('db_') ? event.id.replace('db_', '') : event.id;
+    const booking = bookings.find(b => b.id.toString() === bookingId);
     if (!booking) return;
 
     // Parse the booking data into form format
@@ -392,7 +393,7 @@ export default function AdminBookings() {
       additionalCostsAmount: 0
     });
     
-    setSelectedBooking(booking);
+
     setIsEditing(true);
     setShowDetailsModal(false);
     setShowBookingModal(true);
@@ -431,7 +432,7 @@ export default function AdminBookings() {
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (isEditing && selectedBooking) {
+    if (isEditing && selectedEvent) {
       setIsSubmitting(true);
       try {
         // Calculate total cost
@@ -451,9 +452,47 @@ export default function AdminBookings() {
         }
 
         // Check if this is a calendar event or database booking
-        if (selectedBooking.source === 'calendar') {
+        if (selectedEvent.id.startsWith('db_')) {
+          // Update database booking
+          const bookingId = selectedEvent.id.replace('db_', '');
+          
+          // Prepare calendar event update data
+          const bookingData = {
+            customerName: bookingForm.customerName,
+            contactDetails: {
+              phone: bookingForm.customerPhone
+            },
+            location: bookingForm.address,
+            notes: `Castle: ${selectedCastle.name}${bookingForm.overnight ? ' (Overnight)' : ''}`,
+            duration: {
+              start: `${bookingDate}T10:00:00`,
+              end: `${bookingDate}T18:00:00`
+            },
+            cost: totalCost,
+            bouncyCastleType: selectedCastle.name
+          };
+
+          const response = await fetch(`/api/admin/bookings/${bookingId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(updateData),
+          });
+
+          if (response.ok) {
+            toast.success('Booking updated successfully!');
+            await fetchBookings(); // Refresh the bookings list
+            setShowBookingModal(false);
+            setIsEditing(false);
+            setSelectedEvent(null);
+          } else {
+            const error = await response.json();
+            toast.error(error.error || 'Failed to update booking');
+          }
+        } else {
           // Update calendar event
-          const calendarEventId = selectedBooking.id.toString().replace('cal-', '');
+          const calendarEventId = selectedEvent.id;
           
           // Prepare calendar event update data
           const bookingData = {
@@ -484,42 +523,10 @@ export default function AdminBookings() {
             await fetchBookings(); // Refresh the bookings list
             setShowBookingModal(false);
             setIsEditing(false);
-            setSelectedBooking(null);
+            setSelectedEvent(null);
           } else {
             const error = await response.json();
             toast.error(error.error || 'Failed to update calendar event');
-          }
-        } else {
-          // Update database booking
-          const updateData = {
-            customerName: bookingForm.customerName,
-            customerPhone: bookingForm.customerPhone,
-            customerAddress: bookingForm.address,
-            castleId: selectedCastle.id,
-            castleName: selectedCastle.name,
-            date: bookingDate,
-            totalPrice: totalCost,
-            deposit: Math.floor(totalCost * 0.3), // 30% deposit
-            notes: bookingForm.overnight ? '(Overnight)' : ''
-          };
-
-          const response = await fetch(`/api/admin/bookings/${selectedBooking.id}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(updateData),
-          });
-
-          if (response.ok) {
-            toast.success('Booking updated successfully!');
-            await fetchBookings(); // Refresh the bookings list
-            setShowBookingModal(false);
-            setIsEditing(false);
-            setSelectedBooking(null);
-          } else {
-            const error = await response.json();
-            toast.error(error.error || 'Failed to update booking');
           }
         }
       } catch (error) {
@@ -834,10 +841,7 @@ export default function AdminBookings() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => {
-                        setSelectedBooking(booking);
-                        setShowDetailsModal(true);
-                      }}
+                      onClick={() => handleViewDetails(bookingToCalendarEvent(booking))}
                     >
                       <Eye className="h-4 w-4 mr-1" />
                       View
@@ -850,25 +854,7 @@ export default function AdminBookings() {
         </CardContent>
       </Card>
 
-      {/* Booking Details Modal */}
-      <BookingDetailsModal
-        open={showDetailsModal && !!selectedBooking}
-        event={selectedBooking ? bookingToCalendarEvent(selectedBooking) : null}
-        onClose={() => setShowDetailsModal(false)}
-        onApprove={selectedBooking?.status === 'pending' ? () => handleConfirmBooking(selectedBooking.id) : undefined}
-        onEdit={selectedBooking && selectedBooking.status !== 'cancelled' ? () => handleEditBooking(bookingToCalendarEvent(selectedBooking)) : undefined}
-        onDelete={selectedBooking ? () => handleDeleteBooking(selectedBooking.id) : undefined}
-        formatEventDate={(event) => formatDate(event.start.date || '')}
-        formatEventTime={() => ''}
-        getStatusColor={(status) => {
-          switch (status) {
-            case 'confirmed': return 'bg-green-100 text-green-800 border-green-200';
-            case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-            case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
-            default: return 'bg-blue-100 text-blue-800 border-blue-200';
-          }
-        }}
-      />
+
 
       {/* Booking Form Modal */}
       <BookingFormModal
@@ -1138,8 +1124,23 @@ export default function AdminBookings() {
               setShowDetailsModal(false);
               setSelectedEvent(null);
             }}
-            onEdit={handleEditEvent}
-            onDelete={handleDeleteEvent}
+            onEdit={selectedEvent.id.startsWith('db_') ? handleEditBooking : handleEditEvent}
+            onDelete={selectedEvent.id.startsWith('db_') ? () => {
+              // Find the booking by ID for database bookings
+              const bookingId = selectedEvent.id.replace('db_', '');
+              const booking = bookings.find(b => b.id.toString() === bookingId);
+              if (booking) {
+                handleDeleteBooking(booking.id);
+              }
+            } : handleDeleteEvent}
+            onApprove={selectedEvent.id.startsWith('db_') ? () => {
+              // Find the booking by ID for database bookings
+              const bookingId = selectedEvent.id.replace('db_', '');
+              const booking = bookings.find(b => b.id.toString() === bookingId);
+              if (booking && booking.status === 'pending') {
+                handleConfirmBooking(booking.id);
+              }
+            } : undefined}
             formatEventDate={formatEventDate}
             formatEventTime={formatEventTime}
             getStatusColor={getStatusColor}
