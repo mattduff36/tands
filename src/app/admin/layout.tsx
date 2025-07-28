@@ -81,7 +81,6 @@ function AdminNavigation() {
 
   const navigation = [
     { name: 'Dashboard', href: '/admin', icon: Home },
-    { name: 'Calendar', href: '/admin/calendar', icon: Calendar },
     { name: 'Bookings', href: '/admin/bookings', icon: Users },
     { name: 'Fleet', href: '/admin/fleet', icon: Castle },
     { name: 'Reports', href: '/admin/reports', icon: BarChart3 },

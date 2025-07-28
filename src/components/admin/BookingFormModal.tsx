@@ -19,6 +19,7 @@ export interface Castle {
 export interface BookingFormData {
   castle: string;
   customerName: string;
+  customerEmail: string;
   customerPhone: string;
   address: string;
   singleDate: string;
@@ -99,7 +100,7 @@ export function BookingFormModal({
               </Select>
             </div>
 
-            {/* Customer Details */}
+            {/* Customer Details - First Line: Name and Number */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="customerName" className="text-sm font-medium">
@@ -129,7 +130,22 @@ export function BookingFormModal({
               </div>
             </div>
 
-            {/* Address */}
+            {/* Email Address - Second Line */}
+            <div className="space-y-2">
+              <Label htmlFor="customerEmail" className="text-sm font-medium">
+                Email Address *
+              </Label>
+              <Input
+                id="customerEmail"
+                type="email"
+                value={bookingForm.customerEmail}
+                onChange={(e) => onFormChange('customerEmail', e.target.value)}
+                placeholder="Enter email address"
+                required
+              />
+            </div>
+
+            {/* Address - Third Line */}
             <div className="space-y-2">
               <Label htmlFor="address" className="text-sm font-medium">
                 Delivery Address *
