@@ -58,6 +58,7 @@ export default function AdminCalendar() {
   const [bookingForm, setBookingForm] = useState<BookingFormData>({
     castle: '',
     customerName: '',
+    customerEmail: '',
     customerPhone: '',
     address: '',
     singleDate: '',
@@ -316,6 +317,7 @@ export default function AdminCalendar() {
       setBookingForm({
         castle: '',
         customerName: '',
+        customerEmail: '',
         customerPhone: '',
         address: '',
         singleDate: '',
@@ -395,6 +397,7 @@ export default function AdminCalendar() {
     setBookingForm({
       castle: castle?.id.toString() || '',
       customerName: event.summary?.replace('🏰 ', '') || '',
+      customerEmail: event.attendees?.[0]?.email || '',
       customerPhone: phone,
       address: event.location || '',
       singleDate: isMultiDay ? '' : eventStart.toISOString().split('T')[0],
@@ -592,6 +595,7 @@ export default function AdminCalendar() {
              setBookingForm({
                castle: '',
                customerName: '',
+               customerEmail: '',
                customerPhone: '',
                address: '',
                singleDate: '',
