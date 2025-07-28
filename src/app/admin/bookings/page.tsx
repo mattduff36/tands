@@ -616,7 +616,7 @@ export default function AdminBookings() {
         onApprove={selectedBooking?.status === 'pending' ? () => handleConfirmBooking(selectedBooking.id) : undefined}
         onEdit={selectedBooking && selectedBooking.status !== 'cancelled' ? () => handleEditBooking(bookingToCalendarEvent(selectedBooking)) : undefined}
         onDelete={selectedBooking ? () => handleDeleteBooking(selectedBooking.id) : undefined}
-        formatEventDate={(event) => formatDate(event.start.date)}
+        formatEventDate={(event) => formatDate(event.start.date || '')}
         formatEventTime={() => ''}
         getStatusColor={(status) => {
           switch (status) {
