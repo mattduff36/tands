@@ -61,30 +61,7 @@ interface Booking {
   source: 'database' | 'calendar';
 }
 
-interface Castle {
-  id: number;
-  name: string;
-  theme: string;
-  size: string;
-  price: number;
-  description: string;
-  imageUrl: string;
-}
 
-interface BookingFormData {
-  castle: string;
-  customerName: string;
-  customerPhone: string;
-  address: string;
-  singleDate: string;
-  multipleDate: boolean;
-  startDate: string;
-  endDate: string;
-  overnight: boolean;
-  additionalCosts: boolean;
-  additionalCostsDescription: string;
-  additionalCostsAmount: number;
-}
 
 export default function AdminBookings() {
   const [bookings, setBookings] = useState<Booking[]>([]);
