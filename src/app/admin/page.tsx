@@ -264,13 +264,6 @@ export default function AdminDashboard() {
               <span>Bookings</span>
             </Button>
             <Button 
-              className="h-16 flex-col space-y-2 text-sm bg-orange-500 hover:bg-orange-600 text-white"
-              onClick={() => router.push('/admin/calendar')}
-            >
-              <Calendar className="w-5 h-5" />
-              <span>Calendar</span>
-            </Button>
-            <Button 
               className="h-16 flex-col space-y-2 text-sm bg-purple-500 hover:bg-purple-600 text-white"
               onClick={() => router.push('/admin/fleet')}
             >
@@ -283,6 +276,13 @@ export default function AdminDashboard() {
             >
               <TrendingUp className="w-5 h-5" />
               <span>Reports</span>
+            </Button>
+            <Button 
+              className="h-16 flex-col space-y-2 text-sm bg-green-500 hover:bg-green-600 text-white"
+              onClick={() => router.push('/admin/settings')}
+            >
+              <AlertCircle className="w-5 h-5" />
+              <span>Settings</span>
             </Button>
           </div>
         </CardContent>
