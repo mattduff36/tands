@@ -16,9 +16,6 @@ import {
   Plus,
   RefreshCw,
   Castle,
-  Wrench,
-  DollarSign,
-  Activity,
   ExternalLink
 } from 'lucide-react';
 
@@ -66,153 +63,67 @@ export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
-  // Seed test data function
-  const seedTestData = async () => {
-    try {
-      const response = await fetch('/api/admin/seed-test-data', {
-        method: 'POST'
-      });
-      const result = await response.json();
-      console.log('Seed result:', result);
-      
-      if (response.ok) {
-        // Refresh dashboard data after seeding
-        await fetchDashboardData();
-      }
-    } catch (error) {
-      console.error('Failed to seed test data:', error);
-    }
-  };
-
-  // Fetch dashboard data
+  // Fetch dashboard data using the same patterns as other admin tabs
   const fetchDashboardData = async () => {
     setIsLoading(true);
     try {
-      // Get current date ranges - use past dates for testing since we're in 2025
-      const now = new Date();
-      const today = now.toISOString().split('T')[0];
+      // Fetch bookings (same as bookings tab)
+      const bookingsResponse = await fetch('/api/admin/bookings');
+      const bookingsData = await bookingsResponse.json();
+      const allBookings = bookingsData.bookings || [];
       
-      // Use past dates for testing since we're in 2025
-      const testDate = new Date(2024, 11, 15); // December 15, 2024
-      const testToday = testDate.toISOString().split('T')[0];
-      const testWeekStart = new Date(testDate);
-      testWeekStart.setDate(testDate.getDate() - testDate.getDay());
-      const testWeekStartStr = testWeekStart.toISOString().split('T')[0];
-      const testMonthStart = new Date(testDate.getFullYear(), testDate.getMonth(), 1);
-      const testMonthStartStr = testMonthStart.toISOString().split('T')[0];
-      const testYearEnd = new Date(testDate.getFullYear(), 12, 31);
-      const testYearEndStr = testYearEnd.toISOString().split('T')[0];
+      // Get recent bookings (first 5)
+      const recent = allBookings.slice(0, 5).map((booking: any) => ({
+        id: booking.id,
+        customerName: booking.customerName,
+        castleName: booking.castleName,
+        date: booking.date,
+        status: booking.status,
+        source: booking.source,
+        totalPrice: booking.totalPrice
+      }));
+      setRecentBookings(recent);
 
-      console.log('Dashboard: Fetching data with date ranges:', { 
-        today, 
-        testToday, 
-        testWeekStartStr, 
-        testMonthStartStr, 
-        testYearEndStr 
-      });
+      // Calculate booking stats
+      const today = new Date().toISOString().split('T')[0];
+      const todayBookings = allBookings.filter((b: any) => b.date === today).length;
+      const weekBookings = allBookings.length; // Total for now
+      const monthBookings = allBookings.length; // Total for now
+      const totalRevenue = allBookings.reduce((sum: number, b: any) => sum + (b.totalPrice || 0), 0);
 
-      // Fetch booking statistics - use test dates for now
-      const [todayStats, weekStats, monthStats] = await Promise.all([
-        fetch(`/api/admin/reports/stats?dateFrom=${testToday}&dateTo=${testToday}`).then(async r => {
-          if (!r.ok) {
-            console.error('Dashboard: Today stats error:', r.status, r.statusText);
-            return { total: 0, revenue: 0 };
-          }
-          return r.json();
-        }),
-        fetch(`/api/admin/reports/stats?dateFrom=${testWeekStartStr}&dateTo=${testYearEndStr}`).then(async r => {
-          if (!r.ok) {
-            console.error('Dashboard: Week stats error:', r.status, r.statusText);
-            return { total: 0, revenue: 0 };
-          }
-          return r.json();
-        }),
-        fetch(`/api/admin/reports/stats?dateFrom=${testMonthStartStr}&dateTo=${testYearEndStr}`).then(async r => {
-          if (!r.ok) {
-            console.error('Dashboard: Month stats error:', r.status, r.statusText);
-            return { total: 0, revenue: 0 };
-          }
-          return r.json();
-        })
-      ]);
-
-      console.log('Dashboard: Stats responses:', { todayStats, weekStats, monthStats });
-
-      // Fetch fleet status
+      // Fetch fleet status (same as fleet tab)
       const fleetResponse = await fetch('/api/admin/fleet');
-      let availableCastles = 0;
-      let maintenanceCastles = 0;
+      const castles = await fleetResponse.json();
       
-      if (!fleetResponse.ok) {
-        console.error('Dashboard: Fleet error:', fleetResponse.status, fleetResponse.statusText);
-        setCastleStatus([]);
-      } else {
-        const castles = await fleetResponse.json();
-        console.log('Dashboard: Fleet response:', castles);
+      const availableCastles = castles.filter((castle: any) => castle.maintenanceStatus === 'available').length;
+      const maintenanceCastles = castles.filter((castle: any) => castle.maintenanceStatus === 'maintenance').length;
 
-        // Calculate fleet statistics
-        availableCastles = castles.filter((castle: any) => castle.maintenanceStatus === 'available').length;
-        maintenanceCastles = castles.filter((castle: any) => castle.maintenanceStatus === 'maintenance').length;
+      setCastleStatus(castles.map((castle: any) => ({
+        id: castle.id,
+        name: castle.name,
+        maintenanceStatus: castle.maintenanceStatus,
+        maintenanceNotes: castle.maintenanceNotes
+      })));
 
-        // Fetch recent bookings
-        const bookingsResponse = await fetch('/api/admin/bookings');
-        if (!bookingsResponse.ok) {
-          console.error('Dashboard: Bookings error:', bookingsResponse.status, bookingsResponse.statusText);
-          setRecentBookings([]);
-        } else {
-          const allBookings = await bookingsResponse.json();
-          console.log('Dashboard: Bookings response:', allBookings);
-          
-          // Transform and sort recent bookings
-          const recent = allBookings
-            .slice(0, 5)
-            .map((booking: any) => ({
-              id: booking.id,
-              customerName: booking.customerName,
-              castleName: booking.castleName,
-              date: booking.date,
-              status: booking.status,
-              source: booking.source,
-              totalPrice: booking.totalPrice
-            }));
-
-          console.log('Dashboard: Transformed recent bookings:', recent);
-          setRecentBookings(recent);
-        }
-
-        setCastleStatus(castles.map((castle: any) => ({
-          id: castle.id,
-          name: castle.name,
-          maintenanceStatus: castle.maintenanceStatus,
-          maintenanceNotes: castle.maintenanceNotes
-        })));
-      }
-
-      // Check calendar status
+      // Check calendar status (same as calendar tab)
       let calendarStatus: 'connected' | 'disconnected' | 'error' = 'disconnected';
       try {
         const calendarResponse = await fetch('/api/admin/calendar');
         const calendarData = await calendarResponse.json();
-        console.log('Dashboard: Calendar response:', calendarData);
         calendarStatus = calendarData.status === 'connected' ? 'connected' : 'disconnected';
       } catch (error) {
-        console.error('Dashboard: Calendar error:', error);
         calendarStatus = 'error';
       }
 
-      const finalStats = {
-        todayBookings: todayStats.total || 0,
-        weekBookings: weekStats.total || 0,
-        monthBookings: monthStats.total || 0,
-        totalRevenue: monthStats.revenue || 0,
+      setStats({
+        todayBookings,
+        weekBookings,
+        monthBookings,
+        totalRevenue,
         availableCastles,
         maintenanceCastles,
         calendarStatus
-      };
-
-      console.log('Dashboard: Final stats:', finalStats);
-
-      setStats(finalStats);
+      });
       
       setLastUpdated(new Date());
     } catch (error) {
@@ -292,14 +203,6 @@ export default function AdminDashboard() {
             <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button 
-            onClick={seedTestData}
-            variant="outline"
-            size="sm"
-            disabled={isLoading}
-          >
-            Seed Test Data
-          </Button>
           <Button size="sm" onClick={() => router.push('/admin/bookings')}>
             <Plus className="w-4 h-4 mr-2" />
             New Booking
@@ -362,26 +265,26 @@ export default function AdminDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">This Week</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.weekBookings}</div>
             <p className="text-xs text-muted-foreground">
-              {stats.weekBookings > 0 ? 'Total bookings this week' : 'No bookings this week'}
+              All bookings in system
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">This Month</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.monthBookings}</div>
+            <div className="text-2xl font-bold">{formatCurrency(stats.totalRevenue)}</div>
             <p className="text-xs text-muted-foreground">
-              {formatCurrency(stats.totalRevenue)} revenue
+              From all bookings
             </p>
           </CardContent>
         </Card>
