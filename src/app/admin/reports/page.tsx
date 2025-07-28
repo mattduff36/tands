@@ -12,17 +12,21 @@ import {
   Users,
   PoundSterling,
   MapPin,
-  ChevronDown
+  ChevronDown,
+  AlertCircle
 } from 'lucide-react';
 
+interface BookingStats {
+  total: number;
+  pending: number;
+  confirmed: number;
+  cancelled: number;
+  revenue: number;
+}
+
 interface ReportData {
-  totalRevenue: number;
-  totalBookings: number;
+  stats: BookingStats;
   averageBookingValue: number;
-  popularCastle: string;
-  popularLocation: string;
-  monthlyRevenue: number[];
-  monthlyBookings: number[];
   revenueGrowth: number;
   bookingGrowth: number;
 }
@@ -30,31 +34,129 @@ interface ReportData {
 export default function AdminReports() {
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState('month');
+  const [error, setError] = useState<string | null>(null);
+  const [timeRange, setTimeRange] = useState('all');
 
-  // Mock report data
-  useEffect(() => {
-    const mockData: ReportData = {
-      totalRevenue: 15420,
-      totalBookings: 56,
-      averageBookingValue: 275,
-      popularCastle: 'Princess Castle',
-      popularLocation: 'Hyde Park',
-      monthlyRevenue: [8500, 12300, 15420],
-      monthlyBookings: [32, 45, 56],
-      revenueGrowth: 25.4,
-      bookingGrowth: 24.4
+  // Calculate date range based on timeRange
+  const getDateRange = () => {
+    const now = new Date();
+    const startDate = new Date();
+    
+    switch (timeRange) {
+      case 'all':
+        // For all time, use a very old start date
+        startDate.setFullYear(2020);
+        break;
+      case 'week':
+        // For week, look back 7 days but also include future bookings
+        startDate.setDate(now.getDate() - 7);
+        break;
+      case 'month':
+        // For month, look back 30 days but also include future bookings
+        startDate.setDate(now.getDate() - 30);
+        break;
+      case 'quarter':
+        // For quarter, look back 90 days but also include future bookings
+        startDate.setDate(now.getDate() - 90);
+        break;
+      case 'year':
+        // For year, look back 365 days but also include future bookings
+        startDate.setDate(now.getDate() - 365);
+        break;
+      default:
+        startDate.setDate(now.getDate() - 30);
+    }
+    
+    // Set end date to a far future date to include all future bookings
+    const endDate = new Date();
+    endDate.setFullYear(now.getFullYear() + 2); // Include bookings up to 2 years in the future
+    
+    return {
+      dateFrom: startDate.toISOString().split('T')[0],
+      dateTo: endDate.toISOString().split('T')[0]
     };
+  };
 
-    setTimeout(() => {
-      setReportData(mockData);
+  // Fetch report data from API
+  const fetchReportData = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const { dateFrom, dateTo } = getDateRange();
+      
+      const response = await fetch(`/api/admin/reports/stats?dateFrom=${dateFrom}&dateTo=${dateTo}`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch data: ${response.statusText}`);
+      }
+      
+      const stats: BookingStats = await response.json();
+      
+      // Calculate derived metrics
+      const averageBookingValue = stats.confirmed > 0 ? Math.round(stats.revenue / stats.confirmed) : 0;
+      
+      // For now, we'll set growth to 0 since we don't have historical comparison data
+      // This can be enhanced later when we have more historical data
+      const revenueGrowth = 0;
+      const bookingGrowth = 0;
+      
+      setReportData({
+        stats,
+        averageBookingValue,
+        revenueGrowth,
+        bookingGrowth
+      });
+    } catch (err) {
+      console.error('Error fetching report data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch report data');
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
+  };
+
+  useEffect(() => {
+    fetchReportData();
   }, [timeRange]);
 
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const currentMonth = new Date().getMonth();
-  const recentMonths = months.slice(Math.max(0, currentMonth - 2), currentMonth + 1);
+  const handleExport = () => {
+    // TODO: Implement export functionality
+    console.log('Export functionality to be implemented');
+  };
+
+  const handleTimeRangeChange = (newRange: string) => {
+    setTimeRange(newRange);
+  };
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Reports & Analytics</h1>
+            <p className="mt-2 text-gray-600">
+              Track your business performance and insights
+            </p>
+          </div>
+        </div>
+        
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Reports</h3>
+                <p className="text-gray-600 mb-4">{error}</p>
+                <Button onClick={fetchReportData}>
+                  Try Again
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -68,13 +170,20 @@ export default function AdminReports() {
         </div>
         <div className="mt-4 sm:mt-0 flex space-x-3">
           <div className="relative">
-            <Button variant="outline" className="flex items-center">
-              <Calendar className="w-4 h-4 mr-2" />
-              This Month
-              <ChevronDown className="w-4 h-4 ml-2" />
-            </Button>
+            <select
+              value={timeRange}
+              onChange={(e) => handleTimeRangeChange(e.target.value)}
+              className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="all">All Time</option>
+              <option value="week">This Week</option>
+              <option value="month">This Month</option>
+              <option value="quarter">This Quarter</option>
+              <option value="year">This Year</option>
+            </select>
+            <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
           </div>
-          <Button>
+          <Button onClick={handleExport} disabled={isLoading || !reportData}>
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>
@@ -95,7 +204,7 @@ export default function AdminReports() {
             </Card>
           ))}
         </div>
-      ) : (
+      ) : reportData ? (
         <>
           {/* Key Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -104,13 +213,17 @@ export default function AdminReports() {
                 <div className="flex items-center">
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                    <p className="text-2xl font-bold text-gray-900">£{reportData?.totalRevenue.toLocaleString()}</p>
+                    <p className="text-2xl font-bold text-gray-900">£{reportData.stats.revenue.toLocaleString()}</p>
                     <div className="flex items-center mt-2">
-                      <TrendingUp className="w-4 h-4 text-green-600 mr-1" />
-                      <span className="text-sm text-green-600 font-medium">
-                        +{reportData?.revenueGrowth}%
+                      {reportData.revenueGrowth >= 0 ? (
+                        <TrendingUp className="w-4 h-4 text-green-600 mr-1" />
+                      ) : (
+                        <TrendingDown className="w-4 h-4 text-red-600 mr-1" />
+                      )}
+                      <span className={`text-sm font-medium ${reportData.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {reportData.revenueGrowth >= 0 ? '+' : ''}{reportData.revenueGrowth}%
                       </span>
-                      <span className="text-sm text-gray-500 ml-1">vs last month</span>
+                      <span className="text-sm text-gray-500 ml-1">vs previous period</span>
                     </div>
                   </div>
                   <PoundSterling className="h-8 w-8 text-green-600" />
@@ -123,13 +236,17 @@ export default function AdminReports() {
                 <div className="flex items-center">
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-600">Total Bookings</p>
-                    <p className="text-2xl font-bold text-gray-900">{reportData?.totalBookings}</p>
+                    <p className="text-2xl font-bold text-gray-900">{reportData.stats.total}</p>
                     <div className="flex items-center mt-2">
-                      <TrendingUp className="w-4 h-4 text-green-600 mr-1" />
-                      <span className="text-sm text-green-600 font-medium">
-                        +{reportData?.bookingGrowth}%
+                      {reportData.bookingGrowth >= 0 ? (
+                        <TrendingUp className="w-4 h-4 text-green-600 mr-1" />
+                      ) : (
+                        <TrendingDown className="w-4 h-4 text-red-600 mr-1" />
+                      )}
+                      <span className={`text-sm font-medium ${reportData.bookingGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {reportData.bookingGrowth >= 0 ? '+' : ''}{reportData.bookingGrowth}%
                       </span>
-                      <span className="text-sm text-gray-500 ml-1">vs last month</span>
+                      <span className="text-sm text-gray-500 ml-1">vs previous period</span>
                     </div>
                   </div>
                   <Users className="h-8 w-8 text-blue-600" />
@@ -142,11 +259,9 @@ export default function AdminReports() {
                 <div className="flex items-center">
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-600">Avg. Booking Value</p>
-                    <p className="text-2xl font-bold text-gray-900">£{reportData?.averageBookingValue}</p>
+                    <p className="text-2xl font-bold text-gray-900">£{reportData.averageBookingValue}</p>
                     <div className="flex items-center mt-2">
-                      <TrendingUp className="w-4 h-4 text-green-600 mr-1" />
-                      <span className="text-sm text-green-600 font-medium">+2.1%</span>
-                      <span className="text-sm text-gray-500 ml-1">vs last month</span>
+                      <span className="text-sm text-gray-500">Based on confirmed bookings</span>
                     </div>
                   </div>
                   <BarChart3 className="h-8 w-8 text-purple-600" />
@@ -158,10 +273,12 @@ export default function AdminReports() {
               <CardContent className="p-6">
                 <div className="flex items-center">
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-600">Popular Location</p>
-                    <p className="text-2xl font-bold text-gray-900">{reportData?.popularLocation}</p>
+                    <p className="text-sm font-medium text-gray-600">Confirmed Bookings</p>
+                    <p className="text-2xl font-bold text-gray-900">{reportData.stats.confirmed}</p>
                     <div className="flex items-center mt-2">
-                      <span className="text-sm text-gray-500">35% of all bookings</span>
+                      <span className="text-sm text-gray-500">
+                        {reportData.stats.total > 0 ? Math.round((reportData.stats.confirmed / reportData.stats.total) * 100) : 0}% of total
+                      </span>
                     </div>
                   </div>
                   <MapPin className="h-8 w-8 text-orange-600" />
@@ -170,148 +287,105 @@ export default function AdminReports() {
             </Card>
           </div>
 
-          {/* Charts Section */}
+          {/* Booking Status Breakdown */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Revenue Chart */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <BarChart3 className="w-5 h-5 mr-2" />
-                  Monthly Revenue
+                  Booking Status Breakdown
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {recentMonths.map((month, index) => {
-                    const revenue = reportData?.monthlyRevenue[index] || 0;
-                    const maxRevenue = Math.max(...(reportData?.monthlyRevenue || [1]));
-                    const percentage = (revenue / maxRevenue) * 100;
-                    
-                    return (
-                      <div key={month} className="flex items-center space-x-4">
-                        <div className="w-12 text-sm font-medium text-gray-600">{month}</div>
-                        <div className="flex-1">
-                          <div className="w-full bg-gray-200 rounded-full h-3">
-                            <div 
-                              className="bg-blue-600 h-3 rounded-full transition-all duration-500" 
-                              style={{ width: `${percentage}%` }}
-                            />
-                          </div>
-                        </div>
-                        <div className="w-20 text-sm font-medium text-right">
-                          £{revenue.toLocaleString()}
+                  {[
+                    { label: 'Confirmed', count: reportData.stats.confirmed, color: 'bg-green-600', percentage: reportData.stats.total > 0 ? (reportData.stats.confirmed / reportData.stats.total) * 100 : 0 },
+                    { label: 'Pending', count: reportData.stats.pending, color: 'bg-yellow-600', percentage: reportData.stats.total > 0 ? (reportData.stats.pending / reportData.stats.total) * 100 : 0 },
+                    { label: 'Cancelled', count: reportData.stats.cancelled, color: 'bg-red-600', percentage: reportData.stats.total > 0 ? (reportData.stats.cancelled / reportData.stats.total) * 100 : 0 }
+                  ].map((status) => (
+                    <div key={status.label} className="flex items-center space-x-4">
+                      <div className="w-24 text-sm font-medium text-gray-600">{status.label}</div>
+                      <div className="flex-1">
+                        <div className="w-full bg-gray-200 rounded-full h-3">
+                          <div 
+                            className={`${status.color} h-3 rounded-full transition-all duration-500`}
+                            style={{ width: `${status.percentage}%` }}
+                          />
                         </div>
                       </div>
-                    );
-                  })}
+                      <div className="w-20 text-sm font-medium text-right">
+                        {status.count} ({Math.round(status.percentage)}%)
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Bookings Chart */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <Users className="w-5 h-5 mr-2" />
-                  Monthly Bookings
+                  Revenue Overview
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {recentMonths.map((month, index) => {
-                    const bookings = reportData?.monthlyBookings[index] || 0;
-                    const maxBookings = Math.max(...(reportData?.monthlyBookings || [1]));
-                    const percentage = (bookings / maxBookings) * 100;
-                    
-                    return (
-                      <div key={month} className="flex items-center space-x-4">
-                        <div className="w-12 text-sm font-medium text-gray-600">{month}</div>
-                        <div className="flex-1">
-                          <div className="w-full bg-gray-200 rounded-full h-3">
-                            <div 
-                              className="bg-green-600 h-3 rounded-full transition-all duration-500" 
-                              style={{ width: `${percentage}%` }}
-                            />
-                          </div>
-                        </div>
-                        <div className="w-20 text-sm font-medium text-right">
-                          {bookings} bookings
-                        </div>
-                      </div>
-                    );
-                  })}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-600">Total Revenue</span>
+                    <span className="text-lg font-bold text-gray-900">£{reportData.stats.revenue.toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-600">Confirmed Bookings</span>
+                    <span className="text-lg font-bold text-gray-900">{reportData.stats.confirmed}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-600">Average Value</span>
+                    <span className="text-lg font-bold text-gray-900">£{reportData.averageBookingValue}</span>
+                  </div>
+                  <div className="pt-4 border-t">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-500">Revenue per confirmed booking</span>
+                      <span className="text-sm text-gray-500">
+                        £{reportData.stats.confirmed > 0 ? Math.round(reportData.stats.revenue / reportData.stats.confirmed) : 0}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Popular Items */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Popular Castles</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {[
-                    { name: 'Princess Castle', bookings: 18, percentage: 32 },
-                    { name: 'Superhero Obstacle', bookings: 14, percentage: 25 },
-                    { name: 'Jungle Adventure', bookings: 12, percentage: 21 },
-                    { name: 'Medieval Castle', bookings: 8, percentage: 14 },
-                    { name: 'Pirate Ship', bookings: 4, percentage: 7 }
-                  ].map((castle) => (
-                    <div key={castle.name} className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium text-gray-900">{castle.name}</span>
-                          <span className="text-sm text-gray-500">{castle.bookings} bookings</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="bg-purple-600 h-2 rounded-full transition-all duration-500" 
-                            style={{ width: `${castle.percentage}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Popular Locations</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {[
-                    { name: 'Hyde Park', bookings: 16, percentage: 35 },
-                    { name: 'Regent\'s Park', bookings: 12, percentage: 26 },
-                    { name: 'Richmond Park', bookings: 10, percentage: 22 },
-                    { name: 'Hampstead Heath', bookings: 6, percentage: 13 },
-                    { name: 'Greenwich Park', bookings: 2, percentage: 4 }
-                  ].map((location) => (
-                    <div key={location.name} className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium text-gray-900">{location.name}</span>
-                          <span className="text-sm text-gray-500">{location.bookings} bookings</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="bg-orange-600 h-2 rounded-full transition-all duration-500" 
-                            style={{ width: `${location.percentage}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          {/* Empty State for Additional Data */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Additional Analytics</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <BarChart3 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">More Analytics Coming Soon</h3>
+                <p className="text-gray-600">
+                  Popular castles, location analytics, and detailed trends will be available as we collect more data.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </>
+      ) : (
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No Data Available</h3>
+                <p className="text-gray-600">
+                  No booking data found for the selected time period. Reports will appear once bookings are created.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

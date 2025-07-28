@@ -1,28 +1,98 @@
-const path = require('path');
-const fs = require('fs');
-require('dotenv').config({ path: path.resolve(process.cwd(), '.env.local') });
+const { Pool } = require('pg');
 
-const { addCastle } = require('../src/lib/database/castles');
+async function seedCastles() {
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
+  });
 
-async function seed() {
-  const dataPath = path.resolve(__dirname, '../data/castles.json');
-  const raw = fs.readFileSync(dataPath, 'utf-8');
-  const castles = JSON.parse(raw);
+  try {
+    console.log('Checking for existing castles...');
 
-  for (const castle of castles) {
-    // Remove id to let DB auto-increment
-    const { id, ...castleData } = castle;
-    try {
-      await addCastle(castleData);
-      console.log(`Seeded: ${castleData.name}`);
-    } catch (err) {
-      console.error(`Failed to seed: ${castleData.name}`, err);
+    // Check if castles exist
+    const existingCastles = await pool.query('SELECT COUNT(*) FROM castles');
+    const count = parseInt(existingCastles.rows[0].count);
+
+    if (count > 0) {
+      console.log(`Found ${count} existing castles, skipping seed.`);
+      return;
     }
+
+    console.log('No castles found, seeding sample data...');
+
+    // Sample castle data
+    const castles = [
+      {
+        name: 'Princess Castle',
+        theme: 'Princess',
+        size: '3m x 3m',
+        price: 150,
+        description: 'Beautiful pink princess castle perfect for little princesses',
+        imageUrl: '/bouncy-castle-1.jpg'
+      },
+      {
+        name: 'Superhero Obstacle',
+        theme: 'Superhero',
+        size: '4m x 3m',
+        price: 180,
+        description: 'Action-packed obstacle course for superhero adventures',
+        imageUrl: '/bouncy-castle-2.jpg'
+      },
+      {
+        name: 'Jungle Adventure',
+        theme: 'Jungle',
+        size: '3.5m x 3m',
+        price: 160,
+        description: 'Wild jungle-themed castle with animal decorations',
+        imageUrl: '/bouncy-castle-3.jpg'
+      },
+      {
+        name: 'Medieval Castle',
+        theme: 'Medieval',
+        size: '4m x 4m',
+        price: 200,
+        description: 'Grand medieval castle for knights and princesses',
+        imageUrl: '/bouncy-castle-4.jpg'
+      },
+      {
+        name: 'Disco',
+        theme: 'Party',
+        size: '3m x 3m',
+        price: 120,
+        description: 'Fun disco-themed castle with colorful lights',
+        imageUrl: '/bouncy-castle-1.jpg'
+      }
+    ];
+
+    // Insert castles
+    for (const castle of castles) {
+      await pool.query(`
+        INSERT INTO castles (name, theme, size, price, description, image_url)
+        VALUES ($1, $2, $3, $4, $5, $6)
+      `, [castle.name, castle.theme, castle.size, castle.price, castle.description, castle.imageUrl]);
+    }
+
+    console.log(`Successfully seeded ${castles.length} castles`);
+
+  } catch (error) {
+    console.error('Seeding failed:', error);
+    throw error;
+  } finally {
+    await pool.end();
   }
-  console.log('Seeding complete.');
 }
 
-seed().catch((err) => {
-  console.error('Seeding failed:', err);
-  process.exit(1);
-}); 
+// Run seeding if this file is executed directly
+if (require.main === module) {
+  seedCastles()
+    .then(() => {
+      console.log('Seeding completed successfully');
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error('Seeding failed:', error);
+      process.exit(1);
+    });
+}
+
+module.exports = { seedCastles }; 

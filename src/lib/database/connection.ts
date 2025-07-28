@@ -88,10 +88,37 @@ export async function initializeDatabase() {
         price INTEGER NOT NULL,
         description TEXT NOT NULL,
         image_url TEXT NOT NULL,
+        maintenance_status VARCHAR(20) DEFAULT 'available',
+        maintenance_notes TEXT,
+        maintenance_start_date DATE,
+        maintenance_end_date DATE,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    // Add maintenance columns to existing castles table if they don't exist
+    try {
+      await query(`
+        ALTER TABLE castles 
+        ADD COLUMN IF NOT EXISTS maintenance_status VARCHAR(20) DEFAULT 'available'
+      `);
+      await query(`
+        ALTER TABLE castles 
+        ADD COLUMN IF NOT EXISTS maintenance_notes TEXT
+      `);
+      await query(`
+        ALTER TABLE castles 
+        ADD COLUMN IF NOT EXISTS maintenance_start_date DATE
+      `);
+      await query(`
+        ALTER TABLE castles 
+        ADD COLUMN IF NOT EXISTS maintenance_end_date DATE
+      `);
+      console.log('Maintenance fields added to castles table');
+    } catch (error) {
+      console.log('Maintenance fields already exist or error adding them:', error);
+    }
 
     // Create bookings table if it doesn't exist
     await query(`

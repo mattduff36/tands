@@ -13,6 +13,10 @@ export interface Castle {
   price: number;
   description: string;
   imageUrl: string;
+  maintenanceStatus?: 'available' | 'maintenance' | 'out_of_service';
+  maintenanceNotes?: string;
+  maintenanceStartDate?: string;
+  maintenanceEndDate?: string;
 }
 
 // Database initialization flag to prevent multiple initialization calls
@@ -42,7 +46,11 @@ export async function getCastles(): Promise<Castle[]> {
     await ensureInitialized();
     
     const result = await query(`
-      SELECT id, name, theme, size, price, description, image_url as "imageUrl"
+      SELECT id, name, theme, size, price, description, image_url as "imageUrl",
+             COALESCE(maintenance_status, 'available') as "maintenanceStatus", 
+             maintenance_notes as "maintenanceNotes",
+             maintenance_start_date as "maintenanceStartDate", 
+             maintenance_end_date as "maintenanceEndDate"
       FROM castles 
       ORDER BY id ASC
     `);
@@ -63,7 +71,11 @@ export async function getCastleById(id: number): Promise<Castle | null> {
     await ensureInitialized();
     
     const result = await query(`
-      SELECT id, name, theme, size, price, description, image_url as "imageUrl"
+      SELECT id, name, theme, size, price, description, image_url as "imageUrl",
+             COALESCE(maintenance_status, 'available') as "maintenanceStatus", 
+             maintenance_notes as "maintenanceNotes",
+             maintenance_start_date as "maintenanceStartDate", 
+             maintenance_end_date as "maintenanceEndDate"
       FROM castles 
       WHERE id = $1
     `, [id]);
@@ -269,6 +281,76 @@ export function resetCastleData(): void {
 }
 
 export function getCastleData() {
-  console.warn('getCastleData() called - use getCastles() instead for PostgreSQL backend');
-  return { castles: [] };
+  return castleData;
+}
+
+/**
+ * Update castle maintenance status
+ */
+export async function updateCastleMaintenance(
+  id: number, 
+  maintenanceData: {
+    status: 'available' | 'maintenance' | 'out_of_service';
+    notes?: string;
+    startDate?: string;
+    endDate?: string;
+  }
+): Promise<Castle | null> {
+  try {
+    await ensureInitialized();
+    
+    const result = await query(`
+      UPDATE castles 
+      SET maintenance_status = $1, 
+          maintenance_notes = $2, 
+          maintenance_start_date = $3, 
+          maintenance_end_date = $4,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $5
+      RETURNING id, name, theme, size, price, description, image_url as "imageUrl",
+                maintenance_status as "maintenanceStatus", maintenance_notes as "maintenanceNotes",
+                maintenance_start_date as "maintenanceStartDate", maintenance_end_date as "maintenanceEndDate"
+    `, [
+      maintenanceData.status,
+      maintenanceData.notes || null,
+      maintenanceData.startDate || null,
+      maintenanceData.endDate || null,
+      id
+    ]);
+    
+    if (result.rows.length === 0) {
+      console.log(`Castle with ID ${id} not found for maintenance update`);
+      return null;
+    }
+    
+    console.log(`Updated maintenance status for castle: ${result.rows[0].name}`);
+    return result.rows[0];
+  } catch (error) {
+    console.error(`Error updating maintenance status for castle ${id}:`, error);
+    throw new Error('Failed to update castle maintenance status');
+  }
+}
+
+/**
+ * Get castles by maintenance status
+ */
+export async function getCastlesByMaintenanceStatus(status: 'available' | 'maintenance' | 'out_of_service'): Promise<Castle[]> {
+  try {
+    await ensureInitialized();
+    
+    const result = await query(`
+      SELECT id, name, theme, size, price, description, image_url as "imageUrl",
+             maintenance_status as "maintenanceStatus", maintenance_notes as "maintenanceNotes",
+             maintenance_start_date as "maintenanceStartDate", maintenance_end_date as "maintenanceEndDate"
+      FROM castles 
+      WHERE maintenance_status = $1
+      ORDER BY id ASC
+    `, [status]);
+    
+    console.log(`Retrieved ${result.rows.length} castles with status: ${status}`);
+    return result.rows;
+  } catch (error) {
+    console.error(`Error retrieving castles with status ${status}:`, error);
+    throw new Error('Failed to retrieve castles by maintenance status');
+  }
 }

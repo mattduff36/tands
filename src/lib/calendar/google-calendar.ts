@@ -219,6 +219,22 @@ export class GoogleCalendarService {
     }
   }
 
+  async getBookingEventsInRange(startDate: Date, endDate: Date): Promise<calendar_v3.Schema$Event[]> {
+    try {
+      const allEvents = await this.getEventsInRange(startDate, endDate);
+      
+      // Filter out maintenance events and only return booking events
+      return allEvents.filter(event => {
+        const extendedProps = event.extendedProperties?.private;
+        // Return events that are NOT maintenance events
+        return !extendedProps || extendedProps.eventType !== 'maintenance';
+      });
+    } catch (error) {
+      console.error('Error getting booking events in range:', error);
+      throw new Error(`Failed to get booking events: ${(error as Error).message}`);
+    }
+  }
+
   async getEventsForMonth(year: number, month: number): Promise<calendar_v3.Schema$Event[]> {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0, 23, 59, 59);
@@ -307,38 +323,116 @@ export class GoogleCalendarService {
     endDate: Date, 
     reason: string = 'Maintenance'
   ): Promise<string> {
-    const maintenanceEvent: calendar_v3.Schema$Event = {
-      summary: `🔧 Bouncy Castle Maintenance - ${reason}`,
-      description: `Bouncy castle unavailable for bookings.\nReason: ${reason}`,
-      start: {
-        dateTime: startDate.toISOString(),
-        timeZone: this.settings.timeZone
-      },
-      end: {
-        dateTime: endDate.toISOString(),
-        timeZone: this.settings.timeZone
-      },
-      colorId: '11', // Red color for maintenance
-      transparency: 'opaque',
-      visibility: 'public'
-    };
+    return this.executeWithRetry(async () => {
+      const event: calendar_v3.Schema$Event = {
+        summary: `🔧 ${reason}`,
+        description: `Maintenance period: ${reason}\n\nThis time slot is blocked for maintenance and is not available for bookings.`,
+        start: {
+          dateTime: startDate.toISOString(),
+          timeZone: this.settings.timeZone,
+        },
+        end: {
+          dateTime: endDate.toISOString(),
+          timeZone: this.settings.timeZone,
+        },
+        colorId: '4', // Red for maintenance
+        transparency: 'opaque',
+        visibility: 'default',
+        reminders: {
+          useDefault: false,
+          overrides: []
+        }
+      };
 
-    try {
       const response = await this.calendar.events.insert({
         calendarId: this.settings.primaryCalendarId,
-        requestBody: maintenanceEvent
+        requestBody: event,
       });
 
-      if (!response.data.id) {
-        throw new Error('Failed to create maintenance block');
-      }
+      return response.data.id!;
+    }, 'createMaintenanceBlock');
+  }
 
-      console.log(`Created maintenance block: ${response.data.id}`);
-      return response.data.id;
-    } catch (error) {
-      console.error('Error creating maintenance block:', error);
-      throw new Error(`Failed to create maintenance block: ${(error as Error).message}`);
-    }
+  async createMaintenanceEvent(maintenanceData: {
+    castleId: number;
+    castleName: string;
+    startDate: string;
+    endDate: string;
+    notes: string;
+    status: string;
+  }): Promise<string> {
+    return this.executeWithRetry(async () => {
+      // Create start date at 09:00 on the start date
+      const startDateTime = new Date(maintenanceData.startDate);
+      startDateTime.setHours(9, 0, 0, 0);
+      
+      // Create end date at 18:00 on the end date
+      const endDateTime = new Date(maintenanceData.endDate);
+      endDateTime.setHours(18, 0, 0, 0);
+
+      const event: calendar_v3.Schema$Event = {
+        summary: `🔧 ${maintenanceData.castleName} - ${maintenanceData.status === 'maintenance' ? 'Maintenance' : 'Out of Service'}`,
+        description: `Castle ID: ${maintenanceData.castleId}\nCastle: ${maintenanceData.castleName}\nStatus: ${maintenanceData.status}\n\n${maintenanceData.notes ? `Notes: ${maintenanceData.notes}\n\n` : ''}This castle is not available for bookings during this period.`,
+        start: {
+          dateTime: startDateTime.toISOString(),
+          timeZone: this.settings.timeZone,
+        },
+        end: {
+          dateTime: endDateTime.toISOString(),
+          timeZone: this.settings.timeZone,
+        },
+        colorId: maintenanceData.status === 'maintenance' ? '4' : '6', // Red for maintenance, orange for out of service
+        transparency: 'opaque',
+        visibility: 'default',
+        reminders: {
+          useDefault: false,
+          overrides: []
+        },
+        extendedProperties: {
+          private: {
+            castleId: maintenanceData.castleId.toString(),
+            eventType: 'maintenance',
+            maintenanceStatus: maintenanceData.status
+          }
+        }
+      };
+
+      const response = await this.calendar.events.insert({
+        calendarId: this.settings.primaryCalendarId,
+        requestBody: event,
+      });
+
+      return response.data.id!;
+    }, 'createMaintenanceEvent');
+  }
+
+  async deleteMaintenanceEvents(castleId: number, startDate: string, endDate: string): Promise<void> {
+    return this.executeWithRetry(async () => {
+      const startDateTime = new Date(startDate);
+      const endDateTime = new Date(endDate);
+      
+      // Find all events in the date range
+      const events = await this.calendar.events.list({
+        calendarId: this.settings.primaryCalendarId,
+        timeMin: startDateTime.toISOString(),
+        timeMax: endDateTime.toISOString(),
+        singleEvents: true,
+        orderBy: 'startTime'
+      });
+
+      // Delete maintenance events for this castle
+      for (const event of events.data.items || []) {
+        const extendedProps = event.extendedProperties?.private;
+        if (extendedProps?.castleId === castleId.toString() &&
+            extendedProps?.eventType === 'maintenance') {
+          await this.calendar.events.delete({
+            calendarId: this.settings.primaryCalendarId,
+            eventId: event.id!,
+          });
+          console.log(`Deleted maintenance event: ${event.id}`);
+        }
+      }
+    }, 'deleteMaintenanceEvents');
   }
 
   // Helper Methods

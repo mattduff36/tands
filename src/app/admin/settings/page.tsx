@@ -6,132 +6,163 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { 
   Settings, 
   Save, 
   RefreshCw,
-  User,
-  Mail,
-  Phone,
-  MapPin,
+  Wrench,
+  AlertTriangle,
+  CheckCircle,
   Calendar,
-  PoundSterling,
-  Shield,
-  Bell,
-  Globe,
-  Database,
-  Key
+  Clock,
+  Loader2
 } from 'lucide-react';
+import { toast } from 'sonner';
 
-interface SettingsData {
-  business: {
-    name: string;
-    email: string;
-    phone: string;
-    address: string;
-    description: string;
-  };
-  pricing: {
-    baseRate: number;
-    hourlyRate: number;
-    deliveryFee: number;
-    setupFee: number;
-  };
-  operational: {
-    workingHours: {
-      start: string;
-      end: string;
-    };
-    workingDays: string[];
-    bookingNotice: number;
-    maxBookingDays: number;
-  };
-  notifications: {
-    emailNotifications: boolean;
-    smsNotifications: boolean;
-    bookingReminders: boolean;
-    paymentReminders: boolean;
-  };
+interface Castle {
+  id: number;
+  name: string;
+  theme: string;
+  size: string;
+  price: number;
+  description: string;
+  imageUrl: string;
+  maintenanceStatus?: 'available' | 'maintenance' | 'out_of_service';
+  maintenanceNotes?: string;
+  maintenanceStartDate?: string;
+  maintenanceEndDate?: string;
+}
+
+interface MaintenanceForm {
+  status: 'available' | 'maintenance' | 'out_of_service';
+  notes: string;
+  startDate: string;
+  endDate: string;
 }
 
 export default function AdminSettings() {
-  const [settings, setSettings] = useState<SettingsData | null>(null);
+  const [castles, setCastles] = useState<Castle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedCastle, setSelectedCastle] = useState<Castle | null>(null);
+  const [maintenanceForm, setMaintenanceForm] = useState<MaintenanceForm>({
+    status: 'available',
+    notes: '',
+    startDate: '',
+    endDate: ''
+  });
 
-  // Mock settings data
-  useEffect(() => {
-    const mockSettings: SettingsData = {
-      business: {
-        name: 'T&S Bouncy Castles',
-        email: 'info@tandsbouncycastles.co.uk',
-        phone: '+44 20 1234 5678',
-        address: '123 Business Street, London, UK',
-        description: 'Premium bouncy castle hire services across London. Safe, clean, and fun entertainment for all ages.'
-      },
-      pricing: {
-        baseRate: 150,
-        hourlyRate: 25,
-        deliveryFee: 50,
-        setupFee: 25
-      },
-      operational: {
-        workingHours: {
-          start: '08:00',
-          end: '18:00'
-        },
-        workingDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
-        bookingNotice: 48,
-        maxBookingDays: 90
-      },
-      notifications: {
-        emailNotifications: true,
-        smsNotifications: false,
-        bookingReminders: true,
-        paymentReminders: true
+  // Fetch castles from API
+  const fetchCastles = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/admin/fleet');
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Fetched castles:', data);
+        setCastles(data || []);
+      } else {
+        toast.error('Failed to fetch castles');
       }
-    };
-
-    setTimeout(() => {
-      setSettings(mockSettings);
+    } catch (error) {
+      console.error('Error fetching castles:', error);
+      toast.error('Error loading castles');
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
+  };
+
+  useEffect(() => {
+    fetchCastles();
   }, []);
 
-  const handleSave = async () => {
+  const handleCastleSelect = (castle: Castle) => {
+    setSelectedCastle(castle);
+    setMaintenanceForm({
+      status: castle.maintenanceStatus || 'available',
+      notes: castle.maintenanceNotes || '',
+      startDate: castle.maintenanceStartDate || '',
+      endDate: castle.maintenanceEndDate || ''
+    });
+  };
+
+  const handleMaintenanceUpdate = async () => {
+    if (!selectedCastle) return;
+
+    // Validate required fields for maintenance/out_of_service status
+    if (maintenanceForm.status !== 'available') {
+      if (!maintenanceForm.startDate || !maintenanceForm.endDate) {
+        toast.error('Start date and end date are required for maintenance or out of service status');
+        return;
+      }
+      
+      // Validate date range
+      const startDate = new Date(maintenanceForm.startDate);
+      const endDate = new Date(maintenanceForm.endDate);
+      
+      if (startDate > endDate) {
+        toast.error('Start date must be before or equal to end date');
+        return;
+      }
+    }
+
     setIsSaving(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setIsSaving(false);
-    // Show success message (would integrate with toast/notification system)
-    console.log('Settings saved successfully');
+    try {
+      console.log('Updating maintenance for castle:', selectedCastle.id, maintenanceForm);
+      
+      const response = await fetch(`/api/admin/fleet/${selectedCastle.id}/maintenance`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(maintenanceForm),
+      });
+
+      if (response.ok) {
+        const updatedCastle = await response.json();
+        console.log('Updated castle:', updatedCastle);
+        setCastles(prev => prev.map(castle => 
+          castle.id === selectedCastle.id ? updatedCastle : castle
+        ));
+        setSelectedCastle(updatedCastle);
+        toast.success(`Maintenance status updated for ${selectedCastle.name}`);
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Failed to update maintenance status');
+      }
+    } catch (error) {
+      console.error('Error updating maintenance:', error);
+      toast.error('Error updating maintenance status');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const updateSettings = (section: keyof SettingsData, field: string, value: any) => {
-    if (!settings) return;
-    
-    setSettings(prev => ({
-      ...prev!,
-      [section]: {
-        ...prev![section],
-        [field]: value
-      }
-    }));
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'available':
+        return <Badge className="bg-green-100 text-green-800">Available</Badge>;
+      case 'maintenance':
+        return <Badge className="bg-yellow-100 text-yellow-800">Maintenance</Badge>;
+      case 'out_of_service':
+        return <Badge className="bg-red-100 text-red-800">Out of Service</Badge>;
+      default:
+        return <Badge className="bg-gray-100 text-gray-800">Unknown</Badge>;
+    }
   };
 
-  const updateNestedSettings = (section: keyof SettingsData, nested: string, field: string, value: any) => {
-    if (!settings) return;
-    
-    setSettings(prev => ({
-      ...prev!,
-      [section]: {
-        ...prev![section],
-        [nested]: {
-          ...(prev![section] as any)[nested],
-          [field]: value
-        }
-      }
-    }));
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'available':
+        return <CheckCircle className="w-5 h-5 text-green-600" />;
+      case 'maintenance':
+        return <Wrench className="w-5 h-5 text-yellow-600" />;
+      case 'out_of_service':
+        return <AlertTriangle className="w-5 h-5 text-red-600" />;
+      default:
+        return <Settings className="w-5 h-5 text-gray-600" />;
+    }
   };
 
   if (isLoading) {
@@ -144,23 +175,21 @@ export default function AdminSettings() {
           </div>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i}>
-              <CardHeader>
-                <div className="h-6 bg-gray-200 rounded w-32 animate-pulse"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {[1, 2, 3].map((j) => (
-                    <div key={j} className="animate-pulse">
-                      <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
-                      <div className="h-10 bg-gray-200 rounded"></div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          <Card>
+            <CardHeader>
+              <div className="h-6 bg-gray-200 rounded w-32 animate-pulse"></div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="animate-pulse">
+                    <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
+                    <div className="h-10 bg-gray-200 rounded"></div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
@@ -171,274 +200,208 @@ export default function AdminSettings() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Castle Maintenance</h1>
           <p className="mt-2 text-gray-600">
-            Manage your business settings and preferences
+            Manage maintenance status for your bouncy castle fleet
           </p>
         </div>
         <div className="mt-4 sm:mt-0">
-          <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving ? (
-              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4 mr-2" />
-            )}
-            {isSaving ? 'Saving...' : 'Save Changes'}
+          <Button onClick={fetchCastles} variant="outline" className="mr-2">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
+          </Button>
+          <Button onClick={async () => {
+            try {
+              const response = await fetch('/api/admin/seed-castles', { method: 'POST' });
+              const result = await response.json();
+              if (result.success) {
+                toast.success(result.message);
+                fetchCastles();
+              } else {
+                toast.error(result.error || 'Failed to seed castles');
+              }
+            } catch (error) {
+              toast.error('Error seeding castles');
+            }
+          }} variant="outline">
+            <Wrench className="w-4 h-4 mr-2" />
+            Seed Database
           </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Business Information */}
+        {/* Castle List */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
-              <User className="w-5 h-5 mr-2" />
-              Business Information
+              <Wrench className="w-5 h-5 mr-2" />
+              Castle Fleet
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="businessName">Business Name</Label>
-              <Input
-                id="businessName"
-                value={settings?.business.name || ''}
-                onChange={(e) => updateSettings('business', 'name', e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="businessEmail">Email Address</Label>
-              <Input
-                id="businessEmail"
-                type="email"
-                value={settings?.business.email || ''}
-                onChange={(e) => updateSettings('business', 'email', e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="businessPhone">Phone Number</Label>
-              <Input
-                id="businessPhone"
-                value={settings?.business.phone || ''}
-                onChange={(e) => updateSettings('business', 'phone', e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="businessAddress">Address</Label>
-              <Textarea
-                id="businessAddress"
-                value={settings?.business.address || ''}
-                onChange={(e) => updateSettings('business', 'address', e.target.value)}
-                rows={3}
-              />
-            </div>
-            <div>
-              <Label htmlFor="businessDescription">Description</Label>
-              <Textarea
-                id="businessDescription"
-                value={settings?.business.description || ''}
-                onChange={(e) => updateSettings('business', 'description', e.target.value)}
-                rows={3}
-              />
+          <CardContent>
+            <div className="space-y-3">
+              {castles.map((castle) => (
+                <div
+                  key={castle.id}
+                  className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                    selectedCastle?.id === castle.id
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                  onClick={() => handleCastleSelect(castle)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      {getStatusIcon(castle.maintenanceStatus || 'available')}
+                      <div>
+                        <h3 className="font-medium text-gray-900">{castle.name}</h3>
+                        <p className="text-sm text-gray-500">{castle.theme} • {castle.size}</p>
+                      </div>
+                    </div>
+                    {getStatusBadge(castle.maintenanceStatus || 'available')}
+                  </div>
+                  {castle.maintenanceNotes && (
+                    <p className="text-sm text-gray-600 mt-2">{castle.maintenanceNotes}</p>
+                  )}
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
 
-        {/* Pricing Settings */}
+        {/* Maintenance Controls */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
-              <PoundSterling className="w-5 h-5 mr-2" />
-              Pricing Settings
+              <Settings className="w-5 h-5 mr-2" />
+              Maintenance Controls
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="baseRate">Base Rate (£)</Label>
-              <Input
-                id="baseRate"
-                type="number"
-                value={settings?.pricing.baseRate || 0}
-                onChange={(e) => updateSettings('pricing', 'baseRate', parseInt(e.target.value))}
-              />
-            </div>
-            <div>
-              <Label htmlFor="hourlyRate">Hourly Rate (£)</Label>
-              <Input
-                id="hourlyRate"
-                type="number"
-                value={settings?.pricing.hourlyRate || 0}
-                onChange={(e) => updateSettings('pricing', 'hourlyRate', parseInt(e.target.value))}
-              />
-            </div>
-            <div>
-              <Label htmlFor="deliveryFee">Delivery Fee (£)</Label>
-              <Input
-                id="deliveryFee"
-                type="number"
-                value={settings?.pricing.deliveryFee || 0}
-                onChange={(e) => updateSettings('pricing', 'deliveryFee', parseInt(e.target.value))}
-              />
-            </div>
-            <div>
-              <Label htmlFor="setupFee">Setup Fee (£)</Label>
-              <Input
-                id="setupFee"
-                type="number"
-                value={settings?.pricing.setupFee || 0}
-                onChange={(e) => updateSettings('pricing', 'setupFee', parseInt(e.target.value))}
-              />
-            </div>
-          </CardContent>
-        </Card>
+          <CardContent>
+            {selectedCastle ? (
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-lg font-medium">{selectedCastle.name}</Label>
+                  <p className="text-sm text-gray-500">{selectedCastle.theme} • {selectedCastle.size}</p>
+                </div>
 
-        {/* Operational Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Calendar className="w-5 h-5 mr-2" />
-              Operational Settings
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="workingStart">Working Hours Start</Label>
-                <Input
-                  id="workingStart"
-                  type="time"
-                  value={settings?.operational.workingHours.start || ''}
-                  onChange={(e) => updateNestedSettings('operational', 'workingHours', 'start', e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="workingEnd">Working Hours End</Label>
-                <Input
-                  id="workingEnd"
-                  type="time"
-                  value={settings?.operational.workingHours.end || ''}
-                  onChange={(e) => updateNestedSettings('operational', 'workingHours', 'end', e.target.value)}
-                />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="bookingNotice">Minimum Booking Notice (hours)</Label>
-              <Input
-                id="bookingNotice"
-                type="number"
-                value={settings?.operational.bookingNotice || 0}
-                onChange={(e) => updateSettings('operational', 'bookingNotice', parseInt(e.target.value))}
-              />
-            </div>
-            <div>
-              <Label htmlFor="maxBookingDays">Maximum Booking Days in Advance</Label>
-              <Input
-                id="maxBookingDays"
-                type="number"
-                value={settings?.operational.maxBookingDays || 0}
-                onChange={(e) => updateSettings('operational', 'maxBookingDays', parseInt(e.target.value))}
-              />
-            </div>
-          </CardContent>
-        </Card>
+                <div>
+                  <Label htmlFor="status">Maintenance Status</Label>
+                  <select
+                    id="status"
+                    value={maintenanceForm.status}
+                    onChange={(e) => setMaintenanceForm(prev => ({ ...prev, status: e.target.value as any }))}
+                    className="w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="available">Available</option>
+                    <option value="maintenance">Maintenance</option>
+                    <option value="out_of_service">Out of Service</option>
+                  </select>
+                </div>
 
-        {/* Notification Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Bell className="w-5 h-5 mr-2" />
-              Notification Settings
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="emailNotifications">Email Notifications</Label>
-                <p className="text-sm text-gray-500">Receive booking notifications via email</p>
+                <div>
+                  <Label htmlFor="notes">Maintenance Notes</Label>
+                  <Textarea
+                    id="notes"
+                    value={maintenanceForm.notes}
+                    onChange={(e) => setMaintenanceForm(prev => ({ ...prev, notes: e.target.value }))}
+                    placeholder="Enter maintenance details..."
+                    rows={3}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="startDate">
+                      Start Date
+                      {maintenanceForm.status !== 'available' && <span className="text-red-500 ml-1">*</span>}
+                    </Label>
+                    <Input
+                      id="startDate"
+                      type="date"
+                      value={maintenanceForm.startDate}
+                      onChange={(e) => setMaintenanceForm(prev => ({ ...prev, startDate: e.target.value }))}
+                      required={maintenanceForm.status !== 'available'}
+                      className={maintenanceForm.status !== 'available' && !maintenanceForm.startDate ? 'border-red-500' : ''}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="endDate">
+                      End Date
+                      {maintenanceForm.status !== 'available' && <span className="text-red-500 ml-1">*</span>}
+                    </Label>
+                    <Input
+                      id="endDate"
+                      type="date"
+                      value={maintenanceForm.endDate}
+                      onChange={(e) => setMaintenanceForm(prev => ({ ...prev, endDate: e.target.value }))}
+                      required={maintenanceForm.status !== 'available'}
+                      className={maintenanceForm.status !== 'available' && !maintenanceForm.endDate ? 'border-red-500' : ''}
+                    />
+                  </div>
+                </div>
+                {maintenanceForm.status !== 'available' && (
+                  <p className="text-sm text-gray-600">
+                    <Clock className="w-4 h-4 inline mr-1" />
+                    Maintenance events will span from 09:00 on the start date to 18:00 on the end date.
+                  </p>
+                )}
+
+                <Button 
+                  onClick={handleMaintenanceUpdate} 
+                  disabled={isSaving}
+                  className="w-full"
+                >
+                  {isSaving ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4 mr-2" />
+                  )}
+                  {isSaving ? 'Updating...' : 'Update Maintenance Status'}
+                </Button>
               </div>
-              <Input
-                id="emailNotifications"
-                type="checkbox"
-                className="w-4 h-4"
-                checked={settings?.notifications.emailNotifications || false}
-                onChange={(e) => updateSettings('notifications', 'emailNotifications', e.target.checked)}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="smsNotifications">SMS Notifications</Label>
-                <p className="text-sm text-gray-500">Receive booking notifications via SMS</p>
+            ) : (
+              <div className="text-center py-8">
+                <Wrench className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Castle</h3>
+                <p className="text-gray-600">
+                  Choose a castle from the list to manage its maintenance status.
+                </p>
               </div>
-              <Input
-                id="smsNotifications"
-                type="checkbox"
-                className="w-4 h-4"
-                checked={settings?.notifications.smsNotifications || false}
-                onChange={(e) => updateSettings('notifications', 'smsNotifications', e.target.checked)}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="bookingReminders">Booking Reminders</Label>
-                <p className="text-sm text-gray-500">Send reminders to customers</p>
-              </div>
-              <Input
-                id="bookingReminders"
-                type="checkbox"
-                className="w-4 h-4"
-                checked={settings?.notifications.bookingReminders || false}
-                onChange={(e) => updateSettings('notifications', 'bookingReminders', e.target.checked)}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="paymentReminders">Payment Reminders</Label>
-                <p className="text-sm text-gray-500">Send payment reminders to customers</p>
-              </div>
-              <Input
-                id="paymentReminders"
-                type="checkbox"
-                className="w-4 h-4"
-                checked={settings?.notifications.paymentReminders || false}
-                onChange={(e) => updateSettings('notifications', 'paymentReminders', e.target.checked)}
-              />
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* System Information */}
+      {/* Maintenance Summary */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
-            <Database className="w-5 h-5 mr-2" />
-            System Information
+            <Calendar className="w-5 h-5 mr-2" />
+            Maintenance Summary
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
-            <div>
-              <p className="font-medium text-gray-900">Version</p>
-              <p className="text-gray-600">1.0.0</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">
+                {castles.filter(c => (c.maintenanceStatus || 'available') === 'available').length}
+              </div>
+              <p className="text-sm text-gray-600">Available</p>
             </div>
-            <div>
-              <p className="font-medium text-gray-900">Last Backup</p>
-              <p className="text-gray-600">2024-01-23 10:30 AM</p>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-yellow-600">
+                {castles.filter(c => (c.maintenanceStatus || 'available') === 'maintenance').length}
+              </div>
+              <p className="text-sm text-gray-600">In Maintenance</p>
             </div>
-            <div>
-              <p className="font-medium text-gray-900">Storage Used</p>
-              <p className="text-gray-600">2.4 GB / 10 GB</p>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-red-600">
+                {castles.filter(c => (c.maintenanceStatus || 'available') === 'out_of_service').length}
+              </div>
+              <p className="text-sm text-gray-600">Out of Service</p>
             </div>
-          </div>
-          <div className="mt-6 flex space-x-3">
-            <Button variant="outline">
-              <Database className="w-4 h-4 mr-2" />
-              Backup Data
-            </Button>
-            <Button variant="outline">
-              <Key className="w-4 h-4 mr-2" />
-              Change Password
-            </Button>
           </div>
         </CardContent>
       </Card>

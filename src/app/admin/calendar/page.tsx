@@ -503,7 +503,7 @@ export default function AdminCalendar() {
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
-  // Generate calendar grid
+  // Generate calendar grid with event bars
   const generateCalendarGrid = () => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -521,22 +521,28 @@ export default function AdminCalendar() {
         const currentDay = new Date(startDate);
         currentDay.setDate(startDate.getDate() + (week * 7) + day);
         
+        // Find events that occur on this day
         const dayEvents = events.filter(event => {
-          const eventDate = new Date(event.start?.dateTime || event.start?.date || '');
-          return eventDate.toDateString() === currentDay.toDateString();
+          const eventStart = new Date(event.start?.dateTime || event.start?.date || '');
+          const eventEnd = new Date(event.end?.dateTime || event.end?.date || '');
+          const currentDayStart = new Date(currentDay);
+          currentDayStart.setHours(0, 0, 0, 0);
+          const currentDayEnd = new Date(currentDay);
+          currentDayEnd.setHours(23, 59, 59, 999);
+          
+          // Check if event overlaps with this day
+          return eventStart <= currentDayEnd && eventEnd >= currentDayStart;
         });
         
         const isCurrentMonth = currentDay.getMonth() === month;
         const isToday = currentDay.toDateString() === today.toDateString();
-        const hasEvents = dayEvents.length > 0;
         
         weekDays.push({
           date: currentDay,
           day: currentDay.getDate(),
           isCurrentMonth,
           isToday,
-          hasEvents,
-          eventCount: dayEvents.length
+          events: dayEvents
         });
       }
       days.push(weekDays);
@@ -665,7 +671,7 @@ export default function AdminCalendar() {
                         <div
                           key={`${weekIndex}-${dayIndex}`}
                           className={`
-                            p-2 min-h-[60px] border border-gray-200 relative cursor-pointer hover:bg-gray-50
+                            p-2 min-h-[80px] border border-gray-200 relative cursor-pointer hover:bg-gray-50
                             ${day.isCurrentMonth ? 'bg-white' : 'bg-gray-50 text-gray-400'}
                             ${day.isToday ? 'ring-2 ring-blue-500 bg-blue-50' : ''}
                           `}
@@ -673,16 +679,50 @@ export default function AdminCalendar() {
                           <span className={`text-sm ${day.isToday ? 'font-bold text-blue-600' : ''}`}>
                             {day.day}
                           </span>
-                          {day.hasEvents && (
-                            <div className="absolute bottom-1 right-1">
-                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                              {day.eventCount > 1 && (
-                                <span className="text-xs text-blue-600 font-medium">
-                                  +{day.eventCount - 1}
-                                </span>
-                              )}
-                            </div>
-                          )}
+                          
+                          {/* Event bars */}
+                          <div className="mt-1 space-y-1">
+                            {day.events.map((event, eventIndex) => {
+                              const eventStart = new Date(event.start?.dateTime || event.start?.date || '');
+                              const eventEnd = new Date(event.end?.dateTime || event.end?.date || '');
+                              const isMultiDay = eventStart.toDateString() !== eventEnd.toDateString();
+                              
+                              // Determine if this is the start, middle, or end of a multi-day event
+                              const isStart = eventStart.toDateString() === day.date.toDateString();
+                              const isEnd = eventEnd.toDateString() === day.date.toDateString();
+                              const isMiddle = !isStart && !isEnd && isMultiDay;
+                              
+                              // Get event color based on type
+                              const getEventColor = () => {
+                                if (event.summary?.includes('🔧')) return 'bg-red-500'; // Maintenance
+                                if (event.summary?.includes('🏰')) return 'bg-green-500'; // Booking
+                                return 'bg-blue-500'; // Default
+                              };
+                              
+                              return (
+                                <div
+                                  key={`${event.id}-${eventIndex}`}
+                                  className={`
+                                    h-4 rounded text-xs text-white font-medium px-1 flex items-center cursor-pointer hover:opacity-80
+                                    ${getEventColor()}
+                                    ${isStart ? 'rounded-l-md' : ''}
+                                    ${isEnd ? 'rounded-r-md' : ''}
+                                    ${isMiddle ? 'rounded-none' : ''}
+                                    ${!isMultiDay ? 'rounded-md' : ''}
+                                  `}
+                                  title={`${event.summary} - ${formatEventTime(event)}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleViewDetails(event);
+                                  }}
+                                >
+                                  <span className="truncate">
+                                    {event.summary?.replace('🏰 ', '').replace('🔧 ', '')}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
                       ))
                     )}

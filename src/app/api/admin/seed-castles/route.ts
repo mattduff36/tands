@@ -1,40 +1,74 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth/nextauth.config';
+import { query } from '@/lib/database/connection';
 import { addCastle } from '@/lib/database/castles';
-import path from 'path';
 import fs from 'fs';
+import path from 'path';
 
-async function seedCastles() {
-  // Read placeholder castles
-  const dataPath = path.resolve(process.cwd(), 'data/castles.json');
-  const raw = fs.readFileSync(dataPath, 'utf-8');
-  const castles = JSON.parse(raw);
-
-  const results = [];
-  for (const castle of castles) {
-    const { id, ...castleData } = castle;
-    try {
-      const result = await addCastle(castleData);
-      results.push({ name: castleData.name, status: 'success', id: result.id });
-    } catch (err) {
-      results.push({ name: castleData.name, status: 'error', error: String(err) });
-    }
-  }
-  return results;
-}
-
+/**
+ * POST /api/admin/seed-castles
+ * Seed castle data from JSON file
+ */
 export async function POST(request: NextRequest) {
-  // Auth check
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    // Check authentication
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user?.email) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Check if user is authorized admin
+    const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(',').map(email => email.trim()) || [];
+    const userEmail = session.user?.email?.toLowerCase();
+    
+    if (!userEmail || !adminEmails.some(email => email.toLowerCase() === userEmail)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    console.log('Starting castle seeding...');
+
+    // Check if castles already exist
+    const existingCastles = await query('SELECT COUNT(*) FROM castles');
+    const count = parseInt(existingCastles.rows[0].count);
+
+    if (count > 0) {
+      return NextResponse.json({ 
+        success: true, 
+        message: `Database already has ${count} castles` 
+      });
+    }
+
+    // Read castle data from JSON file
+    const dataPath = path.join(process.cwd(), 'data', 'castles.json');
+    const rawData = fs.readFileSync(dataPath, 'utf-8');
+    const castles = JSON.parse(rawData);
+
+    console.log(`Found ${castles.length} castles to seed`);
+
+    // Add castles to database
+    for (const castle of castles) {
+      const { id, ...castleData } = castle; // Remove id to let DB auto-increment
+      await addCastle(castleData);
+      console.log(`Seeded: ${castleData.name}`);
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      message: `Successfully seeded ${castles.length} castles` 
+    });
+
+  } catch (error: any) {
+    console.error('Error seeding castles:', error);
+    return NextResponse.json(
+      { 
+        error: 'Failed to seed castles',
+        details: error.message 
+      },
+      { status: 500 }
+    );
   }
-  const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(',').map(e => e.trim().toLowerCase()) || [];
-  const userEmail = session.user?.email?.toLowerCase();
-  if (!userEmail || !adminEmails.includes(userEmail)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
-  const results = await seedCastles();
-  return NextResponse.json({ results });
 } 

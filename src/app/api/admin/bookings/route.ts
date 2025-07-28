@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
         const endDate = new Date();
         endDate.setMonth(endDate.getMonth() + 12);
         
-        const calendarEvents = await calendarService.getEventsInRange(now, endDate);
+        const calendarEvents = await calendarService.getBookingEventsInRange(now, endDate);
         
         // Filter and transform calendar events that represent confirmed bookings
         const confirmedBookings = calendarEvents
