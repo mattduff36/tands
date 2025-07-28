@@ -203,10 +203,6 @@ export default function AdminDashboard() {
             <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button size="sm" onClick={() => router.push('/admin/bookings')}>
-            <Plus className="w-4 h-4 mr-2" />
-            New Booking
-          </Button>
         </div>
       </div>
 
@@ -220,8 +216,11 @@ export default function AdminDashboard() {
                 stats.calendarStatus === 'error' ? 'bg-red-600' : 'bg-yellow-600'
               }`}></div>
               <span className="text-sm font-medium">
-                Google Calendar: {stats.calendarStatus === 'connected' ? 'Connected' : 
-                               stats.calendarStatus === 'error' ? 'Error' : 'Disconnected'}
+                Google Calendar: {stats.calendarStatus === 'connected' ? 
+                  <span className="text-green-600 font-bold">Connected</span> : 
+                  stats.calendarStatus === 'error' ? 
+                  <span className="text-red-600 font-bold">Error</span> : 
+                  <span className="text-yellow-600 font-bold">Disconnected</span>}
               </span>
             </div>
           </CardContent>
@@ -231,7 +230,9 @@ export default function AdminDashboard() {
           <CardContent className="pt-6">
             <div className="flex items-center space-x-2">
               <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-              <span className="text-sm font-medium">Database: Connected</span>
+              <span className="text-sm font-medium">
+                Database: <span className="text-green-600 font-bold">Connected</span>
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -248,60 +249,44 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Today's Bookings</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.todayBookings}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.todayBookings > 0 ? 'Active bookings today' : 'No bookings today'}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.weekBookings}</div>
-            <p className="text-xs text-muted-foreground">
-              All bookings in system
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(stats.totalRevenue)}</div>
-            <p className="text-xs text-muted-foreground">
-              From all bookings
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Fleet Status</CardTitle>
-            <Castle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.availableCastles}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.maintenanceCastles} in maintenance
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Button 
+              className="h-16 flex-col space-y-2 text-sm bg-blue-500 hover:bg-blue-600 text-white"
+              onClick={() => router.push('/admin/bookings')}
+            >
+              <Calendar className="w-5 h-5" />
+              <span>Bookings</span>
+            </Button>
+            <Button 
+              className="h-16 flex-col space-y-2 text-sm bg-orange-500 hover:bg-orange-600 text-white"
+              onClick={() => router.push('/admin/calendar')}
+            >
+              <Calendar className="w-5 h-5" />
+              <span>Calendar</span>
+            </Button>
+            <Button 
+              className="h-16 flex-col space-y-2 text-sm bg-purple-500 hover:bg-purple-600 text-white"
+              onClick={() => router.push('/admin/fleet')}
+            >
+              <Castle className="w-5 h-5" />
+              <span>Fleet</span>
+            </Button>
+            <Button 
+              className="h-16 flex-col space-y-2 text-sm bg-gray-400 hover:bg-gray-500 text-white"
+              onClick={() => router.push('/admin/reports')}
+            >
+              <TrendingUp className="w-5 h-5" />
+              <span>Reports</span>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -422,48 +407,6 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <Button 
-              className="h-16 flex-col space-y-2 text-sm"
-              onClick={() => router.push('/admin/bookings')}
-            >
-              <Plus className="w-5 h-5" />
-              <span>New Booking</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-16 flex-col space-y-2 text-sm"
-              onClick={() => router.push('/admin/calendar')}
-            >
-              <Calendar className="w-5 h-5" />
-              <span>Calendar</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-16 flex-col space-y-2 text-sm"
-              onClick={() => router.push('/admin/fleet')}
-            >
-              <Castle className="w-5 h-5" />
-              <span>Fleet</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-16 flex-col space-y-2 text-sm"
-              onClick={() => router.push('/admin/reports')}
-            >
-              <TrendingUp className="w-5 h-5" />
-              <span>Reports</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
