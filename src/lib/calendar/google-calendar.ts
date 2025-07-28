@@ -450,15 +450,6 @@ export class GoogleCalendarService {
     if (paymentMethod) description += `Payment: ${paymentMethod === 'card' ? 'Card (on delivery)' : 'Cash'}\n`;
     if (notes) description += `\nNotes: ${notes}\n`;
 
-    const attendees: calendar_v3.Schema$EventAttendee[] = [];
-    if (contactDetails.email) {
-      attendees.push({
-        email: contactDetails.email,
-        displayName: customerName,
-        responseStatus: 'needsAction'
-      });
-    }
-
     return {
       summary: `🏰 ${customerName} - ${bouncyCastleType || 'Bouncy Castle'}`,
       description,
@@ -471,7 +462,6 @@ export class GoogleCalendarService {
         dateTime: duration.end,
         timeZone: this.settings.timeZone
       },
-      attendees,
       colorId: '10', // Green color for bookings
       transparency: 'opaque',
       visibility: 'public',
