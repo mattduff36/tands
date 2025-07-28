@@ -281,7 +281,8 @@ export function resetCastleData(): void {
 }
 
 export function getCastleData() {
-  return castleData;
+  console.warn('getCastleData() called - this function is deprecated with PostgreSQL backend');
+  return [];
 }
 
 /**
