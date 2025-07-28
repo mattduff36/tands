@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { 
   Calendar, 
   Users, 
@@ -13,39 +14,55 @@ import {
   Clock,
   TrendingUp,
   Plus,
-  RefreshCw
+  RefreshCw,
+  Castle,
+  Wrench,
+  DollarSign,
+  Activity,
+  ExternalLink
 } from 'lucide-react';
 
 interface DashboardStats {
-  totalBookings: number;
   todayBookings: number;
   weekBookings: number;
   monthBookings: number;
-  availableDays: number;
-  upcomingBookings: number;
+  totalRevenue: number;
+  availableCastles: number;
+  maintenanceCastles: number;
+  calendarStatus: 'connected' | 'disconnected' | 'error';
 }
 
-interface UpcomingBooking {
+interface RecentBooking {
   id: string;
   customerName: string;
+  castleName: string;
   date: string;
-  location: string;
-  castle: string;
   status: 'confirmed' | 'pending' | 'cancelled';
+  source: 'database' | 'calendar';
+  totalPrice?: number;
+}
+
+interface CastleStatus {
+  id: number;
+  name: string;
+  maintenanceStatus: 'available' | 'maintenance' | 'unavailable';
+  maintenanceNotes?: string;
 }
 
 export default function AdminDashboard() {
   const { data: session } = useSession();
   const router = useRouter();
   const [stats, setStats] = useState<DashboardStats>({
-    totalBookings: 0,
     todayBookings: 0,
     weekBookings: 0,
     monthBookings: 0,
-    availableDays: 0,
-    upcomingBookings: 0
+    totalRevenue: 0,
+    availableCastles: 0,
+    maintenanceCastles: 0,
+    calendarStatus: 'disconnected'
   });
-  const [upcomingBookings, setUpcomingBookings] = useState<UpcomingBooking[]>([]);
+  const [recentBookings, setRecentBookings] = useState<RecentBooking[]>([]);
+  const [castleStatus, setCastleStatus] = useState<CastleStatus[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
@@ -53,46 +70,76 @@ export default function AdminDashboard() {
   const fetchDashboardData = async () => {
     setIsLoading(true);
     try {
-      // For now, use mock data. In real implementation, these would be API calls
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API delay
+      // Get current date ranges
+      const now = new Date();
+      const today = now.toISOString().split('T')[0];
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - now.getDay());
+      const weekStartStr = weekStart.toISOString().split('T')[0];
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthStartStr = monthStart.toISOString().split('T')[0];
+      const yearEnd = new Date(now.getFullYear(), 12, 31);
+      const yearEndStr = yearEnd.toISOString().split('T')[0];
+
+      // Fetch booking statistics
+      const [todayStats, weekStats, monthStats] = await Promise.all([
+        fetch(`/api/admin/reports/stats?dateFrom=${today}&dateTo=${today}`).then(r => r.json()),
+        fetch(`/api/admin/reports/stats?dateFrom=${weekStartStr}&dateTo=${yearEndStr}`).then(r => r.json()),
+        fetch(`/api/admin/reports/stats?dateFrom=${monthStartStr}&dateTo=${yearEndStr}`).then(r => r.json())
+      ]);
+
+      // Fetch fleet status
+      const fleetResponse = await fetch('/api/admin/fleet');
+      const castles = await fleetResponse.json();
+
+      // Calculate fleet statistics
+      const availableCastles = castles.filter((castle: any) => castle.maintenanceStatus === 'available').length;
+      const maintenanceCastles = castles.filter((castle: any) => castle.maintenanceStatus === 'maintenance').length;
+
+      // Fetch recent bookings
+      const bookingsResponse = await fetch('/api/admin/bookings');
+      const allBookings = await bookingsResponse.json();
       
-      // Mock dashboard stats
+      // Transform and sort recent bookings
+      const recent = allBookings
+        .slice(0, 5)
+        .map((booking: any) => ({
+          id: booking.id,
+          customerName: booking.customerName,
+          castleName: booking.castleName,
+          date: booking.date,
+          status: booking.status,
+          source: booking.source,
+          totalPrice: booking.totalPrice
+        }));
+
+      // Check calendar status
+      let calendarStatus: 'connected' | 'disconnected' | 'error' = 'disconnected';
+      try {
+        const calendarResponse = await fetch('/api/admin/calendar');
+        const calendarData = await calendarResponse.json();
+        calendarStatus = calendarData.status === 'connected' ? 'connected' : 'disconnected';
+      } catch (error) {
+        calendarStatus = 'error';
+      }
+
       setStats({
-        totalBookings: 156,
-        todayBookings: 3,
-        weekBookings: 12,
-        monthBookings: 34,
-        availableDays: 28,
-        upcomingBookings: 8
+        todayBookings: todayStats.total || 0,
+        weekBookings: weekStats.total || 0,
+        monthBookings: monthStats.total || 0,
+        totalRevenue: monthStats.revenue || 0,
+        availableCastles,
+        maintenanceCastles,
+        calendarStatus
       });
 
-      // Mock upcoming bookings
-      setUpcomingBookings([
-        {
-          id: '1',
-          customerName: 'Sarah Johnson',
-          date: '2024-01-25',
-          location: 'Hyde Park',
-          castle: 'Princess Castle',
-          status: 'confirmed'
-        },
-        {
-          id: '2',
-          customerName: 'Mike Williams',
-          date: '2024-01-26',
-          location: 'Regent\'s Park',
-          castle: 'Superhero Obstacle',
-          status: 'pending'
-        },
-        {
-          id: '3',
-          customerName: 'Emma Davis',
-          date: '2024-01-28',
-          location: 'Richmond Park',
-          castle: 'Jungle Adventure',
-          status: 'confirmed'
-        }
-      ]);
+      setRecentBookings(recent);
+      setCastleStatus(castles.map((castle: any) => ({
+        id: castle.id,
+        name: castle.name,
+        maintenanceStatus: castle.maintenanceStatus,
+        maintenanceNotes: castle.maintenanceNotes
+      })));
       
       setLastUpdated(new Date());
     } catch (error) {
@@ -132,6 +179,26 @@ export default function AdminDashboard() {
     }
   };
 
+  const getMaintenanceColor = (status: string) => {
+    switch (status) {
+      case 'available':
+        return 'text-green-600 bg-green-100';
+      case 'maintenance':
+        return 'text-orange-600 bg-orange-100';
+      case 'unavailable':
+        return 'text-red-600 bg-red-100';
+      default:
+        return 'text-gray-600 bg-gray-100';
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-GB', {
+      style: 'currency',
+      currency: 'GBP'
+    }).format(amount);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -159,6 +226,44 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* System Status */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center space-x-2">
+              <div className={`w-2 h-2 rounded-full ${
+                stats.calendarStatus === 'connected' ? 'bg-green-600' : 
+                stats.calendarStatus === 'error' ? 'bg-red-600' : 'bg-yellow-600'
+              }`}></div>
+              <span className="text-sm font-medium">
+                Google Calendar: {stats.calendarStatus === 'connected' ? 'Connected' : 
+                               stats.calendarStatus === 'error' ? 'Error' : 'Disconnected'}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+              <span className="text-sm font-medium">Database: Connected</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Last Updated</span>
+              <span className="text-sm text-gray-500">
+                {lastUpdated.toLocaleTimeString()}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
@@ -169,7 +274,7 @@ export default function AdminDashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{stats.todayBookings}</div>
             <p className="text-xs text-muted-foreground">
-              {stats.todayBookings > 0 ? '+2 from yesterday' : 'No bookings today'}
+              {stats.todayBookings > 0 ? 'Active bookings today' : 'No bookings today'}
             </p>
           </CardContent>
         </Card>
@@ -182,7 +287,7 @@ export default function AdminDashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{stats.weekBookings}</div>
             <p className="text-xs text-muted-foreground">
-              +4 from last week
+              {stats.weekBookings > 0 ? 'Total bookings this week' : 'No bookings this week'}
             </p>
           </CardContent>
         </Card>
@@ -195,20 +300,20 @@ export default function AdminDashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{stats.monthBookings}</div>
             <p className="text-xs text-muted-foreground">
-              +12% from last month
+              {formatCurrency(stats.totalRevenue)} revenue
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Available Days</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Fleet Status</CardTitle>
+            <Castle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.availableDays}</div>
+            <div className="text-2xl font-bold">{stats.availableCastles}</div>
             <p className="text-xs text-muted-foreground">
-              Next 30 days
+              {stats.maintenanceCastles} in maintenance
             </p>
           </CardContent>
         </Card>
@@ -216,10 +321,20 @@ export default function AdminDashboard() {
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Upcoming Bookings */}
+        {/* Recent Bookings */}
         <Card>
           <CardHeader>
-            <CardTitle>Upcoming Bookings</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>Recent Bookings</CardTitle>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => router.push('/admin/bookings')}
+              >
+                View All
+                <ExternalLink className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -231,91 +346,140 @@ export default function AdminDashboard() {
                   </div>
                 ))}
               </div>
-            ) : upcomingBookings.length > 0 ? (
+            ) : recentBookings.length > 0 ? (
               <div className="space-y-4">
-                {upcomingBookings.map((booking) => (
+                {recentBookings.map((booking) => (
                   <div key={booking.id} className="flex items-start justify-between p-3 border rounded-lg hover:bg-gray-50">
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                         <h4 className="font-medium text-sm sm:text-base truncate">{booking.customerName}</h4>
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full flex items-center self-start ${getStatusColor(booking.status)}`}>
-                          {getStatusIcon(booking.status)}
-                          <span className="ml-1 capitalize">{booking.status}</span>
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">
+                            {booking.source}
+                          </Badge>
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full flex items-center ${getStatusColor(booking.status)}`}>
+                            {getStatusIcon(booking.status)}
+                            <span className="ml-1 capitalize">{booking.status}</span>
+                          </span>
+                        </div>
                       </div>
-                      <p className="text-sm text-gray-600 truncate">{booking.castle}</p>
-                      <p className="text-xs text-gray-500">
-                        {new Date(booking.date).toLocaleDateString()} • <span className="truncate">{booking.location}</span>
-                      </p>
+                      <p className="text-sm text-gray-600 truncate">{booking.castleName}</p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-gray-500">
+                          {new Date(booking.date).toLocaleDateString()}
+                        </p>
+                        {booking.totalPrice && (
+                          <p className="text-xs font-medium text-green-600">
+                            {formatCurrency(booking.totalPrice)}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
-                <div className="pt-2">
-                  <Button 
-                    variant="outline" 
-                    className="w-full"
-                    onClick={() => router.push('/admin/bookings')}
-                  >
-                    View All Bookings
-                  </Button>
-                </div>
               </div>
             ) : (
               <div className="text-center py-6 text-gray-500">
                 <Calendar className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                <p>No upcoming bookings</p>
+                <p>No recent bookings</p>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Quick Actions */}
+        {/* Fleet Status */}
         <Card>
           <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+            <div className="flex items-center justify-between">
+              <CardTitle>Fleet Status</CardTitle>
               <Button 
-                className="h-14 sm:h-16 flex-col space-y-1 sm:space-y-2 text-xs sm:text-sm"
-                onClick={() => router.push('/admin/bookings')}
+                variant="ghost" 
+                size="sm"
+                onClick={() => router.push('/admin/fleet')}
               >
-                <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="text-xs">New Booking</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                className="h-14 sm:h-16 flex-col space-y-1 sm:space-y-2 text-xs sm:text-sm"
-                onClick={() => router.push('/admin/calendar')}
-              >
-                <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="text-xs">Calendar</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                className="h-14 sm:h-16 flex-col space-y-1 sm:space-y-2 text-xs sm:text-sm"
-                onClick={() => router.push('/admin/bookings')}
-              >
-                <Users className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="text-xs">Bookings</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                className="h-14 sm:h-16 flex-col space-y-1 sm:space-y-2 text-xs sm:text-sm"
-                onClick={() => router.push('/admin/reports')}
-              >
-                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="text-xs">Reports</span>
+                Manage Fleet
+                <ExternalLink className="w-4 h-4 ml-1" />
               </Button>
             </div>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="animate-pulse">
+                    <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                  </div>
+                ))}
+              </div>
+            ) : castleStatus.length > 0 ? (
+              <div className="space-y-3">
+                {castleStatus.map((castle) => (
+                  <div key={castle.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex-1">
+                      <h4 className="font-medium text-sm">{castle.name}</h4>
+                      {castle.maintenanceNotes && (
+                        <p className="text-xs text-gray-500 truncate">{castle.maintenanceNotes}</p>
+                      )}
+                    </div>
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getMaintenanceColor(castle.maintenanceStatus)}`}>
+                      {castle.maintenanceStatus === 'available' ? 'Available' : 
+                       castle.maintenanceStatus === 'maintenance' ? 'Maintenance' : 'Unavailable'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6 text-gray-500">
+                <Castle className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p>No castles found</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Footer */}
-      <div className="text-center text-sm text-gray-500">
-        Last updated: {lastUpdated.toLocaleString()}
-      </div>
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Button 
+              className="h-16 flex-col space-y-2 text-sm"
+              onClick={() => router.push('/admin/bookings')}
+            >
+              <Plus className="w-5 h-5" />
+              <span>New Booking</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              className="h-16 flex-col space-y-2 text-sm"
+              onClick={() => router.push('/admin/calendar')}
+            >
+              <Calendar className="w-5 h-5" />
+              <span>Calendar</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              className="h-16 flex-col space-y-2 text-sm"
+              onClick={() => router.push('/admin/fleet')}
+            >
+              <Castle className="w-5 h-5" />
+              <span>Fleet</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              className="h-16 flex-col space-y-2 text-sm"
+              onClick={() => router.push('/admin/reports')}
+            >
+              <TrendingUp className="w-5 h-5" />
+              <span>Reports</span>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
