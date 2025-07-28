@@ -79,11 +79,19 @@ export default function AdminSettings() {
 
   const handleCastleSelect = (castle: Castle) => {
     setSelectedCastle(castle);
+    
+    // Format dates for HTML date inputs (YYYY-MM-DD format)
+    const formatDateForInput = (dateString: string | undefined) => {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      return date.toISOString().split('T')[0];
+    };
+    
     setMaintenanceForm({
       status: castle.maintenanceStatus || 'available',
       notes: castle.maintenanceNotes || '',
-      startDate: castle.maintenanceStartDate || '',
-      endDate: castle.maintenanceEndDate || ''
+      startDate: formatDateForInput(castle.maintenanceStartDate),
+      endDate: formatDateForInput(castle.maintenanceEndDate)
     });
   };
 
@@ -291,7 +299,17 @@ export default function AdminSettings() {
                   <select
                     id="status"
                     value={maintenanceForm.status}
-                    onChange={(e) => setMaintenanceForm(prev => ({ ...prev, status: e.target.value as any }))}
+                    onChange={(e) => {
+                      const newStatus = e.target.value as 'available' | 'maintenance' | 'out_of_service';
+                      setMaintenanceForm(prev => ({
+                        ...prev, 
+                        status: newStatus,
+                        // Clear notes and dates when switching to available
+                        notes: newStatus === 'available' ? '' : prev.notes,
+                        startDate: newStatus === 'available' ? '' : prev.startDate,
+                        endDate: newStatus === 'available' ? '' : prev.endDate
+                      }));
+                    }}
                     className="w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="available">Available</option>
@@ -300,47 +318,51 @@ export default function AdminSettings() {
                   </select>
                 </div>
 
-                <div>
-                  <Label htmlFor="notes">Maintenance Notes</Label>
-                  <Textarea
-                    id="notes"
-                    value={maintenanceForm.notes}
-                    onChange={(e) => setMaintenanceForm(prev => ({ ...prev, notes: e.target.value }))}
-                    placeholder="Enter maintenance details..."
-                    rows={3}
-                  />
-                </div>
+                {maintenanceForm.status !== 'available' && (
+                  <>
+                    <div>
+                      <Label htmlFor="notes">Maintenance Notes</Label>
+                      <Textarea
+                        id="notes"
+                        value={maintenanceForm.notes}
+                        onChange={(e) => setMaintenanceForm(prev => ({ ...prev, notes: e.target.value }))}
+                        placeholder="Enter maintenance details..."
+                        rows={3}
+                      />
+                    </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="startDate">
-                      Start Date
-                      {maintenanceForm.status !== 'available' && <span className="text-red-500 ml-1">*</span>}
-                    </Label>
-                    <Input
-                      id="startDate"
-                      type="date"
-                      value={maintenanceForm.startDate}
-                      onChange={(e) => setMaintenanceForm(prev => ({ ...prev, startDate: e.target.value }))}
-                      required={maintenanceForm.status !== 'available'}
-                      className={maintenanceForm.status !== 'available' && !maintenanceForm.startDate ? 'border-red-500' : ''}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="endDate">
-                      End Date
-                      {maintenanceForm.status !== 'available' && <span className="text-red-500 ml-1">*</span>}
-                    </Label>
-                    <Input
-                      id="endDate"
-                      type="date"
-                      value={maintenanceForm.endDate}
-                      onChange={(e) => setMaintenanceForm(prev => ({ ...prev, endDate: e.target.value }))}
-                      required={maintenanceForm.status !== 'available'}
-                      className={maintenanceForm.status !== 'available' && !maintenanceForm.endDate ? 'border-red-500' : ''}
-                    />
-                  </div>
-                </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="startDate">
+                          Start Date
+                          <span className="text-red-500 ml-1">*</span>
+                        </Label>
+                        <Input
+                          id="startDate"
+                          type="date"
+                          value={maintenanceForm.startDate}
+                          onChange={(e) => setMaintenanceForm(prev => ({ ...prev, startDate: e.target.value }))}
+                          required
+                          className={!maintenanceForm.startDate ? 'border-red-500' : ''}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="endDate">
+                          End Date
+                          <span className="text-red-500 ml-1">*</span>
+                        </Label>
+                        <Input
+                          id="endDate"
+                          type="date"
+                          value={maintenanceForm.endDate}
+                          onChange={(e) => setMaintenanceForm(prev => ({ ...prev, endDate: e.target.value }))}
+                          required
+                          className={!maintenanceForm.endDate ? 'border-red-500' : ''}
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
                 {maintenanceForm.status !== 'available' && (
                   <p className="text-sm text-gray-600">
                     <Clock className="w-4 h-4 inline mr-1" />

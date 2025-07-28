@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { 
   Select,
   SelectContent,
@@ -12,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Dialog,
   DialogContent,
@@ -31,9 +33,13 @@ import {
   Clock,
   AlertCircle,
   Calendar,
-  Loader2
+  Loader2,
+  X,
+  Plus
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { BookingDetailsModal, CalendarEvent } from '@/components/admin/BookingDetailsModal';
+import { BookingFormModal, BookingFormData, Castle } from '@/components/admin/BookingFormModal';
 
 interface Booking {
   id: number;
@@ -55,6 +61,31 @@ interface Booking {
   source: 'database' | 'calendar';
 }
 
+interface Castle {
+  id: number;
+  name: string;
+  theme: string;
+  size: string;
+  price: number;
+  description: string;
+  imageUrl: string;
+}
+
+interface BookingFormData {
+  castle: string;
+  customerName: string;
+  customerPhone: string;
+  address: string;
+  singleDate: string;
+  multipleDate: boolean;
+  startDate: string;
+  endDate: string;
+  overnight: boolean;
+  additionalCosts: boolean;
+  additionalCostsDescription: string;
+  additionalCostsAmount: number;
+}
+
 export default function AdminBookings() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -63,6 +94,38 @@ export default function AdminBookings() {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [castles, setCastles] = useState<Castle[]>([]);
+  const [bookingForm, setBookingForm] = useState<BookingFormData>({
+    castle: '',
+    customerName: '',
+    customerPhone: '',
+    address: '',
+    singleDate: '',
+    multipleDate: false,
+    startDate: '',
+    endDate: '',
+    overnight: false,
+    additionalCosts: false,
+    additionalCostsDescription: '',
+    additionalCostsAmount: 0
+  });
+
+  // Fetch castles from fleet
+  const fetchCastles = async () => {
+    try {
+      const response = await fetch('/api/admin/fleet');
+      if (response.ok) {
+        const castleData = await response.json();
+        // The fleet API returns castles directly as an array, not wrapped in a 'castles' property
+        setCastles(Array.isArray(castleData) ? castleData : []);
+      }
+    } catch (error) {
+      console.error('Error fetching castles:', error);
+    }
+  };
 
   // Fetch bookings from API
   const fetchBookings = async () => {
@@ -85,6 +148,7 @@ export default function AdminBookings() {
 
   useEffect(() => {
     fetchBookings();
+    fetchCastles();
   }, []);
 
   // Filter bookings based on status and search term
@@ -201,6 +265,215 @@ export default function AdminBookings() {
       month: 'short',
       day: 'numeric'
     });
+  };
+
+  // Helper to convert Booking to CalendarEvent
+  function bookingToCalendarEvent(booking: Booking): CalendarEvent {
+    return {
+      id: booking.id.toString(),
+      summary: booking.customerName + ' - ' + booking.castleName,
+      description: booking.notes || '',
+      location: booking.customerAddress,
+      start: { date: booking.date },
+      end: { date: booking.date },
+      attendees: [
+        { email: booking.customerEmail, displayName: booking.customerName, responseStatus: 'accepted' }
+      ],
+      colorId: undefined,
+      status: booking.status
+    };
+  }
+
+  // Handle edit booking
+  const handleEditBooking = (event: CalendarEvent) => {
+    // Find the booking by ID
+    const booking = bookings.find(b => b.id.toString() === event.id);
+    if (!booking) return;
+
+    // Parse the booking data into form format
+    const bookingDate = new Date(booking.date);
+    
+    // Find castle by name to get the correct ID - use more robust matching
+    let castle = castles.find(c => c.name === booking.castleName);
+    
+    // If exact match not found, try partial matching
+    if (!castle) {
+      castle = castles.find(c => 
+        c.name.toLowerCase().includes(booking.castleName.toLowerCase()) ||
+        booking.castleName.toLowerCase().includes(c.name.toLowerCase())
+      );
+    }
+    
+    // If still not found, try to extract castle name from notes (like Calendar tab does)
+    if (!castle && booking.notes) {
+      const castleMatch = booking.notes.match(/Castle:\s*([^(\n]+)/);
+      if (castleMatch) {
+        const extractedCastleName = castleMatch[1].trim();
+        castle = castles.find(c => c.name === extractedCastleName);
+      }
+    }
+    
+    // Debug logging to help identify the issue
+    console.log('Booking castle name:', booking.castleName);
+    console.log('Available castles:', castles.map(c => c.name));
+    console.log('Found castle:', castle);
+    
+    setBookingForm({
+      castle: castle?.id.toString() || '',
+      customerName: booking.customerName,
+      customerPhone: booking.customerPhone,
+      address: booking.customerAddress,
+      singleDate: bookingDate.toISOString().split('T')[0],
+      multipleDate: false,
+      startDate: '',
+      endDate: '',
+      overnight: booking.notes?.includes('(Overnight)') || false,
+      additionalCosts: false,
+      additionalCostsDescription: '',
+      additionalCostsAmount: 0
+    });
+    
+    setSelectedBooking(booking);
+    setIsEditing(true);
+    setShowDetailsModal(false);
+    setShowBookingModal(true);
+  };
+
+  // Handle form changes
+  const handleFormChange = (field: keyof BookingFormData, value: string | boolean | number) => {
+    setBookingForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  // Calculate total cost
+  const calculateTotalCost = () => {
+    const selectedCastle = castles.find(c => c.id.toString() === bookingForm.castle);
+    const basePrice = Math.floor(selectedCastle?.price || 0);
+
+    // Calculate number of days
+    let numberOfDays = 1;
+    if (bookingForm.multipleDate && bookingForm.startDate && bookingForm.endDate) {
+      const startDate = new Date(bookingForm.startDate);
+      const endDate = new Date(bookingForm.endDate);
+      const timeDiff = endDate.getTime() - startDate.getTime();
+      numberOfDays = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1; // +1 to include both start and end dates
+    }
+
+    const totalBasePrice = basePrice * numberOfDays;
+    const overnightCharge = bookingForm.overnight ? 20 : 0;
+    const additionalCosts = bookingForm.additionalCosts ? bookingForm.additionalCostsAmount : 0;
+
+    return totalBasePrice + overnightCharge + additionalCosts;
+  };
+
+  // Handle booking form submit
+  const handleBookingSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (isEditing && selectedBooking) {
+      setIsSubmitting(true);
+      try {
+        // Calculate total cost
+        const totalCost = calculateTotalCost();
+        
+        // Get selected castle details
+        const selectedCastle = castles.find(c => c.id.toString() === bookingForm.castle);
+        if (!selectedCastle) {
+          toast.error('Please select a valid castle');
+          return;
+        }
+
+        // Determine the date to use
+        let bookingDate = bookingForm.singleDate;
+        if (bookingForm.multipleDate && bookingForm.startDate && bookingForm.endDate) {
+          bookingDate = bookingForm.startDate; // Use start date for multi-day bookings
+        }
+
+        // Check if this is a calendar event or database booking
+        if (selectedBooking.source === 'calendar') {
+          // Update calendar event
+          const calendarEventId = selectedBooking.id.toString().replace('cal-', '');
+          
+          // Prepare calendar event update data
+          const bookingData = {
+            customerName: bookingForm.customerName,
+            contactDetails: {
+              phone: bookingForm.customerPhone
+            },
+            location: bookingForm.address,
+            notes: `Castle: ${selectedCastle.name}${bookingForm.overnight ? ' (Overnight)' : ''}`,
+            duration: {
+              start: `${bookingDate}T10:00:00`,
+              end: `${bookingDate}T18:00:00`
+            },
+            cost: totalCost,
+            bouncyCastleType: selectedCastle.name
+          };
+
+          const response = await fetch(`/api/admin/calendar/events/${calendarEventId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(bookingData),
+          });
+
+          if (response.ok) {
+            toast.success('Calendar event updated successfully!');
+            await fetchBookings(); // Refresh the bookings list
+            setShowBookingModal(false);
+            setIsEditing(false);
+            setSelectedBooking(null);
+          } else {
+            const error = await response.json();
+            toast.error(error.error || 'Failed to update calendar event');
+          }
+        } else {
+          // Update database booking
+          const updateData = {
+            customerName: bookingForm.customerName,
+            customerPhone: bookingForm.customerPhone,
+            customerAddress: bookingForm.address,
+            castleId: selectedCastle.id,
+            castleName: selectedCastle.name,
+            date: bookingDate,
+            totalPrice: totalCost,
+            deposit: Math.floor(totalCost * 0.3), // 30% deposit
+            notes: bookingForm.overnight ? '(Overnight)' : ''
+          };
+
+          const response = await fetch(`/api/admin/bookings/${selectedBooking.id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(updateData),
+          });
+
+          if (response.ok) {
+            toast.success('Booking updated successfully!');
+            await fetchBookings(); // Refresh the bookings list
+            setShowBookingModal(false);
+            setIsEditing(false);
+            setSelectedBooking(null);
+          } else {
+            const error = await response.json();
+            toast.error(error.error || 'Failed to update booking');
+          }
+        }
+      } catch (error) {
+        console.error('Error updating booking:', error);
+        toast.error('Error updating booking');
+      } finally {
+        setIsSubmitting(false);
+      }
+    } else {
+      // This would be for creating new bookings, but we're not using it in the Bookings tab
+      toast.info('Create booking functionality coming soon!');
+      setShowBookingModal(false);
+    }
   };
 
   // Get counts for each status
@@ -359,91 +632,37 @@ export default function AdminBookings() {
       </Card>
 
       {/* Booking Details Modal */}
-      <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Booking Details</DialogTitle>
-            <DialogDescription>
-              {selectedBooking?.bookingRef} - {getStatusBadge(selectedBooking?.status || '')}
-            </DialogDescription>
-          </DialogHeader>
-          
-          {selectedBooking && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h4 className="font-medium mb-2">Customer Information</h4>
-                  <div className="space-y-1 text-sm">
-                    <p><strong>Name:</strong> {selectedBooking.customerName}</p>
-                    <p><strong>Email:</strong> {selectedBooking.customerEmail}</p>
-                    <p><strong>Phone:</strong> {selectedBooking.customerPhone}</p>
-                    <p><strong>Address:</strong> {selectedBooking.customerAddress}</p>
-                  </div>
-                </div>
-                <div>
-                  <h4 className="font-medium mb-2">Booking Information</h4>
-                  <div className="space-y-1 text-sm">
-                    <p><strong>Castle:</strong> {selectedBooking.castleName}</p>
-                    <p><strong>Date:</strong> {formatDate(selectedBooking.date)}</p>
-                    <p><strong>Payment:</strong> {selectedBooking.paymentMethod}</p>
-                    <p><strong>Total:</strong> £{selectedBooking.totalPrice}</p>
-                    <p><strong>Deposit:</strong> £{selectedBooking.deposit}</p>
-                    <p><strong>Source:</strong> {selectedBooking.source === 'database' ? 'Database' : 'Google Calendar'}</p>
-                  </div>
-                </div>
-              </div>
-              
-              {selectedBooking.notes && (
-                <div>
-                  <h4 className="font-medium mb-2">Notes</h4>
-                  <p className="text-sm bg-gray-50 p-2 rounded">{selectedBooking.notes}</p>
-                </div>
-              )}
+      <BookingDetailsModal
+        open={showDetailsModal && !!selectedBooking}
+        event={selectedBooking ? bookingToCalendarEvent(selectedBooking) : null}
+        onClose={() => setShowDetailsModal(false)}
+        onApprove={selectedBooking?.status === 'pending' ? () => handleConfirmBooking(selectedBooking.id) : undefined}
+        onEdit={selectedBooking && selectedBooking.status !== 'cancelled' ? () => handleEditBooking(bookingToCalendarEvent(selectedBooking)) : undefined}
+        onDelete={selectedBooking ? () => handleDeleteBooking(selectedBooking.id) : undefined}
+        formatEventDate={(event) => formatDate(event.start.date)}
+        formatEventTime={() => ''}
+        getStatusColor={(status) => {
+          switch (status) {
+            case 'confirmed': return 'bg-green-100 text-green-800 border-green-200';
+            case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+            case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
+            default: return 'bg-blue-100 text-blue-800 border-blue-200';
+          }
+        }}
+      />
 
-              <div className="flex flex-wrap gap-2 pt-4 border-t">
-                {selectedBooking.status === 'pending' && (
-                  <Button
-                    onClick={() => handleConfirmBooking(selectedBooking.id)}
-                    disabled={isProcessing}
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    {isProcessing ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                    )}
-                    Confirm & Add to Calendar
-                  </Button>
-                )}
-                
-                {selectedBooking.status !== 'cancelled' && (
-                  <Button
-                    variant="outline"
-                    onClick={() => handleUpdateStatus(selectedBooking.id, 'cancelled')}
-                    disabled={isProcessing}
-                  >
-                    <AlertCircle className="h-4 w-4 mr-2" />
-                    Cancel Booking
-                  </Button>
-                )}
-                
-                <Button
-                  variant="destructive"
-                  onClick={() => handleDeleteBooking(selectedBooking.id)}
-                  disabled={isProcessing}
-                >
-                  {isProcessing ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Trash2 className="h-4 w-4 mr-2" />
-                  )}
-                  Delete
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Booking Form Modal */}
+      <BookingFormModal
+        open={showBookingModal}
+        isEditing={isEditing}
+        castles={castles}
+        bookingForm={bookingForm}
+        isSubmitting={isSubmitting}
+        onClose={() => setShowBookingModal(false)}
+        onSubmit={handleBookingSubmit}
+        onFormChange={handleFormChange}
+        calculateTotalCost={calculateTotalCost}
+      />
     </div>
   );
 }

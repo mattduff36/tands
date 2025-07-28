@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar as CalendarIcon, Plus, ChevronLeft, ChevronRight, Eye, RefreshCw, AlertCircle, X, Edit2, Trash2 } from 'lucide-react';
 import { BookingValidator, ExistingBooking, ValidationResult } from '@/lib/validation/booking-validation';
+import { BookingDetailsModal } from '@/components/admin/BookingDetailsModal';
+import { BookingFormModal, BookingFormData, Castle } from '@/components/admin/BookingFormModal';
 
 interface CalendarEvent {
   id: string;
@@ -59,6 +61,9 @@ interface BookingFormData {
   startDate: string;
   endDate: string;
   overnight: boolean;
+  additionalCosts: boolean;
+  additionalCostsDescription: string;
+  additionalCostsAmount: number;
 }
 
 export default function AdminCalendar() {
@@ -82,7 +87,10 @@ export default function AdminCalendar() {
     multipleDate: false,
     startDate: '',
     endDate: '',
-    overnight: false
+    overnight: false,
+    additionalCosts: false,
+    additionalCostsDescription: '',
+    additionalCostsAmount: 0
   });
 
   // Fetch castles from fleet
@@ -350,7 +358,7 @@ export default function AdminCalendar() {
   };
 
   // Handle form field changes
-  const handleFormChange = (field: keyof BookingFormData, value: string | boolean) => {
+  const handleFormChange = (field: keyof BookingFormData, value: string | boolean | number) => {
     setBookingForm(prev => ({
       ...prev,
       [field]: value
@@ -361,8 +369,21 @@ export default function AdminCalendar() {
   const calculateTotalCost = () => {
     const selectedCastle = castles.find(c => c.id.toString() === bookingForm.castle);
     const basePrice = Math.floor(selectedCastle?.price || 0);
+    
+    // Calculate number of days
+    let numberOfDays = 1;
+    if (bookingForm.multipleDate && bookingForm.startDate && bookingForm.endDate) {
+      const startDate = new Date(bookingForm.startDate);
+      const endDate = new Date(bookingForm.endDate);
+      const timeDiff = endDate.getTime() - startDate.getTime();
+      numberOfDays = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1; // +1 to include both start and end dates
+    }
+    
+    const totalBasePrice = basePrice * numberOfDays;
     const overnightCharge = bookingForm.overnight ? 20 : 0;
-    return basePrice + overnightCharge;
+    const additionalCosts = bookingForm.additionalCosts ? bookingForm.additionalCostsAmount : 0;
+    
+    return totalBasePrice + overnightCharge + additionalCosts;
   };
 
   // View event details
@@ -378,8 +399,12 @@ export default function AdminCalendar() {
     const eventEnd = new Date(event.end?.dateTime || event.end?.date || '');
     
     // Extract castle info from event notes/description
-    const castleMatch = event.description?.match(/Castle: (.+?)(?:\s*\(|$)/);
+    const castleMatch = event.description?.match(/Castle Type: (.+?)(?:\s|$)/);
     const isOvernight = event.description?.includes('(Overnight)') || false;
+    
+    // Extract phone number from description
+    const phoneMatch = event.description?.match(/Phone: (.+?)(?:\s|$)/);
+    const phone = phoneMatch?.[1] || '';
     
     // Find castle by name
     const castle = castles.find(c => c.name === castleMatch?.[1]);
@@ -389,14 +414,17 @@ export default function AdminCalendar() {
     
     setBookingForm({
       castle: castle?.id.toString() || '',
-      customerName: event.summary || '',
-      customerPhone: '', // We'll need to extract this from event data
+      customerName: event.summary?.replace('🏰 ', '') || '',
+      customerPhone: phone,
       address: event.location || '',
       singleDate: isMultiDay ? '' : eventStart.toISOString().split('T')[0],
       multipleDate: isMultiDay,
       startDate: isMultiDay ? eventStart.toISOString().split('T')[0] : '',
       endDate: isMultiDay ? eventEnd.toISOString().split('T')[0] : '',
-      overnight: isOvernight
+      overnight: isOvernight,
+      additionalCosts: false,
+      additionalCostsDescription: '',
+      additionalCostsAmount: 0
     });
     
     setSelectedEvent(event);
@@ -810,295 +838,38 @@ export default function AdminCalendar() {
 
       {/* Booking Modal */}
       {showBookingModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-                             {/* Modal Header */}
-               <div className="flex items-center justify-between mb-6">
-                 <h2 className="text-2xl font-bold text-gray-900">
-                   {isEditing ? 'Edit Booking' : 'Add New Booking'}
-                 </h2>
-                 <Button
-                   variant="outline"
-                   size="sm"
-                   onClick={() => {
-                     setShowBookingModal(false);
-                     setIsEditing(false);
-                     setSelectedEvent(null);
-                   }}
-                   className="p-2"
-                 >
-                   <X className="w-4 h-4" />
-                 </Button>
-               </div>
-
-              {/* Booking Form */}
-              <form onSubmit={handleBookingSubmit} className="space-y-6">
-                {/* Castle Selection */}
-                <div className="space-y-2">
-                  <Label htmlFor="castle" className="text-sm font-medium">
-                    Bouncy Castle *
-                  </Label>
-                  <Select
-                    value={bookingForm.castle}
-                    onValueChange={(value) => handleFormChange('castle', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a bouncy castle" />
-                    </SelectTrigger>
-                                         <SelectContent>
-                       {castles.map((castle) => (
-                         <SelectItem key={castle.id} value={castle.id.toString()}>
-                           {castle.name} - £{Math.floor(castle.price)}
-                         </SelectItem>
-                       ))}
-                     </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Customer Details */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="customerName" className="text-sm font-medium">
-                      Customer Name *
-                    </Label>
-                    <Input
-                      id="customerName"
-                      type="text"
-                      value={bookingForm.customerName}
-                      onChange={(e) => handleFormChange('customerName', e.target.value)}
-                      placeholder="Enter customer name"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="customerPhone" className="text-sm font-medium">
-                      Contact Number *
-                    </Label>
-                    <Input
-                      id="customerPhone"
-                      type="tel"
-                      value={bookingForm.customerPhone}
-                      onChange={(e) => handleFormChange('customerPhone', e.target.value)}
-                      placeholder="07xxx xxxxxx"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Address */}
-                <div className="space-y-2">
-                  <Label htmlFor="address" className="text-sm font-medium">
-                    Address *
-                  </Label>
-                  <Input
-                    id="address"
-                    type="text"
-                    value={bookingForm.address}
-                    onChange={(e) => handleFormChange('address', e.target.value)}
-                    placeholder="Enter delivery address"
-                    required
-                  />
-                </div>
-
-                {/* Date Selection */}
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="multipleDate"
-                      checked={bookingForm.multipleDate}
-                      onCheckedChange={(checked) => handleFormChange('multipleDate', !!checked)}
-                    />
-                    <Label htmlFor="multipleDate" className="text-sm font-medium">
-                      Multiple days booking
-                    </Label>
-                  </div>
-
-                  {bookingForm.multipleDate ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="startDate" className="text-sm font-medium">
-                          Start Date *
-                        </Label>
-                        <Input
-                          id="startDate"
-                          type="date"
-                          value={bookingForm.startDate}
-                          onChange={(e) => handleFormChange('startDate', e.target.value)}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="endDate" className="text-sm font-medium">
-                          End Date *
-                        </Label>
-                        <Input
-                          id="endDate"
-                          type="date"
-                          value={bookingForm.endDate}
-                          onChange={(e) => handleFormChange('endDate', e.target.value)}
-                          required
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <Label htmlFor="singleDate" className="text-sm font-medium">
-                        Booking Date *
-                      </Label>
-                      <Input
-                        id="singleDate"
-                        type="date"
-                        value={bookingForm.singleDate}
-                        onChange={(e) => handleFormChange('singleDate', e.target.value)}
-                        required
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* Overnight Option */}
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="overnight"
-                      checked={bookingForm.overnight}
-                      onCheckedChange={(checked) => handleFormChange('overnight', !!checked)}
-                    />
-                    <Label htmlFor="overnight" className="text-sm font-medium">
-                      Keeping overnight (+£20)
-                    </Label>
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    Additional £20 charge for overnight keeping
-                  </p>
-                </div>
-
-                {/* Cost Summary */}
-                {bookingForm.castle && (
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h3 className="font-medium text-gray-900 mb-2">Booking Summary</h3>
-                                         <div className="space-y-1 text-sm">
-                       <div className="flex justify-between">
-                         <span>Castle:</span>
-                         <span>{castles.find(c => c.id.toString() === bookingForm.castle)?.name}</span>
-                       </div>
-                       <div className="flex justify-between">
-                         <span>Base Price:</span>
-                         <span>£{Math.floor(castles.find(c => c.id.toString() === bookingForm.castle)?.price || 0)}</span>
-                       </div>
-                      {bookingForm.overnight && (
-                        <div className="flex justify-between">
-                          <span>Overnight:</span>
-                          <span>£20</span>
-                        </div>
-                      )}
-                      <hr className="my-2" />
-                      <div className="flex justify-between font-medium">
-                        <span>Total:</span>
-                        <span>£{calculateTotalCost()}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Form Actions */}
-                <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setShowBookingModal(false)}
-                    disabled={isSubmitting}
-                  >
-                    Cancel
-                  </Button>
-                                     <Button
-                     type="submit"
-                     disabled={isSubmitting}
-                     className="bg-blue-600 hover:bg-blue-700"
-                   >
-                     {isSubmitting 
-                       ? `${isEditing ? 'Updating' : 'Creating'} Booking...` 
-                       : `${isEditing ? 'Update' : 'Create'} Booking`
-                     }
-                   </Button>
-                </div>
-              </form>
-            </div>
-                     </div>
-         </div>
-       )}
+        <BookingFormModal
+          open={showBookingModal}
+          isEditing={isEditing}
+          castles={castles}
+          bookingForm={bookingForm}
+          isSubmitting={isSubmitting}
+          onClose={() => {
+            setShowBookingModal(false);
+            setIsEditing(false);
+            setSelectedEvent(null);
+          }}
+          onSubmit={handleBookingSubmit}
+          onFormChange={handleFormChange}
+          calculateTotalCost={calculateTotalCost}
+        />
+      )}
 
        {/* Booking Details Modal */}
        {showDetailsModal && selectedEvent && (
-         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-           <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-             <div className="p-6">
-               {/* Modal Header */}
-               <div className="flex items-center justify-between mb-6">
-                 <h2 className="text-2xl font-bold text-gray-900">Booking Details</h2>
-                 <Button
-                   variant="outline"
-                   size="sm"
-                   onClick={() => {
-                     setShowDetailsModal(false);
-                     setSelectedEvent(null);
-                   }}
-                   className="p-2"
-                 >
-                   <X className="w-4 h-4" />
-                 </Button>
-               </div>
-
-               {/* Event Details */}
-               <div className="space-y-4">
-                 <div>
-                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                     {selectedEvent.summary}
-                   </h3>
-                   <div className="space-y-2 text-sm text-gray-600">
-                     <p><strong>Date:</strong> {formatEventDate(selectedEvent)} • {formatEventTime(selectedEvent)}</p>
-                     {selectedEvent.location && (
-                       <p><strong>Location:</strong> {selectedEvent.location}</p>
-                     )}
-                     {selectedEvent.description && (
-                       <p><strong>Details:</strong> {selectedEvent.description}</p>
-                     )}
-                     {selectedEvent.attendees && selectedEvent.attendees.length > 0 && (
-                       <p><strong>Contact:</strong> {selectedEvent.attendees[0].displayName || selectedEvent.attendees[0].email}</p>
-                     )}
-                     <p>
-                       <strong>Status:</strong>{' '}
-                       <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getStatusColor(selectedEvent.status || 'confirmed')}`}>
-                         {selectedEvent.status || 'confirmed'}
-                       </span>
-                     </p>
-                   </div>
-                 </div>
-
-                 {/* Action Buttons */}
-                 <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
-                   <Button
-                     variant="outline"
-                     onClick={() => handleEditEvent(selectedEvent)}
-                     className="flex-1"
-                   >
-                     <Edit2 className="w-4 h-4 mr-2" />
-                     Edit Booking
-                   </Button>
-                   <Button
-                     variant="outline"
-                     onClick={() => handleDeleteEvent(selectedEvent.id)}
-                     className="flex-1 text-red-600 border-red-200 hover:bg-red-50"
-                   >
-                     <Trash2 className="w-4 h-4 mr-2" />
-                     Delete Booking
-                   </Button>
-                 </div>
-               </div>
-             </div>
-           </div>
-         </div>
+         <BookingDetailsModal
+           open={showDetailsModal}
+           event={selectedEvent}
+           onClose={() => {
+             setShowDetailsModal(false);
+             setSelectedEvent(null);
+           }}
+           onEdit={handleEditEvent}
+           onDelete={handleDeleteEvent}
+           formatEventDate={formatEventDate}
+           formatEventTime={formatEventTime}
+           getStatusColor={getStatusColor}
+         />
        )}
      </div>
    );
