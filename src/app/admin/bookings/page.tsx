@@ -111,6 +111,7 @@ export default function AdminBookings() {
   const [bookingForm, setBookingForm] = useState<BookingFormData>({
     castle: '',
     customerName: '',
+    customerEmail: '',
     customerPhone: '',
     address: '',
     singleDate: '',
