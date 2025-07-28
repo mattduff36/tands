@@ -379,6 +379,7 @@ export default function AdminBookings() {
     setBookingForm({
       castle: castle?.id.toString() || '',
       customerName: booking.customerName,
+      customerEmail: booking.customerEmail,
       customerPhone: booking.customerPhone,
       address: booking.customerAddress,
       singleDate: bookingDate.toISOString().split('T')[0],
@@ -692,6 +693,7 @@ export default function AdminBookings() {
     setBookingForm({
       castle: castle?.id.toString() || '',
       customerName: event.summary?.replace('🏰 ', '') || '',
+      customerEmail: event.attendees?.[0]?.email || '',
       customerPhone: phone,
       address: event.location || '',
       singleDate: isMultiDay ? '' : eventStart.toISOString().split('T')[0],
@@ -907,6 +909,7 @@ export default function AdminBookings() {
               setBookingForm({
                 castle: '',
                 customerName: '',
+                customerEmail: '',
                 customerPhone: '',
                 address: '',
                 singleDate: '',
