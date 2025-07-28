@@ -42,7 +42,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { BookingDetailsModal, CalendarEvent } from '@/components/admin/BookingDetailsModal';
+import { BookingDetailsModal } from '@/components/admin/BookingDetailsModal';
 import { BookingFormModal, BookingFormData, Castle } from '@/components/admin/BookingFormModal';
 
 interface Booking {
