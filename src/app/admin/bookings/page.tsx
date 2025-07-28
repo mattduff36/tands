@@ -211,6 +211,9 @@ export default function AdminBookings() {
 
   // Filter bookings based on status and search term
   const filteredBookings = bookings.filter(booking => {
+    // Exclude confirmed bookings from the list
+    if (booking.status === 'confirmed') return false;
+    
     const matchesStatus = filter === 'all' || booking.status === filter;
     const matchesSearch = searchTerm === '' || 
       booking.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -756,9 +759,8 @@ export default function AdminBookings() {
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                          <CardTitle>
-               {filter === 'all' ? 'All Bookings' : 
+               {filter === 'all' ? 'Pending & Cancelled Bookings' : 
                 filter === 'pending' ? 'Pending Bookings' :
-                filter === 'confirmed' ? 'Confirmed Bookings' :
                 filter === 'cancelled' ? 'Cancelled Bookings' : 'Bookings'} ({filteredBookings.length})
              </CardTitle>
             <div className="flex flex-col sm:flex-row gap-4">
@@ -778,12 +780,11 @@ export default function AdminBookings() {
                   <Filter className="h-4 w-4 mr-2" />
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Bookings</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="confirmed">Confirmed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
+                                 <SelectContent>
+                   <SelectItem value="all">All Bookings</SelectItem>
+                   <SelectItem value="pending">Pending</SelectItem>
+                   <SelectItem value="cancelled">Cancelled</SelectItem>
+                 </SelectContent>
               </Select>
             </div>
           </div>
