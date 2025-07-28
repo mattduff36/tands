@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -210,7 +210,7 @@ export default function AdminBookings() {
   }, [currentDate]);
 
   // Create a combined list of bookings and calendar events
-  const createCombinedBookingsList = () => {
+  const createCombinedBookingsList = useCallback(() => {
     const databaseBookings = bookings.filter(booking => {
       const matchesStatus = filter === 'all' || booking.status === filter;
       const matchesSearch = searchTerm === '' || 
@@ -225,8 +225,17 @@ export default function AdminBookings() {
     // For confirmed bookings, also include calendar events
     let calendarBookings: any[] = [];
     if (filter === 'all' || filter === 'confirmed') {
+      // Create a Set to track unique event IDs for more robust deduplication
+      const seenEventIds = new Set<string>();
+      
       calendarBookings = events
         .filter(event => {
+          // Skip if we've already seen this event ID
+          if (seenEventIds.has(event.id)) {
+            return false;
+          }
+          seenEventIds.add(event.id);
+          
           // Only include events that look like confirmed bookings (not maintenance events)
           const isBookingEvent = event.summary?.includes('🏰') || 
             (event.summary && !event.summary.includes('🔧'));
@@ -239,30 +248,54 @@ export default function AdminBookings() {
           
           return isBookingEvent && matchesSearch;
         })
-        .map(event => ({
-          id: event.id,
-          bookingRef: `CAL-${event.id.slice(-6)}`,
-          customerName: event.summary?.replace('🏰 ', '').split(' - ')[0] || 'Unknown',
-          customerEmail: event.attendees?.[0]?.email || '',
-          customerPhone: '',
-          customerAddress: event.location || '',
-          castleId: 0,
-          castleName: event.summary?.split(' - ')[1] || 'Unknown Castle',
-          date: event.start?.date || event.start?.dateTime?.split('T')[0] || '',
-          paymentMethod: '',
-          totalPrice: 0,
-          deposit: 0,
-          status: 'confirmed' as const,
-          notes: event.description || '',
-          createdAt: '',
-          updatedAt: '',
-          source: 'calendar' as const,
-          calendarEvent: event // Store the original calendar event
-        }));
+        .map(event => {
+          // Calculate total cost for calendar events
+          const castleName = event.summary?.split(' - ')[1] || 'Unknown Castle';
+          const castle = castles.find(c => c.name === castleName);
+          const basePrice = Math.floor(castle?.price || 0);
+          
+          // Calculate number of days
+          let numberOfDays = 1;
+          if (event.start?.date && event.end?.date) {
+            const startDate = new Date(event.start.date);
+            const endDate = new Date(event.end.date);
+            const timeDiff = endDate.getTime() - startDate.getTime();
+            numberOfDays = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1; // +1 to include both start and end dates
+          }
+          
+          const totalBasePrice = basePrice * numberOfDays;
+          const overnightCharge = event.description?.includes('(Overnight)') ? 20 : 0;
+          
+          return {
+            id: event.id,
+            bookingRef: `CAL-${event.id}`,
+            customerName: event.summary?.replace('🏰 ', '').split(' - ')[0] || 'Unknown',
+            customerEmail: event.attendees?.[0]?.email || '',
+            customerPhone: '',
+            customerAddress: event.location || '',
+            castleId: castle?.id || 0,
+            castleName: castleName,
+            date: event.start?.date || event.start?.dateTime?.split('T')[0] || '',
+            paymentMethod: '',
+            totalPrice: totalBasePrice + overnightCharge,
+            deposit: 0,
+            status: 'confirmed' as const,
+            notes: event.description || '',
+            createdAt: '',
+            updatedAt: '',
+            source: 'calendar' as const,
+            calendarEvent: event // Store the original calendar event
+          };
+        });
     }
 
+    // Debug logging to help identify duplicates
+    console.log('Calendar events processed:', calendarBookings.length);
+    console.log('Database bookings:', databaseBookings.length);
+    console.log('Total combined bookings:', databaseBookings.length + calendarBookings.length);
+
     return [...databaseBookings, ...calendarBookings];
-  };
+  }, [bookings, events, castles, filter, searchTerm]);
 
   const filteredBookings = createCombinedBookingsList();
 
@@ -578,9 +611,101 @@ export default function AdminBookings() {
         setIsSubmitting(false);
       }
     } else {
-      // This would be for creating new bookings, but we're not using it in the Bookings tab
-      toast.info('Create booking functionality coming soon!');
-      setShowBookingModal(false);
+      // Create new booking
+      setIsSubmitting(true);
+      try {
+        // Validate form
+        if (!bookingForm.castle || !bookingForm.customerName || !bookingForm.customerPhone || !bookingForm.address) {
+          toast.error('Please fill in all required fields');
+          return;
+        }
+
+        // Determine dates
+        let startDateTime, endDateTime;
+        if (bookingForm.multipleDate) {
+          if (!bookingForm.startDate || !bookingForm.endDate) {
+            toast.error('Please select both start and end dates');
+            return;
+          }
+          startDateTime = `${bookingForm.startDate}T10:00:00`;
+          endDateTime = `${bookingForm.endDate}T18:00:00`;
+        } else {
+          if (!bookingForm.singleDate) {
+            toast.error('Please select a date');
+            return;
+          }
+          startDateTime = `${bookingForm.singleDate}T10:00:00`;
+          endDateTime = `${bookingForm.singleDate}T18:00:00`;
+        }
+
+        // Calculate total cost
+        const totalCost = calculateTotalCost();
+        
+        // Get selected castle details
+        const selectedCastle = castles.find(c => c.id.toString() === bookingForm.castle);
+        if (!selectedCastle) {
+          toast.error('Please select a valid castle');
+          return;
+        }
+
+        // Create booking data for calendar
+        const bookingData = {
+          customerName: bookingForm.customerName,
+          contactDetails: {
+            email: bookingForm.customerEmail,
+            phone: bookingForm.customerPhone
+          },
+          location: bookingForm.address,
+          notes: `Castle: ${selectedCastle.name}${bookingForm.overnight ? ' (Overnight)' : ''}`,
+          duration: {
+            start: startDateTime,
+            end: endDateTime
+          },
+          cost: totalCost,
+          bouncyCastleType: selectedCastle.name
+        };
+
+        // Create calendar event
+        const response = await fetch('/api/admin/calendar/events', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(bookingData),
+        });
+
+        if (response.ok) {
+          toast.success('Booking created successfully and added to calendar!');
+          // Only refresh calendar data since the new booking is only in Google Calendar
+          await fetchCalendarData(); // Refresh calendar data
+          setShowBookingModal(false);
+          
+          // Reset form
+          setBookingForm({
+            castle: '',
+            customerName: '',
+            customerEmail: '',
+            customerPhone: '',
+            address: '',
+            singleDate: '',
+            multipleDate: false,
+            startDate: '',
+            endDate: '',
+            overnight: false,
+            additionalCosts: false,
+            additionalCostsDescription: '',
+            additionalCostsAmount: 0
+          });
+        } else {
+          const error = await response.json();
+          toast.error(error.error || 'Failed to create booking');
+        }
+      } catch (error) {
+        console.error('Error creating booking:', error);
+        toast.error('Error creating booking');
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
