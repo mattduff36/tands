@@ -456,20 +456,17 @@ export default function AdminBookings() {
           // Update database booking
           const bookingId = selectedEvent.id.replace('db_', '');
           
-          // Prepare calendar event update data
+          // Prepare database booking update data
           const bookingData = {
             customerName: bookingForm.customerName,
-            contactDetails: {
-              phone: bookingForm.customerPhone
-            },
-            location: bookingForm.address,
-            notes: `Castle: ${selectedCastle.name}${bookingForm.overnight ? ' (Overnight)' : ''}`,
-            duration: {
-              start: `${bookingDate}T10:00:00`,
-              end: `${bookingDate}T18:00:00`
-            },
-            cost: totalCost,
-            bouncyCastleType: selectedCastle.name
+            customerPhone: bookingForm.customerPhone,
+            customerAddress: bookingForm.address,
+            castleId: selectedCastle.id,
+            castleName: selectedCastle.name,
+            date: bookingDate,
+            totalPrice: totalCost,
+            deposit: Math.floor(totalCost * 0.3), // 30% deposit
+            notes: bookingForm.overnight ? '(Overnight)' : ''
           };
 
           const response = await fetch(`/api/admin/bookings/${bookingId}`, {
@@ -477,7 +474,7 @@ export default function AdminBookings() {
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify(updateData),
+            body: JSON.stringify(bookingData),
           });
 
           if (response.ok) {
@@ -856,18 +853,7 @@ export default function AdminBookings() {
 
 
 
-      {/* Booking Form Modal */}
-      <BookingFormModal
-        open={showBookingModal}
-        isEditing={isEditing}
-        castles={castles}
-        bookingForm={bookingForm}
-        isSubmitting={isSubmitting}
-        onClose={() => setShowBookingModal(false)}
-        onSubmit={handleBookingSubmit}
-        onFormChange={handleFormChange}
-        calculateTotalCost={calculateTotalCost}
-      />
+
 
       {/* Calendar Section - Copied from Calendar Tab */}
       <div className="space-y-6">
