@@ -264,21 +264,21 @@ export default function AdminDashboard() {
               <span>Bookings</span>
             </Button>
             <Button 
-              className="h-16 flex-col space-y-2 text-sm bg-purple-500 hover:bg-purple-600 text-white"
+              className="h-16 flex-col space-y-2 text-sm bg-orange-500 hover:bg-orange-600 text-white"
               onClick={() => router.push('/admin/fleet')}
             >
               <Castle className="w-5 h-5" />
               <span>Fleet</span>
             </Button>
             <Button 
-              className="h-16 flex-col space-y-2 text-sm bg-gray-400 hover:bg-gray-500 text-white"
+              className="h-16 flex-col space-y-2 text-sm bg-purple-500 hover:bg-purple-600 text-white"
               onClick={() => router.push('/admin/reports')}
             >
               <TrendingUp className="w-5 h-5" />
               <span>Reports</span>
             </Button>
             <Button 
-              className="h-16 flex-col space-y-2 text-sm bg-green-500 hover:bg-green-600 text-white"
+              className="h-16 flex-col space-y-2 text-sm bg-gray-300 hover:bg-gray-400 text-gray-700"
               onClick={() => router.push('/admin/settings')}
             >
               <AlertCircle className="w-5 h-5" />
