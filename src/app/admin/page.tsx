@@ -66,6 +66,24 @@ export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
+  // Seed test data function
+  const seedTestData = async () => {
+    try {
+      const response = await fetch('/api/admin/seed-test-data', {
+        method: 'POST'
+      });
+      const result = await response.json();
+      console.log('Seed result:', result);
+      
+      if (response.ok) {
+        // Refresh dashboard data after seeding
+        await fetchDashboardData();
+      }
+    } catch (error) {
+      console.error('Failed to seed test data:', error);
+    }
+  };
+
   // Fetch dashboard data
   const fetchDashboardData = async () => {
     setIsLoading(true);
@@ -273,6 +291,14 @@ export default function AdminDashboard() {
           >
             <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
+          </Button>
+          <Button 
+            onClick={seedTestData}
+            variant="outline"
+            size="sm"
+            disabled={isLoading}
+          >
+            Seed Test Data
           </Button>
           <Button size="sm" onClick={() => router.push('/admin/bookings')}>
             <Plus className="w-4 h-4 mr-2" />
