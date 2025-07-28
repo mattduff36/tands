@@ -322,7 +322,10 @@ export default function AdminCalendar() {
         multipleDate: false,
         startDate: '',
         endDate: '',
-        overnight: false
+        overnight: false,
+        additionalCosts: false,
+        additionalCostsDescription: '',
+        additionalCostsAmount: 0
       });
 
       alert(`Booking ${isEditing ? 'updated' : 'created'} successfully!`);
