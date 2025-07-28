@@ -209,20 +209,62 @@ export default function AdminBookings() {
     fetchCalendarData();
   }, [currentDate]);
 
-  // Filter bookings based on status and search term
-  const filteredBookings = bookings.filter(booking => {
-    // Exclude confirmed bookings from the list
-    if (booking.status === 'confirmed') return false;
-    
-    const matchesStatus = filter === 'all' || booking.status === filter;
-    const matchesSearch = searchTerm === '' || 
-      booking.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      booking.customerEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      booking.castleName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      booking.bookingRef.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    return matchesStatus && matchesSearch;
-  });
+  // Create a combined list of bookings and calendar events
+  const createCombinedBookingsList = () => {
+    const databaseBookings = bookings.filter(booking => {
+      const matchesStatus = filter === 'all' || booking.status === filter;
+      const matchesSearch = searchTerm === '' || 
+        booking.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        booking.customerEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        booking.castleName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        booking.bookingRef.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      return matchesStatus && matchesSearch;
+    });
+
+    // For confirmed bookings, also include calendar events
+    let calendarBookings: any[] = [];
+    if (filter === 'all' || filter === 'confirmed') {
+      calendarBookings = events
+        .filter(event => {
+          // Only include events that look like confirmed bookings (not maintenance events)
+          const isBookingEvent = event.summary?.includes('🏰') || 
+            (event.summary && !event.summary.includes('🔧'));
+          
+          const matchesSearch = searchTerm === '' || 
+            event.summary?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            event.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            event.attendees?.[0]?.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            event.attendees?.[0]?.email?.toLowerCase().includes(searchTerm.toLowerCase());
+          
+          return isBookingEvent && matchesSearch;
+        })
+        .map(event => ({
+          id: event.id,
+          bookingRef: `CAL-${event.id.slice(-6)}`,
+          customerName: event.summary?.replace('🏰 ', '').split(' - ')[0] || 'Unknown',
+          customerEmail: event.attendees?.[0]?.email || '',
+          customerPhone: '',
+          customerAddress: event.location || '',
+          castleId: 0,
+          castleName: event.summary?.split(' - ')[1] || 'Unknown Castle',
+          date: event.start?.date || event.start?.dateTime?.split('T')[0] || '',
+          paymentMethod: '',
+          totalPrice: 0,
+          deposit: 0,
+          status: 'confirmed' as const,
+          notes: event.description || '',
+          createdAt: '',
+          updatedAt: '',
+          source: 'calendar' as const,
+          calendarEvent: event // Store the original calendar event
+        }));
+    }
+
+    return [...databaseBookings, ...calendarBookings];
+  };
+
+  const filteredBookings = createCombinedBookingsList();
 
   // Get status badge color
   const getStatusBadge = (status: string) => {
@@ -759,8 +801,9 @@ export default function AdminBookings() {
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                          <CardTitle>
-               {filter === 'all' ? 'Pending & Cancelled Bookings' : 
+               {filter === 'all' ? 'All Bookings' : 
                 filter === 'pending' ? 'Pending Bookings' :
+                filter === 'confirmed' ? 'Confirmed Bookings' :
                 filter === 'cancelled' ? 'Cancelled Bookings' : 'Bookings'} ({filteredBookings.length})
              </CardTitle>
             <div className="flex flex-col sm:flex-row gap-4">
@@ -783,6 +826,7 @@ export default function AdminBookings() {
                                  <SelectContent>
                    <SelectItem value="all">All Bookings</SelectItem>
                    <SelectItem value="pending">Pending</SelectItem>
+                   <SelectItem value="confirmed">Confirmed</SelectItem>
                    <SelectItem value="cancelled">Cancelled</SelectItem>
                  </SelectContent>
               </Select>
@@ -836,14 +880,22 @@ export default function AdminBookings() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleViewDetails(bookingToCalendarEvent(booking))}
-                    >
-                      <Eye className="h-4 w-4 mr-1" />
-                      View
-                    </Button>
+                                         <Button
+                       variant="outline"
+                       size="sm"
+                       onClick={() => {
+                         if (booking.source === 'calendar' && booking.calendarEvent) {
+                           // For calendar events, use the original event
+                           handleViewDetails(booking.calendarEvent);
+                         } else {
+                           // For database bookings, convert to calendar event format
+                           handleViewDetails(bookingToCalendarEvent(booking));
+                         }
+                       }}
+                     >
+                       <Eye className="h-4 w-4 mr-1" />
+                       View
+                     </Button>
                   </div>
                 </div>
               ))}
