@@ -289,6 +289,15 @@ export default function AdminBookings() {
           const castle = castles.find(c => c.name === castleName);
           const basePrice = Math.floor(castle?.price || 0);
           
+          // Calculate number of days first
+          let numberOfDays = 1;
+          if (event.start?.date && event.end?.date) {
+            const startDate = new Date(event.start.date);
+            const endDate = new Date(event.end.date);
+            const timeDiff = endDate.getTime() - startDate.getTime();
+            numberOfDays = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1; // +1 to include both start and end dates
+          }
+          
           // Extract total from event description instead of recalculating
           const totalMatch = event.description?.match(/Cost: £([^\n]+)/);
           let totalPrice = totalMatch ? parseInt(totalMatch[1]) : 0;
@@ -298,15 +307,6 @@ export default function AdminBookings() {
             const totalBasePrice = basePrice * numberOfDays;
             const overnightCharge = event.description?.includes('(Overnight)') ? 20 : 0;
             totalPrice = totalBasePrice + overnightCharge;
-          }
-          
-          // Calculate number of days for reference (but use extracted total)
-          let numberOfDays = 1;
-          if (event.start?.date && event.end?.date) {
-            const startDate = new Date(event.start.date);
-            const endDate = new Date(event.end.date);
-            const timeDiff = endDate.getTime() - startDate.getTime();
-            numberOfDays = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1; // +1 to include both start and end dates
           }
           
           // Generate friendly booking reference for calendar events
