@@ -3,15 +3,8 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -19,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -41,7 +34,6 @@ export function BookingForm() {
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [popoverOpen, setPopoverOpen] = useState(false);
 
   // Fetch castles data
   const fetchCastles = async () => {
@@ -126,7 +118,7 @@ export function BookingForm() {
 
   if (isSubmitted) {
     return (
-      <div className="max-w-2xl mx-auto p-8 text-center">
+      <div className="p-8 text-center">
         <div className="mb-6">
           <div className="w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
             <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -149,62 +141,47 @@ export function BookingForm() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
+    <div className="p-6">
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Castle Selection */}
-        <div className="space-y-2">
-          <Label htmlFor="castle" className="text-sm font-medium">
-            Select Bouncy Castle *
-          </Label>
-          <Select value={selectedCastleId} onValueChange={setSelectedCastleId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Choose a bouncy castle" />
-            </SelectTrigger>
-            <SelectContent>
-              {isLoadingCastles ? (
-                <SelectItem value="loading" disabled>Loading castles...</SelectItem>
-              ) : (
-                castles.map((castle) => (
-                  <SelectItem key={castle.id} value={castle.id.toString()}>
-                    {castle.name} - £{Math.floor(castle.price)} per day
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Date Selection */}
-        <div className="space-y-2">
-          <Label className="text-sm font-medium">
-            Event Date *
-          </Label>
-          <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant={"outline"}
-                className={cn(
-                  "w-full justify-start text-left font-normal",
-                  !date && "text-muted-foreground"
+                {/* Castle and Date Selection */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="castle" className="text-sm font-medium">
+              Select Bouncy Castle *
+            </Label>
+            <Select value={selectedCastleId} onValueChange={setSelectedCastleId}>
+              <SelectTrigger className="bg-white">
+                <SelectValue placeholder="Choose a bouncy castle" />
+              </SelectTrigger>
+              <SelectContent>
+                {isLoadingCastles ? (
+                  <SelectItem value="loading" disabled>Loading castles...</SelectItem>
+                ) : (
+                  castles.map((castle) => (
+                    <SelectItem key={castle.id} value={castle.id.toString()}>
+                      {castle.name} - £{Math.floor(castle.price)} per day
+                    </SelectItem>
+                  ))
                 )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {date ? format(date, "PPP") : "Pick a date"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={(selectedDate) => {
-                  setDate(selectedDate);
-                  setPopoverOpen(false);
-                }}
-                disabled={isBeforeToday}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">
+              Event Date *
+            </Label>
+            <Input
+              type="date"
+              value={date ? format(date, "yyyy-MM-dd") : ""}
+              onChange={(e) => {
+                const selectedDate = e.target.value ? new Date(e.target.value) : undefined;
+                setDate(selectedDate);
+              }}
+              min={format(new Date(), "yyyy-MM-dd")}
+              className="bg-white"
+              required
+            />
+          </div>
         </div>
 
         {/* Customer Details */}
@@ -219,6 +196,7 @@ export function BookingForm() {
               onChange={(e) => setName(e.target.value)}
               placeholder="Your full name"
               required
+              className="bg-white"
             />
           </div>
           <div className="space-y-2">
@@ -232,6 +210,7 @@ export function BookingForm() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="your.email@example.com"
               required
+              className="bg-white"
             />
           </div>
         </div>
@@ -248,6 +227,7 @@ export function BookingForm() {
               onChange={(e) => setPhone(e.target.value)}
               placeholder="07xxx xxxxxx"
               required
+              className="bg-white"
             />
           </div>
           <div className="space-y-2">
@@ -260,27 +240,38 @@ export function BookingForm() {
               onChange={(e) => setAddress(e.target.value)}
               placeholder="Event location address"
               required
+              className="bg-white"
             />
           </div>
         </div>
 
         {/* Payment Method */}
-        <div className="space-y-3">
+        <div className="space-y-2">
           <Label className="text-sm font-medium">Preferred Payment Method</Label>
-          <RadioGroup 
-            value={paymentMethod} 
-            onValueChange={setPaymentMethod}
-            className="flex flex-col space-y-2"
-          >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="cash" id="cash" />
-              <Label htmlFor="cash" className="text-sm">Cash on delivery</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="bank_transfer" id="bank_transfer" />
-              <Label htmlFor="bank_transfer" className="text-sm">Bank transfer</Label>
-            </div>
-          </RadioGroup>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setPaymentMethod("cash")}
+              className={`p-3 rounded-md border-2 transition-all duration-200 text-sm font-medium ${
+                paymentMethod === "cash"
+                  ? "border-green-500 bg-green-50 text-green-700"
+                  : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+              }`}
+            >
+              Cash on Delivery
+            </button>
+            <button
+              type="button"
+              onClick={() => setPaymentMethod("bank_transfer")}
+              className={`p-3 rounded-md border-2 transition-all duration-200 text-sm font-medium ${
+                paymentMethod === "bank_transfer"
+                  ? "border-blue-500 bg-blue-50 text-blue-700"
+                  : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+              }`}
+            >
+              Bank Transfer
+            </button>
+          </div>
         </div>
 
         {/* Pricing Summary */}
