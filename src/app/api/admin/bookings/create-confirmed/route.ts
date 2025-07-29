@@ -62,9 +62,10 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Error creating confirmed booking:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return NextResponse.json({ 
       error: 'Failed to create confirmed booking',
-      details: error.message 
+      details: errorMessage 
     }, { status: 500 });
   }
 } 
