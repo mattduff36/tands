@@ -854,7 +854,8 @@ export default function AdminBookings() {
         resetBookingForm();
       } catch (error) {
         console.error('Error creating booking:', error);
-        toast.error(`Failed to create booking: ${error.message}`);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        toast.error(`Failed to create booking: ${errorMessage}`);
       }
     }
   };
