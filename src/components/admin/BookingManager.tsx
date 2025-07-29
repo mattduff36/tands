@@ -308,26 +308,6 @@ export default function BookingManager({ onBookingSelect, selectedDate }: Bookin
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div>
-                <Label htmlFor="startTime">Start Time</Label>
-                <Input
-                  id="startTime"
-                  type="time"
-                  value={formData.startTime || ''}
-                  onChange={(e) => setFormData({...formData, startTime: e.target.value})}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="endTime">End Time</Label>
-                <Input
-                  id="endTime"
-                  type="time"
-                  value={formData.endTime || ''}
-                  onChange={(e) => setFormData({...formData, endTime: e.target.value})}
-                  required
-                />
-              </div>
               <div className="sm:col-span-2 lg:col-span-1">
                 <Label htmlFor="status">Status</Label>
                 <Select value={formData.status || 'pending'} onValueChange={(value) => setFormData({...formData, status: value as Booking['status']})}>
