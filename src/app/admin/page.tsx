@@ -184,7 +184,7 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="space-y-6 relative">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -248,32 +248,6 @@ export default function AdminDashboard() {
             </div>
           </CardContent>
         </Card>
-      </div>
-
-      {/* Mobile version - compact status in top right */}
-      <div className="md:hidden absolute top-4 right-4 z-10">
-        <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-lg border p-2 space-y-1">
-          <div className="flex items-center space-x-1">
-            <div className={`w-1.5 h-1.5 rounded-full ${
-              stats.calendarStatus === 'connected' ? 'bg-green-600' : 
-              stats.calendarStatus === 'error' ? 'bg-red-600' : 'bg-yellow-600'
-            }`}></div>
-            <span className="text-xs font-medium">
-              {stats.calendarStatus === 'connected' ? 
-                <span className="text-green-600">GC ✓</span> : 
-                stats.calendarStatus === 'error' ? 
-                <span className="text-red-600">GC ✗</span> : 
-                <span className="text-yellow-600">GC ⚠</span>}
-            </span>
-          </div>
-          <div className="flex items-center space-x-1">
-            <div className="w-1.5 h-1.5 bg-green-600 rounded-full"></div>
-            <span className="text-xs font-medium text-green-600">DB ✓</span>
-          </div>
-          <div className="text-xs text-gray-500">
-            {lastUpdated.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-          </div>
-        </div>
       </div>
 
       {/* Quick Actions */}
