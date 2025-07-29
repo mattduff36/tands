@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
       total: 0,
       pending: 0,
       confirmed: 0,
-      cancelled: 0,
+      complete: 0,
       revenue: 0
     };
 
