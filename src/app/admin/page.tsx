@@ -186,14 +186,14 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
           <p className="mt-2 text-gray-600">
             Welcome back, {session?.user?.name || 'Admin'}
           </p>
         </div>
-        <div className="mt-4 sm:mt-0">
+        <div>
           <Button
             onClick={fetchDashboardData}
             variant="outline"
