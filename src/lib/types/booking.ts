@@ -8,7 +8,7 @@ export type BookingStatus =
   | 'confirmed'         // Booking confirmed with customer
   | 'in_progress'       // Event currently happening
   | 'completed'         // Event finished successfully
-  | 'cancelled'         // Cancelled by customer or admin
+  | 'complete'          // Event finished successfully (replaces cancelled)
   | 'no_show'           // Customer didn't show up
   | 'refunded';         // Payment refunded
 
