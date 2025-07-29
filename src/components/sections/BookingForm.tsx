@@ -283,21 +283,12 @@ export function BookingForm() {
               if (!selectedCastle) return null;
               
               const totalPrice = Math.floor(selectedCastle.price);
-              const deposit = Math.floor(totalPrice * 0.3);
               
               return (
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
                     <span>Castle: {selectedCastle.name}</span>
                     <span>£{totalPrice}</span>
-                  </div>
-                  <div className="flex justify-between font-medium">
-                    <span>Deposit (30%):</span>
-                    <span>£{deposit}</span>
-                  </div>
-                  <div className="flex justify-between text-xs text-gray-600">
-                    <span>Remaining balance due on delivery:</span>
-                    <span>£{totalPrice - deposit}</span>
                   </div>
                 </div>
               );
