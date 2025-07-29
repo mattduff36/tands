@@ -121,7 +121,7 @@ export async function GET(request: NextRequest) {
         total: confirmedBookings.length,
         pending: 0, // Calendar events are always confirmed
         confirmed: confirmedBookings.length,
-        cancelled: 0,
+        complete: 0,
         revenue: totalRevenue
       };
     } catch (calendarError) {
@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
       total: dbStats.total + calendarStats.total,
       pending: dbStats.pending + calendarStats.pending,
       confirmed: dbStats.confirmed + calendarStats.confirmed,
-      cancelled: dbStats.cancelled + calendarStats.cancelled,
+      complete: dbStats.complete + calendarStats.complete,
       revenue: dbStats.revenue + calendarStats.revenue
     };
 
