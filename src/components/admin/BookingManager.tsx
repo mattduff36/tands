@@ -35,19 +35,19 @@ import {
 } from '@/components/ui/select';
 
 interface Booking {
-  id: string;
+  id: number;
+  bookingRef: string;
   customerName: string;
   customerEmail: string;
   customerPhone: string;
+  customerAddress: string;
+  castleId: number;
+  castleName: string;
   date: string;
-  startTime: string;
-  endTime: string;
-  castle: string;
-  location: string;
-  address: string;
+  paymentMethod: string;
   totalPrice: number;
   deposit: number;
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  status: 'pending' | 'confirmed' | 'complete';
   notes?: string;
   createdAt: string;
   updatedAt: string;
@@ -71,16 +71,16 @@ export default function BookingManager({ onBookingSelect, selectedDate }: Bookin
   useEffect(() => {
     const mockBookings: Booking[] = [
       {
-        id: '1',
+        id: 1,
+        bookingRef: 'REF001',
         customerName: 'Sarah Johnson',
         customerEmail: 'sarah.johnson@email.com',
         customerPhone: '+44 7123 456789',
+        customerAddress: '123 Main St, London',
+        castleId: 1,
+        castleName: 'Princess Castle',
         date: '2024-01-25',
-        startTime: '10:00',
-        endTime: '16:00',
-        castle: 'Princess Castle',
-        location: 'Hyde Park',
-        address: 'Hyde Park, London W2 2UH',
+        paymentMethod: 'Cash',
         totalPrice: 250,
         deposit: 50,
         status: 'confirmed',
@@ -89,16 +89,16 @@ export default function BookingManager({ onBookingSelect, selectedDate }: Bookin
         updatedAt: '2024-01-15T09:00:00Z'
       },
       {
-        id: '2',
+        id: 2,
+        bookingRef: 'REF002',
         customerName: 'Mike Williams',
         customerEmail: 'mike.williams@email.com',
         customerPhone: '+44 7234 567890',
+        customerAddress: '456 Oak Ave, London',
+        castleId: 2,
+        castleName: 'Superhero Obstacle Course',
         date: '2024-01-26',
-        startTime: '09:00',
-        endTime: '17:00',
-        castle: 'Superhero Obstacle Course',
-        location: 'Regent\'s Park',
-        address: 'Regent\'s Park, London NW1 4NU',
+        paymentMethod: 'Bank Transfer',
         totalPrice: 350,
         deposit: 70,
         status: 'pending',
@@ -107,16 +107,16 @@ export default function BookingManager({ onBookingSelect, selectedDate }: Bookin
         updatedAt: '2024-01-16T14:30:00Z'
       },
       {
-        id: '3',
+        id: 3,
+        bookingRef: 'REF003',
         customerName: 'Emma Davis',
         customerEmail: 'emma.davis@email.com',
         customerPhone: '+44 7345 678901',
+        customerAddress: '789 Pine Ln, London',
+        castleId: 1,
+        castleName: 'Jungle Adventure',
         date: '2024-01-28',
-        startTime: '11:00',
-        endTime: '15:00',
-        castle: 'Jungle Adventure',
-        location: 'Richmond Park',
-        address: 'Richmond Park, Richmond, London TW10 5HS',
+        paymentMethod: 'Cash',
         totalPrice: 200,
         deposit: 40,
         status: 'confirmed',
@@ -124,19 +124,19 @@ export default function BookingManager({ onBookingSelect, selectedDate }: Bookin
         updatedAt: '2024-01-17T11:15:00Z'
       },
       {
-        id: '4',
+        id: 4,
+        bookingRef: 'REF004',
         customerName: 'James Wilson',
         customerEmail: 'james.wilson@email.com',
         customerPhone: '+44 7456 789012',
+        customerAddress: '101 Cedar St, London',
+        castleId: 3,
+        castleName: 'Medieval Castle',
         date: '2024-01-30',
-        startTime: '12:00',
-        endTime: '18:00',
-        castle: 'Medieval Castle',
-        location: 'Greenwich Park',
-        address: 'Greenwich Park, London SE10 8QY',
+        paymentMethod: 'Bank Transfer',
         totalPrice: 300,
         deposit: 60,
-        status: 'cancelled',
+        status: 'complete',
         notes: 'Customer cancelled due to weather concerns.',
         createdAt: '2024-01-18T16:20:00Z',
         updatedAt: '2024-01-20T10:00:00Z'
@@ -154,8 +154,8 @@ export default function BookingManager({ onBookingSelect, selectedDate }: Bookin
       const matchesSearch = 
         booking.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         booking.customerEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        booking.castle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        booking.location.toLowerCase().includes(searchTerm.toLowerCase());
+        booking.castleName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        booking.customerAddress.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesStatus = statusFilter === 'all' || booking.status === statusFilter;
       
@@ -177,9 +177,7 @@ export default function BookingManager({ onBookingSelect, selectedDate }: Bookin
         return 'bg-green-100 text-green-800';
       case 'pending':
         return 'bg-yellow-100 text-yellow-800';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
-      case 'completed':
+      case 'complete':
         return 'bg-blue-100 text-blue-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -192,9 +190,7 @@ export default function BookingManager({ onBookingSelect, selectedDate }: Bookin
         return <CheckCircle className="w-4 h-4" />;
       case 'pending':
         return <Clock className="w-4 h-4" />;
-      case 'cancelled':
-        return <X className="w-4 h-4" />;
-      case 'completed':
+      case 'complete':
         return <CheckCircle className="w-4 h-4" />;
       default:
         return <AlertCircle className="w-4 h-4" />;
@@ -206,7 +202,7 @@ export default function BookingManager({ onBookingSelect, selectedDate }: Bookin
     onBookingSelect?.(booking);
   };
 
-  const handleDeleteBooking = (bookingId: string) => {
+  const handleDeleteBooking = (bookingId: number) => {
     if (confirm('Are you sure you want to delete this booking?')) {
       setBookings(prev => prev.filter(b => b.id !== bookingId));
     }
@@ -223,16 +219,16 @@ export default function BookingManager({ onBookingSelect, selectedDate }: Bookin
     } else {
       // Create new booking
       const newBooking: Booking = {
-        id: Date.now().toString(),
+        id: Date.now(), // Mock ID generation
+        bookingRef: 'REF' + Date.now().toString().slice(-4), // Mock bookingRef
         customerName: '',
         customerEmail: '',
         customerPhone: '',
+        customerAddress: '',
+        castleId: 0, // Mock castle ID
+        castleName: '',
         date: '',
-        startTime: '',
-        endTime: '',
-        castle: '',
-        location: '',
-        address: '',
+        paymentMethod: 'Cash',
         totalPrice: 0,
         deposit: 0,
         status: 'pending',
@@ -341,8 +337,7 @@ export default function BookingManager({ onBookingSelect, selectedDate }: Bookin
                   <SelectContent>
                     <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="confirmed">Confirmed</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                    <SelectItem value="complete">Complete</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -351,7 +346,7 @@ export default function BookingManager({ onBookingSelect, selectedDate }: Bookin
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="castle">Bouncy Castle</Label>
-                <Select value={formData.castle || ''} onValueChange={(value) => setFormData({...formData, castle: value})}>
+                <Select value={formData.castleName || ''} onValueChange={(value) => setFormData({...formData, castleName: value})}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select castle" />
                   </SelectTrigger>
@@ -367,8 +362,8 @@ export default function BookingManager({ onBookingSelect, selectedDate }: Bookin
                 <Label htmlFor="location">Location</Label>
                 <Input
                   id="location"
-                  value={formData.location || ''}
-                  onChange={(e) => setFormData({...formData, location: e.target.value})}
+                  value={formData.customerAddress || ''}
+                  onChange={(e) => setFormData({...formData, customerAddress: e.target.value})}
                   required
                 />
               </div>
@@ -378,8 +373,8 @@ export default function BookingManager({ onBookingSelect, selectedDate }: Bookin
               <Label htmlFor="address">Full Address</Label>
               <Input
                 id="address"
-                value={formData.address || ''}
-                onChange={(e) => setFormData({...formData, address: e.target.value})}
+                value={formData.customerAddress || ''}
+                onChange={(e) => setFormData({...formData, customerAddress: e.target.value})}
                 required
               />
             </div>
@@ -486,8 +481,7 @@ export default function BookingManager({ onBookingSelect, selectedDate }: Bookin
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
             <SelectItem value="confirmed">Confirmed</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
+            <SelectItem value="complete">Complete</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -536,14 +530,14 @@ export default function BookingManager({ onBookingSelect, selectedDate }: Bookin
                       <div className="space-y-2">
                         <div className="flex items-start gap-2 text-gray-600">
                           <User className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                          <span>{booking.castle}</span>
+                          <span>{booking.castleName}</span>
                         </div>
                         <div className="flex items-start gap-2 text-gray-600">
                           <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                          <span>{booking.location}</span>
+                          <span>{booking.customerAddress}</span>
                         </div>
                         <div className="text-gray-500 break-words">
-                          <span>{booking.address}</span>
+                          <span>{booking.customerAddress}</span>
                         </div>
                       </div>
                     </div>

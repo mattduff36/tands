@@ -44,6 +44,7 @@ import {
 import { toast } from 'sonner';
 import { BookingDetailsModal } from '@/components/admin/BookingDetailsModal';
 import { BookingFormModal, BookingFormData, Castle } from '@/components/admin/BookingFormModal';
+import { generateFriendlyBookingRef } from '@/lib/utils';
 
 interface Booking {
   id: number;
@@ -58,7 +59,7 @@ interface Booking {
   paymentMethod: string;
   totalPrice: number;
   deposit: number;
-  status: 'pending' | 'confirmed' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'complete';
   notes?: string;
   createdAt: string;
   updatedAt: string;
@@ -127,6 +128,12 @@ export default function AdminBookings() {
   // Calendar-specific state
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  
+  // Debug: Track events array changes
+  useEffect(() => {
+    console.log('Events array changed. New length:', events.length);
+    console.log('New event IDs:', events.map(e => e.id));
+  }, [events]);
   const [calendarStatus, setCalendarStatus] = useState<CalendarStatus | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
@@ -183,6 +190,8 @@ export default function AdminBookings() {
         const eventsData = await eventsResponse.json();
         
         if (eventsData.events) {
+          console.log('Setting events array with length:', eventsData.events.length);
+          console.log('Event IDs being set:', eventsData.events.map((e: any) => e.id));
           setEvents(eventsData.events);
         }
       }
@@ -211,27 +220,45 @@ export default function AdminBookings() {
 
   // Create a combined list of bookings and calendar events
   const createCombinedBookingsList = useCallback(() => {
-    const databaseBookings = bookings.filter(booking => {
-      const matchesStatus = filter === 'all' || booking.status === filter;
-      const matchesSearch = searchTerm === '' || 
-        booking.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        booking.customerEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        booking.castleName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        booking.bookingRef.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      return matchesStatus && matchesSearch;
-    });
+    console.log('createCombinedBookingsList called at:', new Date().toISOString());
+    console.log('Current events length:', events.length);
+    console.log('Current bookings length:', bookings.length);
 
-    // For confirmed bookings, also include calendar events
+    // Filter database bookings based on status and search
+    const databaseBookings = bookings
+      .filter(booking => {
+        // Exclude confirmed bookings from database - only show confirmed bookings from calendar
+        if (booking.status === 'confirmed') return false;
+        
+        if (filter === 'pending' && booking.status !== 'pending') return false;
+        if (filter === 'complete' && booking.status !== 'complete') return false;
+        
+        const matchesSearch = searchTerm === '' || 
+          booking.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          booking.customerEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          booking.customerPhone.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          booking.customerAddress.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          booking.bookingRef.toLowerCase().includes(searchTerm.toLowerCase());
+        
+        return matchesSearch;
+      })
+      .map(booking => ({
+        ...booking,
+        source: 'database' as const
+      }));
+
+    // Process calendar events
     let calendarBookings: any[] = [];
-    if (filter === 'all' || filter === 'confirmed') {
-      // Create a Set to track unique event IDs for more robust deduplication
+    if (filter === 'all' || filter === 'confirmed' || filter === 'complete') {
+      console.log('Raw events array length:', events.length);
+      console.log('Raw events IDs:', events.map(e => e.id));
+      
       const seenEventIds = new Set<string>();
       
       calendarBookings = events
         .filter(event => {
-          // Skip if we've already seen this event ID
           if (seenEventIds.has(event.id)) {
+            console.log('Duplicate event ID found:', event.id);
             return false;
           }
           seenEventIds.add(event.id);
@@ -239,6 +266,14 @@ export default function AdminBookings() {
           // Only include events that look like confirmed bookings (not maintenance events)
           const isBookingEvent = event.summary?.includes('🏰') || 
             (event.summary && !event.summary.includes('🔧'));
+          
+          // Filter by status for calendar events
+          const eventEndDate = event.end?.dateTime ? new Date(event.end.dateTime) : 
+                              event.end?.date ? new Date(event.end.date) : null;
+          const isComplete = eventEndDate && eventEndDate < new Date();
+          
+          if (filter === 'confirmed' && isComplete) return false;
+          if (filter === 'complete' && !isComplete) return false;
           
           const matchesSearch = searchTerm === '' || 
             event.summary?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -254,7 +289,18 @@ export default function AdminBookings() {
           const castle = castles.find(c => c.name === castleName);
           const basePrice = Math.floor(castle?.price || 0);
           
-          // Calculate number of days
+          // Extract total from event description instead of recalculating
+          const totalMatch = event.description?.match(/Cost: £([^\n]+)/);
+          let totalPrice = totalMatch ? parseInt(totalMatch[1]) : 0;
+          
+          // If no cost found in description, calculate it manually as fallback
+          if (totalPrice === 0) {
+            const totalBasePrice = basePrice * numberOfDays;
+            const overnightCharge = event.description?.includes('(Overnight)') ? 20 : 0;
+            totalPrice = totalBasePrice + overnightCharge;
+          }
+          
+          // Calculate number of days for reference (but use extracted total)
           let numberOfDays = 1;
           if (event.start?.date && event.end?.date) {
             const startDate = new Date(event.start.date);
@@ -263,12 +309,19 @@ export default function AdminBookings() {
             numberOfDays = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1; // +1 to include both start and end dates
           }
           
-          const totalBasePrice = basePrice * numberOfDays;
-          const overnightCharge = event.description?.includes('(Overnight)') ? 20 : 0;
+          // Generate friendly booking reference for calendar events
+          const bookingRef = generateFriendlyBookingRef(event.id);
+          console.log('Creating calendar booking with ref:', bookingRef, 'for event:', event.id);
+          
+          // Determine status based on end date
+          const eventEndDate = event.end?.dateTime ? new Date(event.end.dateTime) : 
+                              event.end?.date ? new Date(event.end.date) : null;
+          const isComplete = eventEndDate && eventEndDate < new Date();
+          const status = isComplete ? 'complete' as const : 'confirmed' as const;
           
           return {
             id: event.id,
-            bookingRef: `CAL-${event.id}`,
+            bookingRef: bookingRef,
             customerName: event.summary?.replace('🏰 ', '').split(' - ')[0] || 'Unknown',
             customerEmail: event.attendees?.[0]?.email || '',
             customerPhone: '',
@@ -277,9 +330,9 @@ export default function AdminBookings() {
             castleName: castleName,
             date: event.start?.date || event.start?.dateTime?.split('T')[0] || '',
             paymentMethod: '',
-            totalPrice: totalBasePrice + overnightCharge,
+            totalPrice: totalPrice,
             deposit: 0,
-            status: 'confirmed' as const,
+            status: status,
             notes: event.description || '',
             createdAt: '',
             updatedAt: '',
@@ -291,10 +344,29 @@ export default function AdminBookings() {
 
     // Debug logging to help identify duplicates
     console.log('Calendar events processed:', calendarBookings.length);
+    console.log('Calendar booking refs:', calendarBookings.map(b => b.bookingRef));
     console.log('Database bookings:', databaseBookings.length);
     console.log('Total combined bookings:', databaseBookings.length + calendarBookings.length);
 
-    return [...databaseBookings, ...calendarBookings];
+    // Create a map of database bookings by bookingRef for quick lookup
+    const databaseBookingsMap = new Map<string, any>();
+    databaseBookings.forEach(booking => {
+      databaseBookingsMap.set(booking.bookingRef, booking);
+    });
+
+    // Filter out calendar bookings that have a corresponding database entry
+    const uniqueCalendarBookings = calendarBookings.filter(calendarBooking => {
+      const hasDatabaseEntry = databaseBookingsMap.has(calendarBooking.bookingRef);
+      if (hasDatabaseEntry) {
+        console.log('Filtering out calendar booking with ref:', calendarBooking.bookingRef, 'because it has a database entry');
+      }
+      return !hasDatabaseEntry;
+    });
+
+    console.log('Unique calendar bookings after deduplication:', uniqueCalendarBookings.length);
+    console.log('Final total combined bookings:', databaseBookings.length + uniqueCalendarBookings.length);
+
+    return [...databaseBookings, ...uniqueCalendarBookings];
   }, [bookings, events, castles, filter, searchTerm]);
 
   const filteredBookings = createCombinedBookingsList();
@@ -306,8 +378,8 @@ export default function AdminBookings() {
         return <Badge className="bg-green-100 text-green-800">Confirmed</Badge>;
       case 'pending':
         return <Badge className="bg-yellow-100 text-yellow-800">Pending</Badge>;
-      case 'cancelled':
-        return <Badge className="bg-red-100 text-red-800">Cancelled</Badge>;
+      case 'complete':
+        return <Badge className="bg-blue-100 text-blue-800">Complete</Badge>;
       default:
         return <Badge className="bg-gray-100 text-gray-800">{status}</Badge>;
     }
@@ -486,35 +558,75 @@ export default function AdminBookings() {
   };
 
   // Calculate total cost
-  const calculateTotalCost = () => {
+  const calculateTotalCost = (basePrice: number, daysDiff: number, isOvernight: boolean) => {
+    // Ensure all inputs are valid numbers
+    const validBasePrice = isNaN(basePrice) ? 0 : basePrice;
+    const validDaysDiff = isNaN(daysDiff) ? 1 : Math.max(1, daysDiff);
+    
+    const totalBasePrice = validBasePrice * validDaysDiff;
+    const overnightCharge = isOvernight ? 20 : 0;
+    const additionalCosts = bookingForm.additionalCosts ? (isNaN(bookingForm.additionalCostsAmount) ? 0 : bookingForm.additionalCostsAmount) : 0;
+
+    const total = totalBasePrice + overnightCharge + additionalCosts;
+    
+    // Return 0 if the result is NaN, otherwise return the calculated total
+    return isNaN(total) ? 0 : total;
+  };
+
+  // Wrapper function for BookingFormModal that calculates total cost without parameters
+  const calculateTotalCostForModal = () => {
     const selectedCastle = castles.find(c => c.id.toString() === bookingForm.castle);
     const basePrice = Math.floor(selectedCastle?.price || 0);
-
+    
     // Calculate number of days
     let numberOfDays = 1;
     if (bookingForm.multipleDate && bookingForm.startDate && bookingForm.endDate) {
       const startDate = new Date(bookingForm.startDate);
       const endDate = new Date(bookingForm.endDate);
-      const timeDiff = endDate.getTime() - startDate.getTime();
-      numberOfDays = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1; // +1 to include both start and end dates
+      
+      // Check if dates are valid
+      if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
+        const timeDiff = endDate.getTime() - startDate.getTime();
+        numberOfDays = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+        // Ensure numberOfDays is at least 1
+        numberOfDays = Math.max(1, numberOfDays);
+      }
     }
+    
+    return calculateTotalCost(basePrice, numberOfDays, bookingForm.overnight);
+  };
 
-    const totalBasePrice = basePrice * numberOfDays;
-    const overnightCharge = bookingForm.overnight ? 20 : 0;
-    const additionalCosts = bookingForm.additionalCosts ? bookingForm.additionalCostsAmount : 0;
-
-    return totalBasePrice + overnightCharge + additionalCosts;
+  // Reset booking form to initial state
+  const resetBookingForm = () => {
+    setBookingForm({
+      castle: '',
+      customerName: '',
+      customerEmail: '',
+      customerPhone: '',
+      address: '',
+      singleDate: '',
+      multipleDate: false,
+      startDate: '',
+      endDate: '',
+      overnight: false,
+      additionalCosts: false,
+      additionalCostsDescription: '',
+      additionalCostsAmount: 0
+    });
   };
 
   // Handle booking form submit
-  const handleBookingSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (isEditing && selectedEvent) {
+  const handleBookingSubmit = async () => {
+    console.log('=== HANDLE BOOKING SUBMIT CALLED ===');
+    console.log('Timestamp:', new Date().toISOString());
+    console.log('Is editing:', isEditing);
+    console.log('Selected event:', selectedEvent);
+
+    if (isEditing) {
       setIsSubmitting(true);
       try {
         // Calculate total cost
-        const totalCost = calculateTotalCost();
+        const totalCost = calculateTotalCost(castles.find(c => c.id.toString() === bookingForm.castle)?.price || 0, 1, bookingForm.overnight);
         
         // Get selected castle details
         const selectedCastle = castles.find(c => c.id.toString() === bookingForm.castle);
@@ -523,149 +635,167 @@ export default function AdminBookings() {
           return;
         }
 
-        // Determine the date to use
-        let bookingDate = bookingForm.singleDate;
-        if (bookingForm.multipleDate && bookingForm.startDate && bookingForm.endDate) {
-          bookingDate = bookingForm.startDate; // Use start date for multi-day bookings
+        // Determine booking date
+        const bookingDate = bookingForm.multipleDate ? bookingForm.startDate : bookingForm.singleDate;
+        if (!bookingDate) {
+          toast.error('Please select a date');
+          return;
         }
 
-        // Check if this is a calendar event or database booking
-        if (selectedEvent.id.startsWith('db_')) {
-          // Update database booking
-          const bookingId = selectedEvent.id.replace('db_', '');
-          
-          // Prepare database booking update data
-          const bookingData = {
-            customerName: bookingForm.customerName,
-            customerPhone: bookingForm.customerPhone,
-            customerAddress: bookingForm.address,
-            castleId: selectedCastle.id,
-            castleName: selectedCastle.name,
-            date: bookingDate,
-            totalPrice: totalCost,
-            deposit: Math.floor(totalCost * 0.3), // 30% deposit
-            notes: bookingForm.overnight ? '(Overnight)' : ''
-          };
+        if (selectedEvent) { // selectedEvent is set by handleEditBooking
+          if (selectedEvent.id.startsWith('db_')) {
+            // Update database booking
+            const bookingId = selectedEvent.id.replace('db_', '');
+            
+            // Prepare database booking update data
+            const bookingData = {
+              customerName: bookingForm.customerName,
+              customerPhone: bookingForm.customerPhone,
+              customerAddress: bookingForm.address,
+              castleId: selectedCastle.id,
+              castleName: selectedCastle.name,
+              date: bookingDate,
+              totalPrice: totalCost,
+              deposit: Math.floor(totalCost * 0.3), // 30% deposit
+              notes: bookingForm.overnight ? '(Overnight)' : ''
+            };
 
-          const response = await fetch(`/api/admin/bookings/${bookingId}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(bookingData),
-          });
+            const response = await fetch(`/api/admin/bookings/${bookingId}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(bookingData),
+            });
 
-          if (response.ok) {
-            toast.success('Booking updated successfully!');
-            await fetchBookings(); // Refresh the bookings list
-            setShowBookingModal(false);
-            setIsEditing(false);
-            setSelectedEvent(null);
-          } else {
-            const error = await response.json();
-            toast.error(error.error || 'Failed to update booking');
+            if (response.ok) {
+              toast.success('Booking updated successfully!');
+              await fetchBookings(); // Refresh the bookings list
+              setShowBookingModal(false);
+              setIsEditing(false);
+              setSelectedEvent(null);
+            } else {
+              const error = await response.json();
+              toast.error(error.error || 'Failed to update booking');
+            }
+          } else { // It's a calendar event
+            // Update calendar event
+            const calendarEventId = selectedEvent.id;
+            
+            // Prepare calendar event update data
+            const bookingData = {
+              customerName: bookingForm.customerName,
+              contactDetails: {
+                phone: bookingForm.customerPhone
+              },
+              location: bookingForm.address,
+              notes: `Castle: ${selectedCastle.name}${bookingForm.overnight ? ' (Overnight)' : ''}`,
+              duration: {
+                start: `${bookingDate}T10:00:00`,
+                end: `${bookingDate}T18:00:00`
+              },
+              cost: totalCost,
+              bouncyCastleType: selectedCastle.name
+            };
+
+            const response = await fetch(`/api/admin/calendar/events/${calendarEventId}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(bookingData),
+            });
+
+            if (response.ok) {
+              toast.success('Calendar event updated successfully!');
+              await fetchBookings(); // Refresh the bookings list
+              setShowBookingModal(false);
+              setIsEditing(false);
+              setSelectedEvent(null);
+            } else {
+              const error = await response.json();
+              toast.error(error.error || 'Failed to update calendar event');
+            }
           }
-        } else {
-          // Update calendar event
-          const calendarEventId = selectedEvent.id;
-          
-          // Prepare calendar event update data
-          const bookingData = {
-            customerName: bookingForm.customerName,
-            contactDetails: {
-              phone: bookingForm.customerPhone
-            },
-            location: bookingForm.address,
-            notes: `Castle: ${selectedCastle.name}${bookingForm.overnight ? ' (Overnight)' : ''}`,
-            duration: {
-              start: `${bookingDate}T10:00:00`,
-              end: `${bookingDate}T18:00:00`
-            },
-            cost: totalCost,
-            bouncyCastleType: selectedCastle.name
-          };
-
-          const response = await fetch(`/api/admin/calendar/events/${calendarEventId}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(bookingData),
-          });
-
-          if (response.ok) {
-            toast.success('Calendar event updated successfully!');
-            await fetchBookings(); // Refresh the bookings list
-            setShowBookingModal(false);
-            setIsEditing(false);
-            setSelectedEvent(null);
-          } else {
-            const error = await response.json();
-            toast.error(error.error || 'Failed to update calendar event');
-          }
+        } else { // isEditing is true, but selectedEvent is null (should not happen if handleEditBooking is called)
+          toast.error('No event selected for editing.');
         }
       } catch (error) {
         console.error('Error updating booking:', error);
-        toast.error('Error updating booking');
+        toast.error('Failed to update booking');
       } finally {
         setIsSubmitting(false);
       }
     } else {
-      // Create new booking
-      setIsSubmitting(true);
+      console.log('Creating new booking...');
+      
+      // Validate required fields
+      if (!bookingForm.customerName || !bookingForm.customerPhone || !bookingForm.customerEmail || !bookingForm.address || !bookingForm.castle) {
+        toast.error('Please fill in all required fields');
+        return;
+      }
+
+      // Check date requirements based on booking type
+      if (bookingForm.multipleDate) {
+        if (!bookingForm.startDate || !bookingForm.endDate) {
+          toast.error('Please select both start and end dates for multiple day bookings');
+          return;
+        }
+      } else {
+        if (!bookingForm.singleDate) {
+          toast.error('Please select a date for single day bookings');
+          return;
+        }
+      }
+
+      // Determine start and end dates
+      let startDate, endDate;
+      if (bookingForm.multipleDate) {
+        startDate = new Date(bookingForm.startDate);
+        endDate = new Date(bookingForm.endDate);
+      } else {
+        startDate = new Date(bookingForm.singleDate);
+        endDate = new Date(bookingForm.singleDate);
+      }
+
+      // For single day bookings, set proper start and end times
+      if (!bookingForm.multipleDate) {
+        // Set start time to 9:00 AM and end time to 5:00 PM for single day bookings
+        startDate.setHours(9, 0, 0, 0);
+        endDate.setHours(17, 0, 0, 0);
+      }
+      
+      // Calculate total cost
+      const selectedCastle = castles.find(c => c.id.toString() === bookingForm.castle);
+      if (!selectedCastle) {
+        toast.error('Invalid castle type');
+        return;
+      }
+
+      const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      const totalCost = calculateTotalCost(selectedCastle.price, daysDiff, bookingForm.overnight);
+
+      // Prepare booking data for calendar event
+      const bookingData = {
+        customerName: bookingForm.customerName,
+        contactDetails: {
+          email: bookingForm.customerEmail,
+          phone: bookingForm.customerPhone
+        },
+        location: bookingForm.address,
+        notes: `Castle: ${selectedCastle.name}${bookingForm.overnight ? ' (Overnight)' : ''}`,
+        duration: {
+          start: startDate.toISOString(),
+          end: endDate.toISOString()
+        },
+        cost: totalCost,
+        bouncyCastleType: selectedCastle.name
+      };
+
+      console.log('Sending booking data to API:', JSON.stringify(bookingData, null, 2));
+
       try {
-        // Validate form
-        if (!bookingForm.castle || !bookingForm.customerName || !bookingForm.customerPhone || !bookingForm.address) {
-          toast.error('Please fill in all required fields');
-          return;
-        }
-
-        // Determine dates
-        let startDateTime, endDateTime;
-        if (bookingForm.multipleDate) {
-          if (!bookingForm.startDate || !bookingForm.endDate) {
-            toast.error('Please select both start and end dates');
-            return;
-          }
-          startDateTime = `${bookingForm.startDate}T10:00:00`;
-          endDateTime = `${bookingForm.endDate}T18:00:00`;
-        } else {
-          if (!bookingForm.singleDate) {
-            toast.error('Please select a date');
-            return;
-          }
-          startDateTime = `${bookingForm.singleDate}T10:00:00`;
-          endDateTime = `${bookingForm.singleDate}T18:00:00`;
-        }
-
-        // Calculate total cost
-        const totalCost = calculateTotalCost();
-        
-        // Get selected castle details
-        const selectedCastle = castles.find(c => c.id.toString() === bookingForm.castle);
-        if (!selectedCastle) {
-          toast.error('Please select a valid castle');
-          return;
-        }
-
-        // Create booking data for calendar
-        const bookingData = {
-          customerName: bookingForm.customerName,
-          contactDetails: {
-            email: bookingForm.customerEmail,
-            phone: bookingForm.customerPhone
-          },
-          location: bookingForm.address,
-          notes: `Castle: ${selectedCastle.name}${bookingForm.overnight ? ' (Overnight)' : ''}`,
-          duration: {
-            start: startDateTime,
-            end: endDateTime
-          },
-          cost: totalCost,
-          bouncyCastleType: selectedCastle.name
-        };
-
-        // Create calendar event
+        // Step 1: Create Google Calendar event
         const response = await fetch('/api/admin/calendar/events', {
           method: 'POST',
           headers: {
@@ -674,37 +804,57 @@ export default function AdminBookings() {
           body: JSON.stringify(bookingData),
         });
 
-        if (response.ok) {
-          toast.success('Booking created successfully and added to calendar!');
-          // Only refresh calendar data since the new booking is only in Google Calendar
-          await fetchCalendarData(); // Refresh calendar data
-          setShowBookingModal(false);
-          
-          // Reset form
-          setBookingForm({
-            castle: '',
-            customerName: '',
-            customerEmail: '',
-            customerPhone: '',
-            address: '',
-            singleDate: '',
-            multipleDate: false,
-            startDate: '',
-            endDate: '',
-            overnight: false,
-            additionalCosts: false,
-            additionalCostsDescription: '',
-            additionalCostsAmount: 0
-          });
-        } else {
-          const error = await response.json();
-          toast.error(error.error || 'Failed to create booking');
+        const result = await response.json();
+        console.log('API response:', result);
+
+        if (!response.ok) {
+          throw new Error(result.message || 'Failed to create calendar event');
         }
+
+        const { eventId } = result;
+
+        // Generate friendly booking reference
+        const bookingRef = generateFriendlyBookingRef(eventId);
+
+        const databaseBookingData = {
+          customerName: bookingForm.customerName,
+          customerEmail: bookingForm.customerEmail,
+          customerPhone: bookingForm.customerPhone,
+          address: bookingForm.address,
+          castleType: selectedCastle.name,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          totalCost: totalCost,
+          status: 'confirmed',
+          calendarEventId: eventId,
+          bookingRef: bookingRef,
+          notes: bookingForm.additionalCostsDescription || ''
+        };
+
+        const dbResponse = await fetch('/api/admin/bookings/create-confirmed', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(databaseBookingData),
+        });
+
+        const dbResult = await dbResponse.json();
+
+        if (!dbResponse.ok) {
+          throw new Error(dbResult.message || 'Failed to create database booking');
+        }
+
+        // Step 3: Refresh both calendar and database data
+        await fetchCalendarData();
+        await fetchBookings();
+
+        toast.success('Booking created successfully!');
+        setShowBookingModal(false);
+        resetBookingForm();
       } catch (error) {
         console.error('Error creating booking:', error);
-        toast.error('Error creating booking');
-      } finally {
-        setIsSubmitting(false);
+        toast.error(`Failed to create booking: ${error.message}`);
       }
     }
   };
@@ -721,8 +871,8 @@ export default function AdminBookings() {
         return 'bg-green-100 text-green-800 border-green-200';
       case 'tentative':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800 border-red-200';
+      case 'complete':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
       default:
         return 'bg-blue-100 text-blue-800 border-blue-200';
     }
@@ -858,6 +1008,10 @@ export default function AdminBookings() {
     const phoneMatch = event.description?.match(/Phone: (.+?)(?:\s|$)/);
     const phone = phoneMatch?.[1] || '';
     
+    // Extract email from description
+    const emailMatch = event.description?.match(/Email: (.+?)(?:\s|$)/);
+    const email = emailMatch?.[1] || '';
+    
     // Find castle by name
     const castle = castles.find(c => c.name === castleMatch?.[1]);
     
@@ -867,7 +1021,7 @@ export default function AdminBookings() {
     setBookingForm({
       castle: castle?.id.toString() || '',
       customerName: event.summary?.replace('🏰 ', '') || '',
-      customerEmail: event.attendees?.[0]?.email || '',
+      customerEmail: email,
       customerPhone: phone,
       address: event.location || '',
       singleDate: isMultiDay ? '' : eventStart.toISOString().split('T')[0],
@@ -929,7 +1083,7 @@ export default function AdminBookings() {
                {filter === 'all' ? 'All Bookings' : 
                 filter === 'pending' ? 'Pending Bookings' :
                 filter === 'confirmed' ? 'Confirmed Bookings' :
-                filter === 'cancelled' ? 'Cancelled Bookings' : 'Bookings'} ({filteredBookings.length})
+                filter === 'complete' ? 'Complete Bookings' : 'Bookings'} ({filteredBookings.length})
              </CardTitle>
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1 sm:w-64">
@@ -944,16 +1098,15 @@ export default function AdminBookings() {
                 </div>
               </div>
               <Select value={filter} onValueChange={setFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <Filter className="h-4 w-4 mr-2" />
+                <SelectTrigger>
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
-                                 <SelectContent>
-                   <SelectItem value="all">All Bookings</SelectItem>
-                   <SelectItem value="pending">Pending</SelectItem>
-                   <SelectItem value="confirmed">Confirmed</SelectItem>
-                   <SelectItem value="cancelled">Cancelled</SelectItem>
-                 </SelectContent>
+                <SelectContent>
+                  <SelectItem value="all">All Bookings</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="confirmed">Confirmed</SelectItem>
+                  <SelectItem value="complete">Complete</SelectItem>
+                </SelectContent>
               </Select>
             </div>
           </div>
@@ -983,16 +1136,18 @@ export default function AdminBookings() {
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-4 mb-2">
-                      <h3 className="font-medium">{booking.bookingRef}</h3>
+                      <h3 className="font-medium">{booking.customerName}</h3>
                       {getStatusBadge(booking.status)}
                       <Badge variant={booking.source === 'database' ? 'default' : 'secondary'}>
                         {booking.source === 'database' ? 'DB' : 'Calendar'}
                       </Badge>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-2 text-sm text-gray-600">
-                      <div>
-                        <strong>Customer:</strong> {booking.customerName}
-                      </div>
+                      {booking.status !== 'pending' && (
+                        <div>
+                          <strong>Booking Ref:</strong> {booking.bookingRef}
+                        </div>
+                      )}
                       <div>
                         <strong>Castle:</strong> {booking.castleName}
                       </div>
@@ -1275,7 +1430,7 @@ export default function AdminBookings() {
             }}
             onSubmit={handleBookingSubmit}
             onFormChange={handleFormChange}
-            calculateTotalCost={calculateTotalCost}
+            calculateTotalCost={calculateTotalCostForModal}
           />
         )}
 

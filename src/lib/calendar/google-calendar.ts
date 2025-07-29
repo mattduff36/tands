@@ -117,7 +117,13 @@ export class GoogleCalendarService {
 
   async createBookingEvent(bookingData: BookingEventData): Promise<string> {
     try {
+      console.log('=== GOOGLE CALENDAR SERVICE: createBookingEvent CALLED ===');
+      console.log('Timestamp:', new Date().toISOString());
+      console.log('Booking data:', JSON.stringify(bookingData, null, 2));
+      
       const event: calendar_v3.Schema$Event = this.buildCalendarEvent(bookingData);
+      
+      console.log('Built calendar event:', JSON.stringify(event, null, 2));
       
       const response = await this.executeWithRetry(
         () => this.calendar.events.insert({
@@ -133,6 +139,7 @@ export class GoogleCalendarService {
       }
 
       console.log(`Created booking event: ${response.data.id} for ${bookingData.customerName}`);
+      console.log('=== GOOGLE CALENDAR SERVICE: createBookingEvent COMPLETED ===');
       return response.data.id;
     } catch (error) {
       console.error('Error creating booking event:', error);
@@ -408,6 +415,10 @@ export class GoogleCalendarService {
 
   async deleteMaintenanceEvents(castleId: number, startDate: string, endDate: string): Promise<void> {
     return this.executeWithRetry(async () => {
+      console.log(`=== DELETING MAINTENANCE EVENTS ===`);
+      console.log(`Castle ID: ${castleId}`);
+      console.log(`Date Range: ${startDate} to ${endDate}`);
+      
       const startDateTime = new Date(startDate);
       const endDateTime = new Date(endDate);
       
@@ -420,18 +431,27 @@ export class GoogleCalendarService {
         orderBy: 'startTime'
       });
 
+      console.log(`Found ${events.data.items?.length || 0} events in date range`);
+
       // Delete maintenance events for this castle
+      let deletedCount = 0;
       for (const event of events.data.items || []) {
         const extendedProps = event.extendedProperties?.private;
+        console.log(`Checking event: ${event.id}, summary: ${event.summary}`);
+        console.log(`Extended props:`, extendedProps);
+        
         if (extendedProps?.castleId === castleId.toString() &&
             extendedProps?.eventType === 'maintenance') {
           await this.calendar.events.delete({
             calendarId: this.settings.primaryCalendarId,
             eventId: event.id!,
           });
-          console.log(`Deleted maintenance event: ${event.id}`);
+          console.log(`✅ Deleted maintenance event: ${event.id}`);
+          deletedCount++;
         }
       }
+      
+      console.log(`Total maintenance events deleted: ${deletedCount}`);
     }, 'deleteMaintenanceEvents');
   }
 

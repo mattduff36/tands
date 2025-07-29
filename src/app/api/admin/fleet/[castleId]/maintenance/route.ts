@@ -87,6 +87,15 @@ export async function PUT(
       );
     }
 
+    // If setting to available and no dates provided, get current maintenance dates before updating
+    let currentMaintenanceDates: { startDate?: string; endDate?: string } | null = null;
+    if (status === 'available' && (!startDate || !endDate)) {
+      currentMaintenanceDates = {
+        startDate: castle.maintenanceStartDate,
+        endDate: castle.maintenanceEndDate
+      };
+    }
+
     // Update castle maintenance status
     const updatedCastle = await updateCastleMaintenance(castleId, {
       status,
@@ -106,14 +115,33 @@ export async function PUT(
     try {
       const calendarService = getCalendarService();
       
+      console.log(`=== MAINTENANCE STATUS UPDATE ===`);
+      console.log(`Castle ID: ${castleId}`);
+      console.log(`New Status: ${status}`);
+      console.log(`Start Date: ${startDate}`);
+      console.log(`End Date: ${endDate}`);
+      
       if (status === 'available') {
         // Remove maintenance events from calendar
         if (startDate && endDate) {
+          // Delete events in the specific date range
+          console.log(`Deleting maintenance events with provided dates: ${startDate} to ${endDate}`);
           await calendarService.deleteMaintenanceEvents(castleId, startDate, endDate);
+        } else if (currentMaintenanceDates?.startDate && currentMaintenanceDates?.endDate) {
+          // Use the dates we got before updating the database
+          console.log(`Deleting maintenance events with current dates: ${currentMaintenanceDates.startDate} to ${currentMaintenanceDates.endDate}`);
+          await calendarService.deleteMaintenanceEvents(
+            castleId, 
+            currentMaintenanceDates.startDate, 
+            currentMaintenanceDates.endDate
+          );
+        } else {
+          console.log(`No maintenance dates available for castle ${castleId}`);
         }
       } else {
         // Add or update maintenance event in calendar
         // Dates are already validated above for non-available status
+        console.log(`Creating maintenance event for castle ${castleId}`);
         await calendarService.createMaintenanceEvent({
           castleId,
           castleName: castle.name,

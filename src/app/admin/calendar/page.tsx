@@ -233,10 +233,28 @@ export default function AdminCalendar() {
       }
 
              // Calculate cost
-       const selectedCastle = castles.find(c => c.id.toString() === bookingForm.castle);
-       const basePrice = Math.floor(selectedCastle?.price || 0);
-       const overnightCharge = bookingForm.overnight ? 20 : 0;
-       const totalCost = basePrice + overnightCharge;
+      const selectedCastle = castles.find(c => c.id.toString() === bookingForm.castle);
+      const basePrice = Math.floor(selectedCastle?.price || 0);
+      
+      // Calculate number of days
+      let numberOfDays = 1;
+      if (bookingForm.multipleDate && bookingForm.startDate && bookingForm.endDate) {
+        const startDate = new Date(bookingForm.startDate);
+        const endDate = new Date(bookingForm.endDate);
+        
+        // Check if dates are valid
+        if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
+          const timeDiff = endDate.getTime() - startDate.getTime();
+          numberOfDays = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1; // +1 to include both start and end dates
+          // Ensure numberOfDays is at least 1
+          numberOfDays = Math.max(1, numberOfDays);
+        }
+      }
+      
+      const totalBasePrice = basePrice * numberOfDays;
+      const overnightCharge = bookingForm.overnight ? 20 : 0;
+      const additionalCosts = bookingForm.additionalCosts ? (isNaN(bookingForm.additionalCostsAmount) ? 0 : bookingForm.additionalCostsAmount) : 0;
+      const totalCost = totalBasePrice + overnightCharge + additionalCosts;
 
       // Create booking data
       const bookingData = {
@@ -245,7 +263,7 @@ export default function AdminCalendar() {
           phone: bookingForm.customerPhone
         },
         location: bookingForm.address,
-        notes: `Castle: ${selectedCastle?.name}${bookingForm.overnight ? ' (Overnight)' : ''}`,
+        notes: `Castle: ${selectedCastle?.name}${bookingForm.overnight ? ' (Overnight)' : ''}${bookingForm.additionalCosts ? `\nAdditional Costs: ${bookingForm.additionalCostsDescription} - £${bookingForm.additionalCostsAmount}` : ''}`,
         duration: {
           start: startDateTime,
           end: endDateTime
@@ -357,15 +375,24 @@ export default function AdminCalendar() {
     if (bookingForm.multipleDate && bookingForm.startDate && bookingForm.endDate) {
       const startDate = new Date(bookingForm.startDate);
       const endDate = new Date(bookingForm.endDate);
-      const timeDiff = endDate.getTime() - startDate.getTime();
-      numberOfDays = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1; // +1 to include both start and end dates
+      
+      // Check if dates are valid
+      if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
+        const timeDiff = endDate.getTime() - startDate.getTime();
+        numberOfDays = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1; // +1 to include both start and end dates
+        // Ensure numberOfDays is at least 1
+        numberOfDays = Math.max(1, numberOfDays);
+      }
     }
     
     const totalBasePrice = basePrice * numberOfDays;
     const overnightCharge = bookingForm.overnight ? 20 : 0;
-    const additionalCosts = bookingForm.additionalCosts ? bookingForm.additionalCostsAmount : 0;
+    const additionalCosts = bookingForm.additionalCosts ? (isNaN(bookingForm.additionalCostsAmount) ? 0 : bookingForm.additionalCostsAmount) : 0;
     
-    return totalBasePrice + overnightCharge + additionalCosts;
+    const total = totalBasePrice + overnightCharge + additionalCosts;
+    
+    // Return 0 if the result is NaN, otherwise return the calculated total
+    return isNaN(total) ? 0 : total;
   };
 
   // View event details
@@ -451,8 +478,8 @@ export default function AdminCalendar() {
         return 'bg-green-100 text-green-800 border-green-200';
       case 'tentative':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800 border-red-200';
+      case 'complete':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
       default:
         return 'bg-blue-100 text-blue-800 border-blue-200';
     }

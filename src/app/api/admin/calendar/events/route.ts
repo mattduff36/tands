@@ -115,6 +115,11 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     
+    // Add debugging logs
+    console.log('=== CALENDAR EVENTS API CALLED ===');
+    console.log('Timestamp:', new Date().toISOString());
+    console.log('Request body:', JSON.stringify(body, null, 2));
+    
     // Validate required fields
     const { customerName, location, duration } = body;
     if (!customerName || !location || !duration?.start || !duration?.end) {
@@ -131,8 +136,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid date format in duration' }, { status: 400 });
     }
     
-    if (startDate >= endDate) {
-      return NextResponse.json({ error: 'Start time must be before end time' }, { status: 400 });
+    if (startDate > endDate) {
+      return NextResponse.json({ error: 'Start time must be before or equal to end time' }, { status: 400 });
     }
 
     // Create booking data object
@@ -153,8 +158,12 @@ export async function POST(request: NextRequest) {
       bouncyCastleType: body.bouncyCastleType
     };
 
+    console.log('Calling calendarService.createBookingEvent with data:', JSON.stringify(bookingData, null, 2));
+
     const calendarService = getCalendarService();
     const eventId = await calendarService.createBookingEvent(bookingData);
+
+    console.log('Calendar event created successfully with ID:', eventId);
 
     return NextResponse.json({ 
       success: true,

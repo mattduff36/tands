@@ -18,7 +18,7 @@ export interface PendingBooking {
   paymentMethod: string;
   totalPrice: number;
   deposit: number;
-  status: 'pending' | 'confirmed' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'complete';
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -28,6 +28,7 @@ export interface PendingBooking {
 export async function initializeBookingsTable(): Promise<void> {
   const client = await getPool().connect();
   try {
+    // First, create the base table if it doesn't exist
     await client.query(`
       CREATE TABLE IF NOT EXISTS bookings (
         id SERIAL PRIMARY KEY,
@@ -48,8 +49,21 @@ export async function initializeBookingsTable(): Promise<void> {
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    // Add new columns for confirmed bookings if they don't exist
+    await client.query(`
+      ALTER TABLE bookings 
+      ADD COLUMN IF NOT EXISTS castle_type VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS start_date TIMESTAMP WITH TIME ZONE,
+      ADD COLUMN IF NOT EXISTS end_date TIMESTAMP WITH TIME ZONE,
+      ADD COLUMN IF NOT EXISTS total_cost INTEGER,
+      ADD COLUMN IF NOT EXISTS calendar_event_id VARCHAR(255)
+    `);
     
     console.log('Bookings table initialized successfully');
+    
+    // Update expired bookings to complete status
+    await updateExpiredBookings();
   } catch (error) {
     console.error('Error initializing bookings table:', error);
     throw error;
@@ -58,7 +72,71 @@ export async function initializeBookingsTable(): Promise<void> {
   }
 }
 
-// Generate unique booking reference
+// Generate user-friendly booking reference (TS001, TS002, etc.)
+async function generateFriendlyBookingRef(): Promise<string> {
+  const client = await getPool().connect();
+  try {
+    // Get the highest booking reference number
+    const result = await client.query(`
+      SELECT booking_ref 
+      FROM bookings 
+      WHERE booking_ref ~ '^TS\\d{3}$'
+      ORDER BY CAST(SUBSTRING(booking_ref FROM 3) AS INTEGER) DESC 
+      LIMIT 1
+    `);
+    
+    let nextNumber = 1;
+    if (result.rows.length > 0) {
+      const lastRef = result.rows[0].booking_ref;
+      const lastNumber = parseInt(lastRef.substring(2));
+      nextNumber = lastNumber + 1;
+    }
+    
+    // Ensure we don't exceed 999
+    if (nextNumber > 999) {
+      // If we've exceeded 999, find the first available number
+      const allRefs = await client.query(`
+        SELECT booking_ref 
+        FROM bookings 
+        WHERE booking_ref ~ '^TS\\d{3}$'
+        ORDER BY CAST(SUBSTRING(booking_ref FROM 3) AS INTEGER) ASC
+      `);
+      
+      const usedNumbers = new Set(allRefs.rows.map(row => parseInt(row.booking_ref.substring(2))));
+      for (let i = 1; i <= 999; i++) {
+        if (!usedNumbers.has(i)) {
+          nextNumber = i;
+          break;
+        }
+      }
+      
+      // If all numbers are used, fall back to timestamp
+      if (nextNumber > 999) {
+        const date = new Date();
+        const year = date.getFullYear().toString().slice(-2);
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+        return `TS${year}${month}${day}${random}`;
+      }
+    }
+    
+    return `TS${nextNumber.toString().padStart(3, '0')}`;
+  } catch (error) {
+    console.error('Error generating friendly booking ref:', error);
+    // Fallback to timestamp-based ref if there's an error
+    const date = new Date();
+    const year = date.getFullYear().toString().slice(-2);
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    return `TS${year}${month}${day}${random}`;
+  } finally {
+    client.release();
+  }
+}
+
+// Generate unique booking reference (legacy function - keeping for backward compatibility)
 function generateBookingRef(): string {
   const date = new Date();
   const year = date.getFullYear().toString().slice(-2);
@@ -72,7 +150,7 @@ function generateBookingRef(): string {
 export async function createPendingBooking(booking: Omit<PendingBooking, 'id' | 'bookingRef' | 'status' | 'createdAt' | 'updatedAt'>): Promise<PendingBooking> {
   const client = await getPool().connect();
   try {
-    const bookingRef = generateBookingRef();
+    const bookingRef = await generateFriendlyBookingRef();
     
     const result = await client.query(`
       INSERT INTO bookings (
@@ -122,6 +200,83 @@ export async function createPendingBooking(booking: Omit<PendingBooking, 'id' | 
   }
 }
 
+// Create a new confirmed booking with calendar event ID
+export async function createConfirmedBooking(booking: {
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  address: string;
+  castleType: string;
+  startDate: string;
+  endDate: string;
+  totalCost: number;
+  status: string;
+  calendarEventId: string;
+  bookingRef: string;
+  notes?: string;
+}): Promise<any> {
+  const client = await getPool().connect();
+  try {
+    const result = await client.query(`
+      INSERT INTO bookings (
+        booking_ref, customer_name, customer_email, customer_phone, 
+        customer_address, castle_id, castle_name, date, payment_method, 
+        total_price, deposit, status, notes, castle_type, start_date, 
+        end_date, total_cost, calendar_event_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+      RETURNING *
+    `, [
+      booking.bookingRef,
+      booking.customerName,
+      booking.customerEmail,
+      booking.customerPhone,
+      booking.address,
+      1, // Default castle_id for confirmed bookings
+      booking.castleType,
+      new Date(booking.startDate).toISOString().split('T')[0], // Extract date part
+      'card', // Default payment method for confirmed bookings
+      booking.totalCost,
+      Math.floor(booking.totalCost * 0.3), // 30% deposit
+      booking.status,
+      booking.notes || null,
+      booking.castleType,
+      booking.startDate,
+      booking.endDate,
+      booking.totalCost,
+      booking.calendarEventId
+    ]);
+
+    return {
+      id: result.rows[0].id,
+      bookingRef: result.rows[0].booking_ref,
+      customerName: result.rows[0].customer_name,
+      customerEmail: result.rows[0].customer_email,
+      customerPhone: result.rows[0].customer_phone,
+      customerAddress: result.rows[0].customer_address,
+      castleId: result.rows[0].castle_id,
+      castleName: result.rows[0].castle_name,
+      date: result.rows[0].date,
+      paymentMethod: result.rows[0].payment_method,
+      totalPrice: result.rows[0].total_price,
+      deposit: result.rows[0].deposit,
+      status: result.rows[0].status,
+      notes: result.rows[0].notes,
+      createdAt: result.rows[0].created_at,
+      updatedAt: result.rows[0].updated_at,
+      castleType: result.rows[0].castle_type,
+      startDate: result.rows[0].start_date,
+      endDate: result.rows[0].end_date,
+      totalCost: result.rows[0].total_cost,
+      calendarEventId: result.rows[0].calendar_event_id
+    };
+  } catch (error) {
+    console.error('Error creating confirmed booking:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 // Get all bookings by status
 export async function getBookingsByStatus(status?: string): Promise<PendingBooking[]> {
   const client = await getPool().connect();
@@ -165,17 +320,34 @@ export async function getBookingsByStatus(status?: string): Promise<PendingBooki
 }
 
 // Update booking status
-export async function updateBookingStatus(id: number, status: 'pending' | 'confirmed' | 'cancelled'): Promise<void> {
+export async function updateBookingStatus(id: number, status: 'pending' | 'confirmed' | 'complete'): Promise<void> {
   const client = await getPool().connect();
   try {
+    await client.query(
+      'UPDATE bookings SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      [status, id]
+    );
+  } finally {
+    client.release();
+  }
+}
+
+// Automatically update confirmed bookings to complete after their end date
+export async function updateExpiredBookings(): Promise<void> {
+  const client = await getPool().connect();
+  try {
+    // Update confirmed bookings where the end date has passed
     await client.query(`
       UPDATE bookings 
-      SET status = $1, updated_at = CURRENT_TIMESTAMP 
-      WHERE id = $2
-    `, [status, id]);
+      SET status = 'complete', updated_at = CURRENT_TIMESTAMP 
+      WHERE status = 'confirmed' 
+      AND end_date IS NOT NULL 
+      AND end_date < CURRENT_TIMESTAMP
+    `);
+    
+    console.log('Updated expired bookings to complete status');
   } catch (error) {
-    console.error('Error updating booking status:', error);
-    throw error;
+    console.error('Error updating expired bookings:', error);
   } finally {
     client.release();
   }
@@ -356,7 +528,7 @@ export async function getBookingStats(query?: {
   total: number;
   pending: number;
   confirmed: number;
-  cancelled: number;
+  complete: number;
   revenue: number;
 }> {
   const client = await getPool().connect();
@@ -366,7 +538,7 @@ export async function getBookingStats(query?: {
         COUNT(*) as total,
         COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending,
         COUNT(CASE WHEN status = 'confirmed' THEN 1 END) as confirmed,
-        COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled,
+        COUNT(CASE WHEN status = 'complete' THEN 1 END) as complete,
         COALESCE(SUM(CASE WHEN status = 'confirmed' THEN total_price ELSE 0 END), 0) as revenue
       FROM bookings
     `;
@@ -408,7 +580,7 @@ export async function getBookingStats(query?: {
       total: parseInt(stats.total),
       pending: parseInt(stats.pending),
       confirmed: parseInt(stats.confirmed),
-      cancelled: parseInt(stats.cancelled),
+      complete: parseInt(stats.complete),
       revenue: parseInt(stats.revenue)
     };
   } catch (error) {

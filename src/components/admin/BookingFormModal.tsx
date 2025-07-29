@@ -293,14 +293,20 @@ export function BookingFormModal({
                     if (bookingForm.multipleDate && bookingForm.startDate && bookingForm.endDate) {
                       const startDate = new Date(bookingForm.startDate);
                       const endDate = new Date(bookingForm.endDate);
-                      const timeDiff = endDate.getTime() - startDate.getTime();
-                      numberOfDays = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+                      
+                      // Check if dates are valid
+                      if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
+                        const timeDiff = endDate.getTime() - startDate.getTime();
+                        numberOfDays = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+                        // Ensure numberOfDays is at least 1
+                        numberOfDays = Math.max(1, numberOfDays);
+                      }
                     }
                     return (
                       <>
                         <div className="flex justify-between">
                           <span>Daily Rate:</span>
-                          <span>£{basePrice}</span>
+                          <span>£{isNaN(basePrice) ? 0 : basePrice}</span>
                         </div>
                         <div className="flex justify-between">
                           <span>Number of Days:</span>
@@ -318,7 +324,7 @@ export function BookingFormModal({
                   {bookingForm.additionalCosts && (
                     <div className="flex justify-between">
                       <span>{bookingForm.additionalCostsDescription}:</span>
-                      <span>£{bookingForm.additionalCostsAmount}</span>
+                      <span>£{isNaN(bookingForm.additionalCostsAmount) ? 0 : bookingForm.additionalCostsAmount}</span>
                     </div>
                   )}
                   <hr className="my-2" />

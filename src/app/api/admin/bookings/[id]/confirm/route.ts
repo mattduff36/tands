@@ -42,8 +42,14 @@ export async function POST(
     // Create calendar event
     const calendarService = getCalendarService();
     
-    const eventStartDateTime = `${booking.date}T10:00:00`;
-    const eventEndDateTime = `${booking.date}T18:00:00`;
+    // Convert booking date to proper ISO format with times
+    const bookingDate = new Date(booking.date);
+    const eventStartDateTime = new Date(bookingDate);
+    const eventEndDateTime = new Date(bookingDate);
+    
+    // Set times: 9 AM to 5 PM
+    eventStartDateTime.setHours(9, 0, 0, 0);
+    eventEndDateTime.setHours(17, 0, 0, 0);
     
     const calendarEvent = {
       summary: `${booking.customerName} - ${booking.castleName}`,
@@ -58,11 +64,11 @@ export async function POST(
                   `Notes: ${booking.notes || 'None'}`,
       location: booking.customerAddress,
       start: {
-        dateTime: eventStartDateTime,
+        dateTime: eventStartDateTime.toISOString(),
         timeZone: 'Europe/London'
       },
       end: {
-        dateTime: eventEndDateTime,
+        dateTime: eventEndDateTime.toISOString(),
         timeZone: 'Europe/London'
       }
     };
@@ -77,8 +83,8 @@ export async function POST(
       location: booking.customerAddress,
       notes: `Booking Ref: ${booking.bookingRef}\nTotal: £${booking.totalPrice}\nDeposit: £${booking.deposit}\nPayment: ${booking.paymentMethod}\n${booking.notes || ''}`,
       duration: {
-        start: eventStartDateTime,
-        end: eventEndDateTime
+        start: eventStartDateTime.toISOString(),
+        end: eventEndDateTime.toISOString()
       },
       cost: booking.totalPrice,
       paymentMethod: booking.paymentMethod as 'cash' | 'card',

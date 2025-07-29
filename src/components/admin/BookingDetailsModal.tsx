@@ -105,7 +105,7 @@ export function BookingDetailsModal({
                   Approve
                 </Button>
               )}
-              {status !== 'cancelled' && onEdit && (
+              {status !== 'complete' && onEdit && (
                 <Button
                   variant="outline"
                   onClick={() => onEdit(event)}

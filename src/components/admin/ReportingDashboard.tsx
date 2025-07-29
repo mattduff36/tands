@@ -75,7 +75,7 @@ export function ReportingDashboard({ className }: ReportingDashboardProps) {
     { value: 'confirmed', label: 'Confirmed' },
     { value: 'in_progress', label: 'In Progress' },
     { value: 'completed', label: 'Completed' },
-    { value: 'cancelled', label: 'Cancelled' },
+    { value: 'complete', label: 'Complete' },
     { value: 'no_show', label: 'No Show' }
   ];
 
@@ -434,11 +434,11 @@ export function ReportingDashboard({ className }: ReportingDashboardProps) {
               <CardContent>
                 <div className="text-2xl font-bold">
                   {stats.totalBookings > 0 ? 
-                    Math.round((stats.cancelledBookings / stats.totalBookings) * 100) : 0}%
+                    Math.round((stats.completeBookings / stats.totalBookings) * 100) : 0}%
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {stats.cancelledBookings} cancelled
-                </p>
+                <div className="text-sm text-gray-500">
+                  {stats.completeBookings} complete
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -528,7 +528,7 @@ export function ReportingDashboard({ className }: ReportingDashboardProps) {
                     <Badge variant={
                       booking.status === 'confirmed' ? 'default' :
                       booking.status === 'pending' ? 'secondary' :
-                      booking.status === 'cancelled' ? 'destructive' :
+                      booking.status === 'complete' ? 'destructive' :
                       'outline'
                     }>
                       {booking.status}

@@ -20,7 +20,7 @@ interface BookingStats {
   total: number;
   pending: number;
   confirmed: number;
-  cancelled: number;
+  complete: number;
   revenue: number;
 }
 
@@ -301,7 +301,7 @@ export default function AdminReports() {
                   {[
                     { label: 'Confirmed', count: reportData.stats.confirmed, color: 'bg-green-600', percentage: reportData.stats.total > 0 ? (reportData.stats.confirmed / reportData.stats.total) * 100 : 0 },
                     { label: 'Pending', count: reportData.stats.pending, color: 'bg-yellow-600', percentage: reportData.stats.total > 0 ? (reportData.stats.pending / reportData.stats.total) * 100 : 0 },
-                    { label: 'Cancelled', count: reportData.stats.cancelled, color: 'bg-red-600', percentage: reportData.stats.total > 0 ? (reportData.stats.cancelled / reportData.stats.total) * 100 : 0 }
+                    { label: 'Complete', count: reportData.stats.complete, color: 'bg-blue-600', percentage: reportData.stats.total > 0 ? (reportData.stats.complete / reportData.stats.total) * 100 : 0 }
                   ].map((status) => (
                     <div key={status.label} className="flex items-center space-x-4">
                       <div className="w-24 text-sm font-medium text-gray-600">{status.label}</div>
