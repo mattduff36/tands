@@ -504,7 +504,7 @@ export default function BookingManager({ onBookingSelect, selectedDate }: Bookin
                         </div>
                         <div className="flex items-start gap-2 text-gray-600">
                           <Calendar className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                          <span>{new Date(booking.date).toLocaleDateString()} • {booking.startTime} - {booking.endTime}</span>
+                          <span>{new Date(booking.date).toLocaleDateString()}</span>
                         </div>
                       </div>
                       <div className="space-y-2">
