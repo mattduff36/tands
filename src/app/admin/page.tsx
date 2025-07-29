@@ -193,7 +193,7 @@ export default function AdminDashboard() {
             Welcome back, {session?.user?.name || 'Admin'}
           </p>
         </div>
-        <div className="mt-4 sm:mt-0 flex space-x-3">
+        <div className="mt-4 sm:mt-0">
           <Button
             onClick={fetchDashboardData}
             variant="outline"
