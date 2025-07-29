@@ -52,7 +52,7 @@ export async function POST(
     eventEndDateTime.setHours(17, 0, 0, 0);
     
     const calendarEvent = {
-      summary: `${booking.customerName} - ${booking.castleName}`,
+      summary: `🏰 ${booking.customerName} - ${booking.castleName}`,
       description: `Booking Ref: ${booking.bookingRef}\n` +
                   `Castle: ${booking.castleName}\n` +
                   `Customer: ${booking.customerName}\n` +

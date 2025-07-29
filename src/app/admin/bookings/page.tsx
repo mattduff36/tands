@@ -263,6 +263,12 @@ export default function AdminBookings() {
           }
           seenEventIds.add(event.id);
           
+          // Skip database-originated events (they start with 'db_')
+          if (event.id.startsWith('db_')) {
+            console.log('Skipping database-originated event:', event.id);
+            return false;
+          }
+          
           // Only include events that look like confirmed bookings (not maintenance events)
           const isBookingEvent = event.summary?.includes('🏰') || 
             (event.summary && !event.summary.includes('🔧'));
@@ -479,7 +485,7 @@ export default function AdminBookings() {
   function bookingToCalendarEvent(booking: Booking): CalendarEvent {
     return {
       id: `db_${booking.id}`, // Prefix to identify database bookings
-      summary: booking.customerName + ' - ' + booking.castleName,
+      summary: `🏰 ${booking.customerName} - ${booking.castleName}`,
       description: booking.notes || '',
       location: booking.customerAddress,
       start: { date: booking.date },
