@@ -241,7 +241,7 @@ export interface ConflictCheckResult {
 export interface BookingStats {
   totalBookings: number;
   confirmedBookings: number;
-  cancelledBookings: number;
+  completeBookings: number;
   totalRevenue: number;
   averageBookingValue: number;
   popularCastles: {
