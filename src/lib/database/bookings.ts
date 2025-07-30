@@ -4,6 +4,7 @@
  */
 
 import { getPool } from './connection';
+import { BookingStatus } from '@/lib/types/booking';
 
 export interface PendingBooking {
   id: number;
@@ -18,10 +19,19 @@ export interface PendingBooking {
   paymentMethod: string;
   totalPrice: number;
   deposit: number;
-  status: 'pending' | 'confirmed' | 'completed' | 'expired';
+  status: BookingStatus;
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
+  // Email automation tracking
+  emailSent?: boolean;
+  emailSentAt?: Date;
+  manualConfirmation?: boolean;
+  confirmedBy?: string;
+  // Agreement tracking
+  agreementSigned?: boolean;
+  agreementSignedAt?: Date;
+  agreementSignedBy?: string;
 }
 
 // Initialize bookings table
@@ -62,6 +72,23 @@ export async function initializeBookingsTable(): Promise<void> {
       ADD COLUMN IF NOT EXISTS agreement_signed_at TIMESTAMP WITH TIME ZONE,
       ADD COLUMN IF NOT EXISTS agreement_signed_by VARCHAR(255)
     `);
+
+    // Add email tracking fields for automated workflow
+    await client.query(`
+      ALTER TABLE bookings 
+      ADD COLUMN IF NOT EXISTS email_sent BOOLEAN DEFAULT FALSE,
+      ADD COLUMN IF NOT EXISTS email_sent_at TIMESTAMP WITH TIME ZONE,
+      ADD COLUMN IF NOT EXISTS manual_confirmation BOOLEAN DEFAULT FALSE,
+      ADD COLUMN IF NOT EXISTS confirmed_by VARCHAR(255)
+    `);
+
+    // Add simplified duplicate prevention: unique constraint for castle + date + active status
+    // This prevents the most critical duplicate: same castle on same date
+    await client.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_bookings_castle_date_active 
+      ON bookings (castle_id, date) 
+      WHERE status NOT IN ('expired')
+    `);
     
     console.log('Bookings table initialized successfully');
     
@@ -75,8 +102,8 @@ export async function initializeBookingsTable(): Promise<void> {
   }
 }
 
-// Generate user-friendly booking reference (TS001, TS002, etc.)
-async function generateFriendlyBookingRef(): Promise<string> {
+// Generate user-friendly booking reference (TS001, TS002, etc.) with automatic conflict resolution
+async function generateFriendlyBookingRef(retryCount = 0): Promise<string> {
   const client = await getPool().connect();
   try {
     // Get the highest booking reference number
@@ -93,6 +120,27 @@ async function generateFriendlyBookingRef(): Promise<string> {
       const lastRef = result.rows[0].booking_ref;
       const lastNumber = parseInt(lastRef.substring(2));
       nextNumber = lastNumber + 1;
+    }
+    
+    // Add automatic gap detection and fixing for conflicts
+    if (retryCount > 0) {
+      console.log(`Booking reference conflict detected, attempting retry ${retryCount}`);
+      // Find the first available gap in the sequence
+      const allRefs = await client.query(`
+        SELECT booking_ref 
+        FROM bookings 
+        WHERE booking_ref ~ '^TS\\d{3}$'
+        ORDER BY CAST(SUBSTRING(booking_ref FROM 3) AS INTEGER) ASC
+      `);
+      
+      const usedNumbers = new Set(allRefs.rows.map(row => parseInt(row.booking_ref.substring(2))));
+      for (let i = 1; i <= 999; i++) {
+        if (!usedNumbers.has(i)) {
+          nextNumber = i;
+          console.log(`Using gap in sequence: TS${i.toString().padStart(3, '0')}`);
+          break;
+        }
+      }
     }
     
     // Ensure we don't exceed 999
@@ -120,6 +168,7 @@ async function generateFriendlyBookingRef(): Promise<string> {
         const month = (date.getMonth() + 1).toString().padStart(2, '0');
         const day = date.getDate().toString().padStart(2, '0');
         const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+        console.log(`All TS### numbers used, falling back to timestamp format`);
         return `TS${year}${month}${day}${random}`;
       }
     }
@@ -139,15 +188,7 @@ async function generateFriendlyBookingRef(): Promise<string> {
   }
 }
 
-// Generate unique booking reference (legacy function - keeping for backward compatibility)
-function generateBookingRef(): string {
-  const date = new Date();
-  const year = date.getFullYear().toString().slice(-2);
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const day = date.getDate().toString().padStart(2, '0');
-  const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-  return `TS${year}${month}${day}${random}`;
-}
+// Legacy function removed - now using generateFriendlyBookingRef() consistently
 
 // Fix sequence if it's out of sync
 async function fixBookingSequence(): Promise<void> {
@@ -168,14 +209,19 @@ async function fixBookingSequence(): Promise<void> {
   }
 }
 
-// Create a new pending booking
+// Create a new pending booking with automatic conflict resolution
 export async function createPendingBooking(booking: Omit<PendingBooking, 'id' | 'bookingRef' | 'status' | 'createdAt' | 'updatedAt'>): Promise<PendingBooking> {
+  const maxRetries = 3;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
   const client = await getPool().connect();
   try {
-    // First, try to fix the sequence if there might be an issue
+      // First attempt: try to fix the sequence if there might be an issue
+      if (attempt === 0) {
     await fixBookingSequence();
+      }
     
-    const bookingRef = await generateFriendlyBookingRef();
+      const bookingRef = await generateFriendlyBookingRef(attempt);
     
     const result = await client.query(`
       INSERT INTO bookings (
@@ -199,6 +245,7 @@ export async function createPendingBooking(booking: Omit<PendingBooking, 'id' | 
       booking.notes || null
     ]);
 
+      // Success! Return the booking
     return {
       id: result.rows[0].id,
       bookingRef: result.rows[0].booking_ref,
@@ -215,17 +262,48 @@ export async function createPendingBooking(booking: Omit<PendingBooking, 'id' | 
       status: result.rows[0].status,
       notes: result.rows[0].notes,
       createdAt: result.rows[0].created_at,
-      updatedAt: result.rows[0].updated_at
+      updatedAt: result.rows[0].updated_at,
+      // Email automation tracking
+      emailSent: result.rows[0].email_sent || false,
+      emailSentAt: result.rows[0].email_sent_at || null,
+      manualConfirmation: result.rows[0].manual_confirmation || false,
+      confirmedBy: result.rows[0].confirmed_by || null,
+      // Agreement tracking
+      agreementSigned: result.rows[0].agreement_signed || false,
+      agreementSignedAt: result.rows[0].agreement_signed_at || null,
+      agreementSignedBy: result.rows[0].agreement_signed_by || null
     };
-  } catch (error) {
-    console.error('Error creating pending booking:', error);
+
+    } catch (error: any) {
+      console.error(`Error creating pending booking (attempt ${attempt + 1}):`, error);
+      
+      // Handle duplicate booking constraint violation (not retryable)
+      if (error.code === '23505' && error.constraint === 'idx_bookings_castle_date_active') {
+        throw new Error('A booking already exists for this castle on this date. Please choose a different date or castle.');
+      }
+      
+      // Handle booking reference constraint violation (retryable)
+      if (error.code === '23505' && error.constraint === 'bookings_booking_ref_key') {
+        if (attempt < maxRetries) {
+          console.log(`Booking reference conflict on attempt ${attempt + 1}, retrying...`);
+          // Don't return here, let the finally block release and continue the loop
+        } else {
+          throw new Error('Booking reference conflict persisted after multiple attempts. Please try again later.');
+        }
+      } else {
+        // Other errors (not retryable)
     throw error;
+      }
   } finally {
     client.release();
   }
 }
 
-// Create a new confirmed booking with calendar event ID
+  // This should never be reached, but just in case
+  throw new Error('Failed to create booking after all retry attempts');
+}
+
+// Create a new confirmed booking with calendar event ID and automatic conflict resolution
 export async function createConfirmedBooking(booking: {
   customerName: string;
   customerEmail: string;
@@ -237,11 +315,16 @@ export async function createConfirmedBooking(booking: {
   totalCost: number;
   status: string;
   calendarEventId: string;
-  bookingRef: string;
   notes?: string;
 }): Promise<any> {
+  const maxRetries = 3;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
   const client = await getPool().connect();
   try {
+      // Generate consistent booking reference using database sequence with retry context
+      const bookingRef = await generateFriendlyBookingRef(attempt);
+    
     const result = await client.query(`
       INSERT INTO bookings (
         booking_ref, customer_name, customer_email, customer_phone, 
@@ -251,7 +334,7 @@ export async function createConfirmedBooking(booking: {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
       RETURNING *
     `, [
-      booking.bookingRef,
+      bookingRef,
       booking.customerName,
       booking.customerEmail,
       booking.customerPhone,
@@ -271,6 +354,7 @@ export async function createConfirmedBooking(booking: {
       booking.calendarEventId
     ]);
 
+      // Success! Return the booking
     return {
       id: result.rows[0].id,
       bookingRef: result.rows[0].booking_ref,
@@ -294,12 +378,34 @@ export async function createConfirmedBooking(booking: {
       totalCost: result.rows[0].total_cost,
       calendarEventId: result.rows[0].calendar_event_id
     };
-  } catch (error) {
-    console.error('Error creating confirmed booking:', error);
+
+    } catch (error: any) {
+      console.error(`Error creating confirmed booking (attempt ${attempt + 1}):`, error);
+      
+      // Handle duplicate booking constraint violation (not retryable)
+      if (error.code === '23505' && error.constraint === 'idx_bookings_castle_date_active') {
+        throw new Error('A booking already exists for this castle on this date. Please choose a different date or castle.');
+      }
+      
+      // Handle booking reference constraint violation (retryable)
+      if (error.code === '23505' && error.constraint === 'bookings_booking_ref_key') {
+        if (attempt < maxRetries) {
+          console.log(`Booking reference conflict on attempt ${attempt + 1}, retrying...`);
+          // Don't return here, let the finally block release and continue the loop
+        } else {
+          throw new Error('Booking reference conflict persisted after multiple attempts. Please try again later.');
+        }
+      } else {
+        // Other errors (not retryable)
     throw error;
+      }
   } finally {
     client.release();
   }
+  }
+  
+  // This should never be reached, but just in case
+  throw new Error('Failed to create confirmed booking after all retry attempts');
 }
 
 // Get all bookings by status
@@ -334,7 +440,16 @@ export async function getBookingsByStatus(status?: string): Promise<PendingBooki
       status: row.status,
       notes: row.notes,
       createdAt: row.created_at,
-      updatedAt: row.updated_at
+      updatedAt: row.updated_at,
+      // Email automation tracking
+      emailSent: row.email_sent || false,
+      emailSentAt: row.email_sent_at || null,
+      manualConfirmation: row.manual_confirmation || false,
+      confirmedBy: row.confirmed_by || null,
+      // Agreement tracking
+      agreementSigned: row.agreement_signed || false,
+      agreementSignedAt: row.agreement_signed_at || null,
+      agreementSignedBy: row.agreement_signed_by || null
     }));
   } catch (error) {
     console.error('Error fetching bookings:', error);
@@ -344,22 +459,54 @@ export async function getBookingsByStatus(status?: string): Promise<PendingBooki
   }
 }
 
-// Update booking status
-export async function updateBookingStatus(id: number, status: 'pending' | 'confirmed' | 'completed' | 'expired'): Promise<void> {
+// Update booking status with proper flow validation
+export async function updateBookingStatus(id: number, status: BookingStatus): Promise<void> {
   const client = await getPool().connect();
   try {
     console.log(`Executing updateBookingStatus: ID=${id}, Status=${status}`);
+    
+    // Get current booking status to validate transition
+    const currentBookingResult = await client.query('SELECT status FROM bookings WHERE id = $1', [id]);
+    if (currentBookingResult.rows.length === 0) {
+      throw new Error(`Booking with ID ${id} not found`);
+    }
+    
+    const currentStatus = currentBookingResult.rows[0].status;
+    
+    // Validate status transition flow: pending → confirmed → completed
+    if (!isValidStatusTransition(currentStatus, status)) {
+      throw new Error(`Invalid status transition from '${currentStatus}' to '${status}'. Valid flow: pending → confirmed → completed`);
+    }
+    
     const result = await client.query(
       'UPDATE bookings SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
       [status, id]
     );
     console.log(`updateBookingStatus result: ${result.rowCount} rows affected`);
+    console.log(`Status transition: ${currentStatus} → ${status}`);
   } catch (error) {
     console.error('Error in updateBookingStatus:', error);
     throw error;
   } finally {
     client.release();
   }
+}
+
+// Validate proper status transition flow
+function isValidStatusTransition(currentStatus: string, newStatus: string): boolean {
+  const validTransitions: Record<string, string[]> = {
+    'pending': ['confirmed', 'expired'], // Pending can go to confirmed or expired
+    'confirmed': ['completed', 'expired'], // Confirmed can go to completed or expired
+    'completed': [], // Completed is final
+    'expired': [] // Expired is final
+  };
+  
+  // Allow same status (idempotent updates)
+  if (currentStatus === newStatus) {
+    return true;
+  }
+  
+  return validTransitions[currentStatus]?.includes(newStatus) || false;
 }
 
 // Update booking agreement signing
@@ -380,20 +527,58 @@ export async function updateBookingAgreement(id: number, agreementSigned: boolea
   }
 }
 
-// Automatically update confirmed bookings to complete after their end date
+// Update booking email tracking
+export async function updateBookingEmailStatus(id: number, emailSent: boolean, emailSentAt?: Date): Promise<void> {
+  const client = await getPool().connect();
+  try {
+    console.log(`Executing updateBookingEmailStatus: ID=${id}, EmailSent=${emailSent}, At=${emailSentAt}`);
+    const result = await client.query(
+      'UPDATE bookings SET email_sent = $1, email_sent_at = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
+      [emailSent, emailSentAt || new Date(), id]
+    );
+    console.log(`updateBookingEmailStatus result: ${result.rowCount} rows affected`);
+  } catch (error) {
+    console.error('Error in updateBookingEmailStatus:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// Update booking manual confirmation tracking
+export async function updateBookingConfirmation(id: number, manualConfirmation: boolean, confirmedBy?: string): Promise<void> {
+  const client = await getPool().connect();
+  try {
+    console.log(`Executing updateBookingConfirmation: ID=${id}, Manual=${manualConfirmation}, By=${confirmedBy}`);
+    const result = await client.query(
+      'UPDATE bookings SET manual_confirmation = $1, confirmed_by = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
+      [manualConfirmation, confirmedBy || null, id]
+    );
+    console.log(`updateBookingConfirmation result: ${result.rowCount} rows affected`);
+  } catch (error) {
+    console.error('Error in updateBookingConfirmation:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// Automatically update confirmed bookings to completed after their end date
 export async function updateExpiredBookings(): Promise<void> {
   const client = await getPool().connect();
   try {
     // Update confirmed bookings where the end date has passed
-    await client.query(`
+    const result = await client.query(`
       UPDATE bookings 
-      SET status = 'complete', updated_at = CURRENT_TIMESTAMP 
+      SET status = 'completed', updated_at = CURRENT_TIMESTAMP 
       WHERE status = 'confirmed' 
       AND end_date IS NOT NULL 
       AND end_date < CURRENT_TIMESTAMP
     `);
     
-    console.log('Updated expired bookings to complete status');
+    if (result.rowCount && result.rowCount > 0) {
+      console.log(`Updated ${result.rowCount} confirmed bookings to completed status`);
+    }
   } catch (error) {
     console.error('Error updating expired bookings:', error);
   } finally {

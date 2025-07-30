@@ -44,7 +44,7 @@ import {
 import { toast } from 'sonner';
 import { BookingDetailsModal } from '@/components/admin/BookingDetailsModal';
 import { BookingFormModal, BookingFormData, Castle } from '@/components/admin/BookingFormModal';
-import { generateFriendlyBookingRef } from '@/lib/utils';
+
 
 interface Booking {
   id: number;
@@ -316,8 +316,8 @@ export default function AdminBookings() {
             totalPrice = totalBasePrice + overnightCharge;
           }
           
-          // Generate friendly booking reference for calendar events
-          const bookingRef = generateFriendlyBookingRef(event.id);
+          // Generate calendar event reference (temporary - calendar events should be separated from bookings)
+          const bookingRef = `CAL-${event.id?.slice(-8) || 'UNKNOWN'}`;
           console.log('Creating calendar booking with ref:', bookingRef, 'for event:', event.id);
           
           // Determine status based on end date
@@ -851,9 +851,6 @@ export default function AdminBookings() {
 
         const { eventId } = result;
 
-        // Generate friendly booking reference
-        const bookingRef = generateFriendlyBookingRef(eventId);
-
         const databaseBookingData = {
           customerName: bookingForm.customerName,
           customerEmail: bookingForm.customerEmail,
@@ -865,7 +862,6 @@ export default function AdminBookings() {
           totalCost: totalCost,
           status: 'confirmed',
           calendarEventId: eventId,
-          bookingRef: bookingRef,
           notes: bookingForm.additionalCostsDescription || ''
         };
 

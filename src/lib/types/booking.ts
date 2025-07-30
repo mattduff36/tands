@@ -2,15 +2,12 @@
  * TypeScript type definitions for bouncy castle booking system
  */
 
-// Booking status enumeration
+// Booking status enumeration - follows pending → confirmed → completed flow
 export type BookingStatus = 
   | 'pending'           // Initial booking request received
-  | 'confirmed'         // Booking confirmed with customer
-  | 'in_progress'       // Event currently happening
+  | 'confirmed'         // Booking confirmed with customer, agreement signed
   | 'completed'         // Event finished successfully
-  | 'complete'          // Event finished successfully (replaces cancelled)
-  | 'no_show'           // Customer didn't show up
-  | 'refunded';         // Payment refunded
+  | 'expired';          // Booking expired/cancelled
 
 // Payment status enumeration
 export type PaymentStatus = 

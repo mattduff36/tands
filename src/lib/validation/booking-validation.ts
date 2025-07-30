@@ -18,7 +18,7 @@ export const BookingSchema = z.object({
   address: z.string().min(10, 'Please enter a complete address'),
   totalPrice: z.number().int('Price must be a whole number').min(0, 'Total price must be positive'),
   deposit: z.number().int('Deposit must be a whole number').min(0, 'Deposit must be positive'),
-  status: z.enum(['pending', 'confirmed', 'cancelled', 'completed']),
+  status: z.enum(['pending', 'confirmed', 'completed', 'expired']),
   notes: z.string().optional()
 }).refine(data => {
   // Validate that end time is after start time
@@ -62,7 +62,7 @@ export interface ExistingBooking {
   startTime: string;
   endTime: string;
   castle: string;
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  status: 'pending' | 'confirmed' | 'completed' | 'expired';
 }
 
 export interface ConflictDetails {
@@ -144,9 +144,9 @@ export class BookingValidator {
   private checkConflicts(bookingData: BookingData, excludeBookingId?: string): ConflictDetails[] {
     const conflicts: ConflictDetails[] = [];
 
-    // Filter out cancelled bookings and the booking being edited
+    // Filter out expired bookings and the booking being edited
     const activeBookings = this.existingBookings.filter(booking => 
-      booking.status !== 'cancelled' && 
+      booking.status !== 'expired' && 
       booking.id !== excludeBookingId
     );
 
@@ -262,7 +262,7 @@ export class BookingValidator {
       .filter(booking => 
         booking.date === date && 
         booking.castle === castle && 
-        booking.status !== 'cancelled'
+        booking.status !== 'expired'
       )
       .map(booking => ({
         start: this.timeToMinutes(booking.startTime),

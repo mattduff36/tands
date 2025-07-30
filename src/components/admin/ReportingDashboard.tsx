@@ -528,7 +528,7 @@ export function ReportingDashboard({ className }: ReportingDashboardProps) {
                     <Badge variant={
                       booking.status === 'confirmed' ? 'default' :
                       booking.status === 'pending' ? 'secondary' :
-                      booking.status === 'complete' ? 'destructive' :
+                      booking.status === 'completed' ? 'destructive' :
                       'outline'
                     }>
                       {booking.status}

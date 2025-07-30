@@ -29,16 +29,15 @@ export async function POST(request: NextRequest) {
       totalCost,
       status,
       calendarEventId,
-      bookingRef,
       notes
     } = body;
 
     // Validate required fields
-    if (!customerName || !customerEmail || !customerPhone || !address || !castleType || !startDate || !endDate || !totalCost || !calendarEventId || !bookingRef) {
+    if (!customerName || !customerEmail || !customerPhone || !address || !castleType || !startDate || !endDate || !totalCost || !calendarEventId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Create the confirmed booking in the database
+    // Create the confirmed booking in the database (booking reference will be auto-generated)
     const booking = await createConfirmedBooking({
       customerName,
       customerEmail,
@@ -50,7 +49,6 @@ export async function POST(request: NextRequest) {
       totalCost,
       status,
       calendarEventId,
-      bookingRef,
       notes: notes || ''
     });
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { BookingValidator, ExistingBooking } from '@/lib/validation/booking-validation';
+
 import { getCastles } from '@/lib/database/castles';
 
 // Interface for calendar events from Google Calendar API
@@ -17,6 +17,16 @@ interface CalendarEvent {
     date?: string;
   };
   status?: string;
+}
+
+// Simple booking interface for availability checking (simplified from complex validation)
+interface ExistingBooking {
+  id: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  castle: string;
+  status: string;
 }
 
 interface AvailabilityResponse {
@@ -222,8 +232,6 @@ async function getAvailabilityForDate(date: string, castleFilter?: string | null
       { start: '14:00', end: '18:00' }
     ];
 
-    const validator = new BookingValidator(existingBookings);
-
     for (const slot of slots) {
       // Check if any booking conflicts with this time slot
       const conflictingBooking = dayBookings.find(booking => {
@@ -344,8 +352,7 @@ export async function POST(request: NextRequest) {
     const allCastles = await getCastles();
     const availableCastles = allCastles.map(c => c.name);
 
-    // Create validator for conflict checking
-    const validator = new BookingValidator(existingBookings);
+
 
     // Create validation data for the requested booking
     const validationData = {
@@ -364,25 +371,24 @@ export async function POST(request: NextRequest) {
       notes: ''
     };
 
-    // Validate the booking
-    const validationResult = validator.validateBooking(validationData);
-
-    // Check for critical conflicts
-    const criticalConflicts = validationResult.conflicts.filter(
-      conflict => conflict.type === 'same_castle' || conflict.type === 'time_overlap'
+    // Simplified duplicate prevention: check if castle is already booked on this date
+    const conflictingBooking = existingBookings.find(booking => 
+      booking.castle === (castle?.name || '') && 
+      booking.date === date && 
+      booking.status !== 'expired'
     );
 
-    if (criticalConflicts.length > 0) {
+    if (conflictingBooking) {
       return NextResponse.json({
         available: false,
-        reason: criticalConflicts[0].message,
+        reason: `${castle?.name || 'This castle'} is already booked on ${date}`,
         type: 'conflict',
-        conflicts: criticalConflicts.map(c => ({
-          castle: c.conflictingBooking.castle,
-          startTime: c.conflictingBooking.startTime,
-          endTime: c.conflictingBooking.endTime,
-          status: c.conflictingBooking.status
-        }))
+        conflicts: [{
+          castle: castle?.name || 'Unknown',
+          date: conflictingBooking.date,
+          customerName: 'Existing Customer',
+          status: conflictingBooking.status
+        }]
       });
     }
 

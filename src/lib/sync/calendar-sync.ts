@@ -19,7 +19,7 @@ export interface BookingRecord {
   cost?: number;
   paymentMethod?: 'cash' | 'card';
   bouncyCastleType?: string;
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  status: 'pending' | 'confirmed' | 'completed' | 'expired';
   lastSynced?: string;
   syncStatus: 'synced' | 'pending_sync' | 'sync_failed' | 'conflict';
   createdAt: string;
@@ -197,7 +197,7 @@ export class CalendarSyncService {
     }
   }
 
-  // Delete calendar event when booking is cancelled/deleted
+      // Delete calendar event when booking is expired/deleted
   async deleteCalendarEvent(booking: BookingRecord): Promise<{ success: boolean; error?: string }> {
     try {
       if (!booking.calendarEventId) {

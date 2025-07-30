@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       // Check if booking already exists
       const existingBooking = await client.query(
         'SELECT id FROM bookings WHERE booking_ref = $1',
-        ['6drnb3akq6q80g0amp8so9gdhg']
+        ['TS999']
       );
 
       if (existingBooking.rows.length > 0) {
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
         )
       `, [
         11, // id
-        '6drnb3akq6q80g0amp8so9gdhg', // booking_ref
+        'TS999', // booking_ref
         'Graham baguley', // customer_name
         'no@email.com', // customer_email
         '07966044671', // customer_phone
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       // Verify the booking was added
       const verifyResult = await client.query(
         'SELECT id, booking_ref, customer_name, status FROM bookings WHERE booking_ref = $1',
-        ['6drnb3akq6q80g0amp8so9gdhg']
+        ['TS999']
       );
 
       return NextResponse.json({

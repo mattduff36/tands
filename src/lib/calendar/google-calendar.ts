@@ -460,8 +460,8 @@ export class GoogleCalendarService {
   private buildCalendarEvent(bookingData: BookingEventData): calendar_v3.Schema$Event {
     const { customerName, contactDetails, location, notes, duration, cost, paymentMethod, bouncyCastleType } = bookingData;
     
-    // Generate a booking reference for this event
-    const bookingRef = `6drnb3akq6q80g0amp8so9gdhg`; // Use the same ref as our test booking
+    // Generate a booking reference for this event (temporary for calendar-only events)
+    const bookingRef = `CAL-${Date.now().toString().slice(-8)}`;
     
     let description = `🏰 Bouncy Castle Booking\n\n`;
     description += `Customer: ${customerName}\n`;
