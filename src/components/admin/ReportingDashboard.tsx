@@ -20,7 +20,10 @@ import {
   BarChart3,
   Download,
   RefreshCw,
-  Filter
+  Filter,
+  CheckCircle,
+  Clock,
+  X
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -528,9 +531,14 @@ export function ReportingDashboard({ className }: ReportingDashboardProps) {
                     <Badge variant={
                       booking.status === 'confirmed' ? 'default' :
                       booking.status === 'pending' ? 'secondary' :
-                      booking.status === 'completed' ? 'destructive' :
-                      'outline'
-                    }>
+                      booking.status === 'completed' ? 'outline' :
+                      booking.status === 'expired' ? 'destructive' :
+                      'secondary'
+                    } className="flex items-center gap-1">
+                      {booking.status === 'pending' && <Clock className="w-3 h-3" />}
+                      {booking.status === 'confirmed' && <CheckCircle className="w-3 h-3" />}
+                      {booking.status === 'completed' && <CheckCircle className="w-3 h-3" />}
+                      {booking.status === 'expired' && <X className="w-3 h-3" />}
                       {booking.status}
                     </Badge>
                   </div>

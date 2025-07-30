@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { X, Edit2, Trash2, CheckCircle, FileText } from 'lucide-react';
+import { X, Edit2, Trash2, CheckCircle, FileText, Mail, UserCheck } from 'lucide-react';
 import React from 'react';
 
 export interface CalendarEvent {
@@ -31,6 +31,9 @@ interface BookingDetailsModalProps {
   onEdit?: (event: CalendarEvent) => void;
   onDelete?: (eventId: string) => void;
   onApprove?: (eventId: string) => void;
+  onApproveAndSendAgreement?: (eventId: string) => void;
+  onEditAndSendAgreement?: (event: CalendarEvent) => void;
+  onExpireBooking?: (eventId: string) => void;
   formatEventDate: (event: CalendarEvent) => string;
   formatEventTime: (event: CalendarEvent) => string;
   getStatusColor: (status: string) => string;
@@ -43,6 +46,9 @@ export function BookingDetailsModal({
   onEdit,
   onDelete,
   onApprove,
+  onApproveAndSendAgreement,
+  onEditAndSendAgreement,
+  onExpireBooking,
   formatEventDate,
   formatEventTime,
   getStatusColor
@@ -95,51 +101,97 @@ export function BookingDetailsModal({
             </div>
 
             {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
-              {status === 'pending' && onApprove && (
-                <Button
-                  onClick={() => onApprove(event.id)}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                >
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Approve
-                </Button>
-              )}
+            <div className="flex flex-col gap-3 pt-4 border-t">
+              {/* Primary Actions for Pending Bookings */}
               {status === 'pending' && event.id.startsWith('db_') && (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    // Extract booking reference from event description
-                    const bookingRef = event.description?.match(/Booking Ref: (TS\d{3})/)?.[1] || 
-                                     event.id.replace('db_', '');
-                    window.open(`/hire-agreement?bookingRef=${bookingRef}`, '_blank');
-                  }}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Send Hire Agreement
-                </Button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {onApproveAndSendAgreement && (
+                    <Button
+                      onClick={() => onApproveAndSendAgreement(event.id)}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      <Mail className="w-4 h-4 mr-2" />
+                      Approve & Send Agreement
+                    </Button>
+                  )}
+                  {onEditAndSendAgreement && (
+                    <Button
+                      onClick={() => onEditAndSendAgreement(event)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      <Edit2 className="w-4 h-4 mr-2" />
+                      Edit & Send Agreement
+                    </Button>
+                  )}
+                </div>
               )}
-              {status !== 'complete' && onEdit && (
-                <Button
-                  variant="outline"
-                  onClick={() => onEdit(event)}
-                  className="flex-1"
-                >
-                  <Edit2 className="w-4 h-4 mr-2" />
-                  Edit Booking
-                </Button>
-              )}
-              {onDelete && (
-                <Button
-                  variant="outline"
-                  onClick={() => onDelete(event.id)}
-                  className="flex-1 text-red-600 border-red-200 hover:bg-red-50"
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete Booking
-                </Button>
-              )}
+
+              {/* Secondary Actions */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {/* Legacy Approve button for backward compatibility */}
+                {status === 'pending' && onApprove && !event.id.startsWith('db_') && (
+                  <Button
+                    onClick={() => onApprove(event.id)}
+                    variant="outline"
+                    className="text-green-600 border-green-200 hover:bg-green-50"
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Approve
+                  </Button>
+                )}
+
+                {/* Manual hire agreement for pending DB bookings */}
+                {status === 'pending' && event.id.startsWith('db_') && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      // Extract booking reference from event description
+                      const bookingRef = event.description?.match(/Booking Ref: (TS\d{3})/)?.[1] || 
+                                       event.id.replace('db_', '');
+                      window.open(`/hire-agreement?bookingRef=${bookingRef}`, '_blank');
+                    }}
+                    className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Manual Agreement
+                  </Button>
+                )}
+
+                {/* Edit button for non-completed bookings */}
+                {status !== 'completed' && onEdit && !event.id.startsWith('db_') && (
+                  <Button
+                    variant="outline"
+                    onClick={() => onEdit(event)}
+                  >
+                    <Edit2 className="w-4 h-4 mr-2" />
+                    Edit
+                  </Button>
+                )}
+
+                {/* Expire button for pending bookings */}
+                {status === 'pending' && onExpireBooking && (
+                  <Button
+                    variant="outline"
+                    onClick={() => onExpireBooking(event.id)}
+                    className="text-orange-600 border-orange-200 hover:bg-orange-50"
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Expire
+                  </Button>
+                )}
+
+                {/* Delete button */}
+                {onDelete && (
+                  <Button
+                    variant="outline"
+                    onClick={() => onDelete(event.id)}
+                    className="text-red-600 border-red-200 hover:bg-red-50"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>

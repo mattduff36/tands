@@ -16,7 +16,8 @@ import {
   Plus,
   RefreshCw,
   Castle,
-  ExternalLink
+  ExternalLink,
+  X
 } from 'lucide-react';
 
 interface DashboardStats {
@@ -137,16 +138,19 @@ export default function AdminDashboard() {
     fetchDashboardData();
   }, []);
 
-  const getStatusColor = (status: string) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'confirmed':
-        return 'text-green-600 bg-green-100';
       case 'pending':
-        return 'text-yellow-600 bg-yellow-100';
-      case 'complete':
-        return 'text-blue-600 bg-blue-100';
+        return <Badge variant="secondary" className="flex items-center gap-1"><Clock className="w-3 h-3" /> Pending</Badge>;
+      case 'confirmed':
+        return <Badge variant="default" className="flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Confirmed</Badge>;
+      case 'completed':
+      case 'complete': // Handle legacy status
+        return <Badge variant="outline" className="flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Completed</Badge>;
+      case 'expired':
+        return <Badge variant="destructive" className="flex items-center gap-1"><X className="w-3 h-3" /> Expired</Badge>;
       default:
-        return 'text-gray-600 bg-gray-100';
+        return <Badge variant="secondary" className="flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {status}</Badge>;
     }
   };
 
@@ -327,10 +331,7 @@ export default function AdminDashboard() {
                           <Badge variant="outline" className="text-xs">
                             {booking.source}
                           </Badge>
-                          <span className={`px-2 py-1 text-xs font-medium rounded-full flex items-center ${getStatusColor(booking.status)}`}>
-                            {getStatusIcon(booking.status)}
-                            <span className="ml-1 capitalize">{booking.status}</span>
-                          </span>
+                          {getStatusBadge(booking.status)}
                         </div>
                       </div>
                       <p className="text-sm text-gray-600 truncate">{booking.castleName}</p>

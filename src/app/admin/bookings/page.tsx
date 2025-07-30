@@ -122,7 +122,8 @@ export default function AdminBookings() {
     overnight: false,
     additionalCosts: false,
     additionalCostsDescription: '',
-    additionalCostsAmount: 0
+    additionalCostsAmount: 0,
+    saveAsConfirmed: false
   });
 
   // Calendar-specific state
@@ -378,25 +379,30 @@ export default function AdminBookings() {
 
   const filteredBookings = createCombinedBookingsList();
 
-  // Get status badge color
+  // Get status badge using design system variants with icons
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
-        return <Badge className="bg-yellow-100 text-yellow-800">Pending</Badge>;
+        return <Badge variant="secondary" className="flex items-center gap-1"><Clock className="w-3 h-3" /> Pending</Badge>;
       case 'confirmed':
-        return <Badge className="bg-green-100 text-green-800">Confirmed</Badge>;
+        return <Badge variant="default" className="flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Confirmed</Badge>;
       case 'completed':
       case 'complete': // Handle legacy 'complete' status
-        return <Badge className="bg-blue-100 text-blue-800">Completed</Badge>;
+        return <Badge variant="outline" className="flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Completed</Badge>;
       case 'expired':
-        return <Badge className="bg-gray-600 text-gray-100">Expired</Badge>;
+        return <Badge variant="destructive" className="flex items-center gap-1"><X className="w-3 h-3" /> Expired</Badge>;
       default:
-        return <Badge className="bg-gray-100 text-gray-800">{status}</Badge>;
+        return <Badge variant="secondary" className="flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {status}</Badge>;
     }
   };
 
-  // Confirm booking
+  // Confirm booking (legacy function)
   const handleConfirmBooking = async (bookingId: number) => {
+    // Show confirmation popup for legacy approval workflow
+    if (!confirm('📋 Confirm Booking\n\nThis will:\n✅ Confirm the booking immediately\n📅 Add it to the calendar\n\nNote: For new bookings, consider using "Approve & Send Agreement" for better customer experience.\n\nProceed with confirmation?')) {
+      return;
+    }
+
     setIsProcessing(true);
     try {
       const response = await fetch(`/api/admin/bookings/${bookingId}/confirm`, {
@@ -529,6 +535,87 @@ export default function AdminBookings() {
       status: booking.status
     };
   }
+
+  // Handle approve and send agreement
+  const handleApproveAndSendAgreement = async (bookingId: number) => {
+    // Show confirmation popup for approval workflow
+    if (!confirm('📋 Approve & Send Agreement\n\nThis will:\n✅ Confirm the booking immediately\n📧 Send hire agreement email to customer (when email service is ready)\n\nThe customer will receive an automated email with a link to sign the agreement digitally.\n\nProceed with approval?')) {
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      // First, confirm the booking
+      const confirmResponse = await fetch(`/api/admin/bookings/${bookingId}/confirm`, {
+        method: 'POST',
+      });
+
+      if (confirmResponse.ok) {
+        // Then send agreement email (placeholder for now - email service will be implemented later)
+        toast.success('Booking approved! Agreement email will be sent once email service is implemented.');
+        await fetchBookings(); // Refresh the list
+        setShowDetailsModal(false);
+      } else {
+        const error = await confirmResponse.json();
+        toast.error(error.error || 'Failed to approve booking');
+      }
+    } catch (error) {
+      console.error('Error approving booking:', error);
+      toast.error('Error approving booking');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Handle edit and send agreement
+  const handleEditAndSendAgreement = async (bookingId: number) => {
+    // Find the booking to get the event data
+    const booking = bookings.find(b => b.id === bookingId);
+    if (!booking) {
+      toast.error('Booking not found');
+      return;
+    }
+
+    // Convert booking to event format and trigger edit
+    const event = bookingToCalendarEvent(booking);
+    handleEditBooking(event);
+    
+    // Note: After editing is complete, the agreement will be sent automatically
+    // This will be implemented when the email service is ready
+    toast.info('Edit the booking details. Agreement will be sent after saving.');
+  };
+
+  // Handle expire booking
+  const handleExpireBooking = async (bookingId: number) => {
+    if (!confirm('⚠️ Expire Booking\n\nThis will:\n❌ Mark the booking as EXPIRED\n🚫 Remove it from active bookings\n💭 The booking cannot be recovered\n\nThis is typically used for bookings that are no longer needed or have been cancelled.\n\nAre you sure you want to expire this booking?')) {
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const response = await fetch(`/api/admin/bookings/${bookingId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: 'expired' }),
+      });
+
+      if (response.ok) {
+        toast.success('Booking expired successfully');
+        await fetchBookings();
+        setShowDetailsModal(false);
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Failed to expire booking');
+      }
+    } catch (error) {
+      console.error('Error expiring booking:', error);
+      toast.error('Error expiring booking');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   // Handle edit booking
   const handleEditBooking = (event: CalendarEvent) => {
@@ -812,6 +899,89 @@ export default function AdminBookings() {
 
       const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
       const totalCost = calculateTotalCost(selectedCastle.price, daysDiff, bookingForm.overnight);
+
+      // Handle confirmed booking creation
+      if (bookingForm.saveAsConfirmed) {
+        // Show confirmation popup for manual confirmation workflow
+        if (!confirm('⚠️ Manual Confirmation Required\n\nThis booking will be marked as CONFIRMED and the customer will need to sign the hire agreement manually/physically.\n\nThe customer will NOT receive an automated email with the agreement link.\n\nAre you sure you want to proceed with manual confirmation?')) {
+          setIsSubmitting(false);
+          return;
+        }
+
+        try {
+          console.log('Creating confirmed booking directly...');
+          
+          // Create confirmed booking in database
+          const databaseBookingData = {
+            customerName: bookingForm.customerName,
+            customerEmail: bookingForm.customerEmail,
+            customerPhone: bookingForm.customerPhone,
+            address: bookingForm.address,
+            castleType: selectedCastle.name,
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString(),
+            totalCost: totalCost,
+            status: 'confirmed',
+            calendarEventId: `manual-${Date.now()}`, // Temporary ID for manual confirmations
+            notes: bookingForm.additionalCosts ? bookingForm.additionalCostsDescription : ''
+          };
+
+          const dbResponse = await fetch('/api/admin/bookings/create-confirmed', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(databaseBookingData),
+          });
+
+          if (dbResponse.ok) {
+            const dbResult = await dbResponse.json();
+            toast.success('Confirmed booking created successfully! Customer will sign agreement manually.');
+            
+            // Update booking tracking fields
+            await fetch(`/api/admin/bookings/${dbResult.booking.id}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ 
+                manual_confirmation: true,
+                confirmed_by: 'Admin (Manual)' 
+              }),
+            });
+
+            await fetchBookings(); // Refresh the list
+            setShowBookingModal(false);
+            
+            // Reset form
+            setBookingForm({
+              castle: '',
+              customerName: '',
+              customerEmail: '',
+              customerPhone: '',
+              address: '',
+              singleDate: '',
+              multipleDate: false,
+              startDate: '',
+              endDate: '',
+              overnight: false,
+              additionalCosts: false,
+              additionalCostsDescription: '',
+              additionalCostsAmount: 0,
+              saveAsConfirmed: false
+            });
+          } else {
+            const error = await dbResponse.json();
+            toast.error(error.error || 'Failed to create confirmed booking');
+          }
+        } catch (error) {
+          console.error('Error creating confirmed booking:', error);
+          toast.error('Error creating confirmed booking');
+        } finally {
+          setIsSubmitting(false);
+        }
+        return; // Exit early for confirmed booking flow
+      }
 
       // Prepare booking data for calendar event
       const bookingData = {
@@ -1477,6 +1647,7 @@ export default function AdminBookings() {
             onSubmit={handleBookingSubmit}
             onFormChange={handleFormChange}
             calculateTotalCost={calculateTotalCostForModal}
+            showConfirmationToggle={!isEditing} // Show toggle for new bookings only
           />
         )}
 
@@ -1504,6 +1675,27 @@ export default function AdminBookings() {
               const booking = bookings.find(b => b.id.toString() === bookingId);
               if (booking && booking.status === 'pending') {
                 handleConfirmBooking(booking.id);
+              }
+            } : undefined}
+            onApproveAndSendAgreement={selectedEvent.id.startsWith('db_') ? (eventId: string) => {
+              const bookingId = eventId.replace('db_', '');
+              const booking = bookings.find(b => b.id.toString() === bookingId);
+              if (booking && booking.status === 'pending') {
+                handleApproveAndSendAgreement(booking.id);
+              }
+            } : undefined}
+            onEditAndSendAgreement={selectedEvent.id.startsWith('db_') ? (event: any) => {
+              const bookingId = event.id.replace('db_', '');
+              const booking = bookings.find(b => b.id.toString() === bookingId);
+              if (booking && booking.status === 'pending') {
+                handleEditAndSendAgreement(booking.id);
+              }
+            } : undefined}
+            onExpireBooking={selectedEvent.id.startsWith('db_') ? (eventId: string) => {
+              const bookingId = eventId.replace('db_', '');
+              const booking = bookings.find(b => b.id.toString() === bookingId);
+              if (booking && booking.status === 'pending') {
+                handleExpireBooking(booking.id);
               }
             } : undefined}
             formatEventDate={formatEventDate}

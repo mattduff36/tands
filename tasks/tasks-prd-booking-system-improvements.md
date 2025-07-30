@@ -35,14 +35,14 @@ Based on PRD: `prd-booking-system-improvements.md`
   - [x] 1.5 Update booking status transitions to follow pending → confirmed → completed flow - FR-005
   - [x] 1.6 Add database fields for email tracking (email_sent, email_sent_at, manual_confirmation, confirmed_by) - FR-021
 
-- [ ] 2.0 Implement Admin Workflow Enhancements
-  - [ ] 2.1 Add "Approve & Send Agreement" button to pending bookings in BookingDetailsModal - FR-009
-  - [ ] 2.2 Add "Edit & Send Agreement" functionality for pending bookings - FR-010
-  - [ ] 2.3 Add "Delete/Expire" functionality for pending bookings - FR-011
-  - [ ] 2.4 Add "Save as Confirmed" toggle option in BookingFormModal for manual bookings - FR-012
-  - [ ] 2.5 Implement confirmation popup for manual confirmations with "Customer will sign agreement manually/physically" message - FR-013
-  - [ ] 2.6 Update booking status badges and indicators using existing design system - FR-015
-  - [ ] 2.7 Add agreement signing audit trail tracking (who, when, how) - FR-016
+- [x] 2.0 Implement Admin Workflow Enhancements
+  - [x] 2.1 Add "Approve & Send Agreement" button to pending bookings in BookingDetailsModal - FR-009
+  - [x] 2.2 Add "Edit & Send Agreement" functionality for pending bookings - FR-010
+  - [x] 2.3 Add "Delete/Expire" functionality for pending bookings - FR-011
+  - [x] 2.4 Add "Save as Confirmed" toggle option in BookingFormModal for manual bookings - FR-012
+  - [x] 2.5 Implement confirmation popup for manual confirmations with "Customer will sign agreement manually/physically" message - FR-013
+  - [x] 2.6 Update booking status badges and indicators using existing design system - FR-015
+  - [x] 2.7 Add agreement signing audit trail tracking (who, when, how) - FR-016
 
 - [ ] 3.0 Set Up Email Automation System
   - [ ] 3.1 Configure Google SMTP settings in environment variables - FR-006

@@ -32,6 +32,28 @@ export interface PendingBooking {
   agreementSigned?: boolean;
   agreementSignedAt?: Date;
   agreementSignedBy?: string;
+  // Enhanced audit trail
+  agreementSignedMethod?: 'email' | 'manual' | 'physical' | 'admin_override';
+  agreementIpAddress?: string;
+  agreementUserAgent?: string;
+  agreementPdfGenerated?: boolean;
+  agreementPdfGeneratedAt?: Date;
+  agreementEmailOpened?: boolean;
+  agreementEmailOpenedAt?: Date;
+  agreementViewed?: boolean;
+  agreementViewedAt?: Date;
+  auditTrail?: AuditTrailEntry[];
+}
+
+export interface AuditTrailEntry {
+  timestamp: Date;
+  action: string;
+  actor: string; // 'customer', 'admin', 'system'
+  actorDetails: string; // email, name, or 'system'
+  method?: string; // 'email', 'manual', 'physical', 'admin_override'
+  ipAddress?: string;
+  userAgent?: string;
+  details?: Record<string, any>;
 }
 
 // Initialize bookings table
@@ -80,6 +102,21 @@ export async function initializeBookingsTable(): Promise<void> {
       ADD COLUMN IF NOT EXISTS email_sent_at TIMESTAMP WITH TIME ZONE,
       ADD COLUMN IF NOT EXISTS manual_confirmation BOOLEAN DEFAULT FALSE,
       ADD COLUMN IF NOT EXISTS confirmed_by VARCHAR(255)
+    `);
+
+    // Add comprehensive agreement signing audit trail fields
+    await client.query(`
+      ALTER TABLE bookings 
+      ADD COLUMN IF NOT EXISTS agreement_signed_method VARCHAR(50), -- 'email', 'manual', 'physical', 'admin_override'
+      ADD COLUMN IF NOT EXISTS agreement_ip_address INET, -- IP address for digital signatures
+      ADD COLUMN IF NOT EXISTS agreement_user_agent TEXT, -- Browser/device info for digital signatures
+      ADD COLUMN IF NOT EXISTS agreement_pdf_generated BOOLEAN DEFAULT FALSE,
+      ADD COLUMN IF NOT EXISTS agreement_pdf_generated_at TIMESTAMP WITH TIME ZONE,
+      ADD COLUMN IF NOT EXISTS agreement_email_opened BOOLEAN DEFAULT FALSE,
+      ADD COLUMN IF NOT EXISTS agreement_email_opened_at TIMESTAMP WITH TIME ZONE,
+      ADD COLUMN IF NOT EXISTS agreement_viewed BOOLEAN DEFAULT FALSE,
+      ADD COLUMN IF NOT EXISTS agreement_viewed_at TIMESTAMP WITH TIME ZONE,
+      ADD COLUMN IF NOT EXISTS audit_trail JSONB DEFAULT '[]'::jsonb -- Complete audit log as JSON
     `);
 
     // Add simplified duplicate prevention: unique constraint for castle + date + active status
@@ -271,7 +308,18 @@ export async function createPendingBooking(booking: Omit<PendingBooking, 'id' | 
       // Agreement tracking
       agreementSigned: result.rows[0].agreement_signed || false,
       agreementSignedAt: result.rows[0].agreement_signed_at || null,
-      agreementSignedBy: result.rows[0].agreement_signed_by || null
+      agreementSignedBy: result.rows[0].agreement_signed_by || null,
+      // Enhanced audit trail
+      agreementSignedMethod: result.rows[0].agreement_signed_method || null,
+      agreementIpAddress: result.rows[0].agreement_ip_address || null,
+      agreementUserAgent: result.rows[0].agreement_user_agent || null,
+      agreementPdfGenerated: result.rows[0].agreement_pdf_generated || false,
+      agreementPdfGeneratedAt: result.rows[0].agreement_pdf_generated_at || null,
+      agreementEmailOpened: result.rows[0].agreement_email_opened || false,
+      agreementEmailOpenedAt: result.rows[0].agreement_email_opened_at || null,
+      agreementViewed: result.rows[0].agreement_viewed || false,
+      agreementViewedAt: result.rows[0].agreement_viewed_at || null,
+      auditTrail: result.rows[0].audit_trail || []
     };
 
     } catch (error: any) {
@@ -449,7 +497,18 @@ export async function getBookingsByStatus(status?: string): Promise<PendingBooki
       // Agreement tracking
       agreementSigned: row.agreement_signed || false,
       agreementSignedAt: row.agreement_signed_at || null,
-      agreementSignedBy: row.agreement_signed_by || null
+      agreementSignedBy: row.agreement_signed_by || null,
+      // Enhanced audit trail
+      agreementSignedMethod: row.agreement_signed_method || null,
+      agreementIpAddress: row.agreement_ip_address || null,
+      agreementUserAgent: row.agreement_user_agent || null,
+      agreementPdfGenerated: row.agreement_pdf_generated || false,
+      agreementPdfGeneratedAt: row.agreement_pdf_generated_at || null,
+      agreementEmailOpened: row.agreement_email_opened || false,
+      agreementEmailOpenedAt: row.agreement_email_opened_at || null,
+      agreementViewed: row.agreement_viewed || false,
+      agreementViewedAt: row.agreement_viewed_at || null,
+      auditTrail: row.audit_trail || []
     }));
   } catch (error) {
     console.error('Error fetching bookings:', error);
@@ -550,6 +609,18 @@ export async function updateBookingConfirmation(id: number, manualConfirmation: 
   const client = await getPool().connect();
   try {
     console.log(`Executing updateBookingConfirmation: ID=${id}, Manual=${manualConfirmation}, By=${confirmedBy}`);
+    
+    // Add audit trail entry
+    if (manualConfirmation && confirmedBy) {
+      await addAuditTrailEntry(id, {
+        action: 'manual_confirmation',
+        actor: 'admin',
+        actorDetails: confirmedBy,
+        method: 'admin_override',
+        details: { reason: 'Manual confirmation by admin' }
+      });
+    }
+    
     const result = await client.query(
       'UPDATE bookings SET manual_confirmation = $1, confirmed_by = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
       [manualConfirmation, confirmedBy || null, id]
@@ -557,6 +628,145 @@ export async function updateBookingConfirmation(id: number, manualConfirmation: 
     console.log(`updateBookingConfirmation result: ${result.rowCount} rows affected`);
   } catch (error) {
     console.error('Error in updateBookingConfirmation:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// Add entry to audit trail
+export async function addAuditTrailEntry(
+  bookingId: number, 
+  entry: Omit<AuditTrailEntry, 'timestamp'>,
+  ipAddress?: string,
+  userAgent?: string
+): Promise<void> {
+  const client = await getPool().connect();
+  try {
+    const auditEntry: AuditTrailEntry = {
+      ...entry,
+      timestamp: new Date(),
+      ipAddress: ipAddress || entry.ipAddress,
+      userAgent: userAgent || entry.userAgent
+    };
+
+    console.log(`Adding audit trail entry for booking ${bookingId}:`, auditEntry);
+
+    await client.query(`
+      UPDATE bookings 
+      SET audit_trail = COALESCE(audit_trail, '[]'::jsonb) || $1::jsonb,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+    `, [JSON.stringify(auditEntry), bookingId]);
+
+  } catch (error) {
+    console.error('Error adding audit trail entry:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// Enhanced agreement signing function with full audit trail
+export async function updateBookingAgreementSigning(
+  id: number, 
+  agreementSigned: boolean, 
+  agreementSignedAt: string, 
+  agreementSignedBy: string,
+  method: 'email' | 'manual' | 'physical' | 'admin_override',
+  ipAddress?: string,
+  userAgent?: string,
+  additionalDetails?: Record<string, any>
+): Promise<void> {
+  const client = await getPool().connect();
+  try {
+    console.log(`Executing updateBookingAgreementSigning: ID=${id}, Signed=${agreementSigned}, Method=${method}`);
+    
+    // Update basic agreement fields
+    const result = await client.query(
+      `UPDATE bookings 
+       SET agreement_signed = $1, 
+           agreement_signed_at = $2, 
+           agreement_signed_by = $3,
+           agreement_signed_method = $4,
+           agreement_ip_address = $5,
+           agreement_user_agent = $6,
+           updated_at = CURRENT_TIMESTAMP 
+       WHERE id = $7`,
+      [agreementSigned, agreementSignedAt, agreementSignedBy, method, ipAddress || null, userAgent || null, id]
+    );
+
+    // Add comprehensive audit trail entry
+    await addAuditTrailEntry(id, {
+      action: 'agreement_signed',
+      actor: method === 'admin_override' ? 'admin' : 'customer',
+      actorDetails: agreementSignedBy,
+      method: method,
+      details: {
+        agreementSigned,
+        signedAt: agreementSignedAt,
+        ...additionalDetails
+      }
+    }, ipAddress, userAgent);
+
+    console.log(`updateBookingAgreementSigning result: ${result.rowCount} rows affected`);
+  } catch (error) {
+    console.error('Error in updateBookingAgreementSigning:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// Track agreement email interactions
+export async function trackAgreementEmailInteraction(
+  bookingId: number,
+  action: 'email_sent' | 'email_opened' | 'agreement_viewed' | 'pdf_generated',
+  additionalDetails?: Record<string, any>
+): Promise<void> {
+  const client = await getPool().connect();
+  try {
+    const timestamp = new Date();
+    
+    // Update relevant tracking fields
+    switch (action) {
+      case 'email_sent':
+        await client.query(
+          'UPDATE bookings SET email_sent = true, email_sent_at = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+          [timestamp, bookingId]
+        );
+        break;
+      case 'email_opened':
+        await client.query(
+          'UPDATE bookings SET agreement_email_opened = true, agreement_email_opened_at = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+          [timestamp, bookingId]
+        );
+        break;
+      case 'agreement_viewed':
+        await client.query(
+          'UPDATE bookings SET agreement_viewed = true, agreement_viewed_at = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+          [timestamp, bookingId]
+        );
+        break;
+      case 'pdf_generated':
+        await client.query(
+          'UPDATE bookings SET agreement_pdf_generated = true, agreement_pdf_generated_at = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+          [timestamp, bookingId]
+        );
+        break;
+    }
+
+    // Add audit trail entry
+    await addAuditTrailEntry(bookingId, {
+      action: action,
+      actor: 'customer',
+      actorDetails: 'email_interaction',
+      details: additionalDetails
+    });
+
+    console.log(`Tracked agreement email interaction: ${action} for booking ${bookingId}`);
+  } catch (error) {
+    console.error('Error tracking email interaction:', error);
     throw error;
   } finally {
     client.release();

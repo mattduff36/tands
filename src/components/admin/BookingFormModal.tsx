@@ -30,6 +30,7 @@ export interface BookingFormData {
   additionalCosts: boolean;
   additionalCostsDescription: string;
   additionalCostsAmount: number;
+  saveAsConfirmed?: boolean; // For manual confirmation workflow
 }
 
 interface BookingFormModalProps {
@@ -42,6 +43,7 @@ interface BookingFormModalProps {
   onSubmit: (e: React.FormEvent) => void;
   onFormChange: (field: keyof BookingFormData, value: string | boolean | number) => void;
   calculateTotalCost: () => number;
+  showConfirmationToggle?: boolean; // Show "Save as Confirmed" option for new bookings
 }
 
 export function BookingFormModal({
@@ -53,7 +55,8 @@ export function BookingFormModal({
   onClose,
   onSubmit,
   onFormChange,
-  calculateTotalCost
+  calculateTotalCost,
+  showConfirmationToggle = false
 }: BookingFormModalProps) {
   if (!open) return null;
 
@@ -336,6 +339,32 @@ export function BookingFormModal({
               </div>
             )}
 
+            {/* Manual Confirmation Toggle */}
+            {!isEditing && showConfirmationToggle && (
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <div className="flex items-start space-x-3">
+                  <Checkbox
+                    id="saveAsConfirmed"
+                    checked={bookingForm.saveAsConfirmed || false}
+                    onCheckedChange={(checked) => 
+                      onFormChange('saveAsConfirmed', checked === true)
+                    }
+                  />
+                  <div className="flex-1">
+                    <Label 
+                      htmlFor="saveAsConfirmed" 
+                      className="text-sm font-medium text-blue-900 cursor-pointer"
+                    >
+                      Save as Confirmed
+                    </Label>
+                    <p className="text-xs text-blue-700 mt-1">
+                      Customer will sign agreement manually/physically. Skip email automation and mark as confirmed immediately.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Form Actions */}
             <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
               <Button
@@ -349,11 +378,15 @@ export function BookingFormModal({
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="bg-blue-600 hover:bg-blue-700"
+                className={
+                  bookingForm.saveAsConfirmed 
+                    ? "bg-green-600 hover:bg-green-700" 
+                    : "bg-blue-600 hover:bg-blue-700"
+                }
               >
                 {isSubmitting 
-                  ? `${isEditing ? 'Updating' : 'Creating'} Booking...` 
-                  : `${isEditing ? 'Update' : 'Create'} Booking`
+                  ? `${isEditing ? 'Updating' : (bookingForm.saveAsConfirmed ? 'Creating Confirmed' : 'Creating')} Booking...`
+                  : `${isEditing ? 'Update' : (bookingForm.saveAsConfirmed ? 'Create Confirmed' : 'Create')} Booking`
                 }
               </Button>
             </div>
