@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 
-export default function HireAgreementSuccessPage() {
+function HireAgreementSuccessContent() {
   const searchParams = useSearchParams();
   const bookingRef = searchParams.get("bookingRef");
   const [agreementSignedAt, setAgreementSignedAt] = useState<string>("");
@@ -93,5 +93,20 @@ export default function HireAgreementSuccessPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function HireAgreementSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading success page...</p>
+        </div>
+      </div>
+    }>
+      <HireAgreementSuccessContent />
+    </Suspense>
   );
 } 

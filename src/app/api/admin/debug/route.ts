@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth/nextauth.config';
 import { getBookingsByStatus } from '@/lib/database/bookings';
 import { getPool } from '@/lib/database/connection';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     // Check authentication

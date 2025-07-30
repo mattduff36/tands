@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth/nextauth.config';
 import { getBookingsByStatus } from '@/lib/database/bookings';
 import { getCalendarService } from '@/lib/calendar/google-calendar';
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/admin/bookings - Fetch all bookings (pending from DB, confirmed from calendar)
 export async function GET(request: NextRequest) {
   try {
