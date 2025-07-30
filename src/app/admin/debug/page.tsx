@@ -77,11 +77,18 @@ interface CalendarEvent {
   status?: string;
 }
 
+interface RawData {
+  schema: any;
+  bookings: any[];
+  castles: any[];
+  timestamp: string;
+}
+
 export default function DebugPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [castles, setCastles] = useState<Castle[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
-  const [rawData, setRawData] = useState<any>(null);
+  const [rawData, setRawData] = useState<RawData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -517,7 +524,7 @@ export default function DebugPage() {
                             onChange={(e) => {
                               try {
                                 const newSchema = JSON.parse(e.target.value);
-                                setRawData(prev => ({ ...prev, schema: newSchema }));
+                                setRawData((prev: RawData | null) => prev ? ({ ...prev, schema: newSchema }) : null);
                               } catch (error) {
                                 // Invalid JSON, ignore
                               }
@@ -537,7 +544,7 @@ export default function DebugPage() {
                             onChange={(e) => {
                               try {
                                 const newBookings = JSON.parse(e.target.value);
-                                setRawData(prev => ({ ...prev, bookings: newBookings }));
+                                setRawData((prev: RawData | null) => prev ? ({ ...prev, bookings: newBookings }) : null);
                               } catch (error) {
                                 // Invalid JSON, ignore
                               }
@@ -557,7 +564,7 @@ export default function DebugPage() {
                             onChange={(e) => {
                               try {
                                 const newCastles = JSON.parse(e.target.value);
-                                setRawData(prev => ({ ...prev, castles: newCastles }));
+                                setRawData((prev: RawData | null) => prev ? ({ ...prev, castles: newCastles }) : null);
                               } catch (error) {
                                 // Invalid JSON, ignore
                               }
