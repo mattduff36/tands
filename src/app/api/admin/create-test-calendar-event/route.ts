@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/nextauth.config';
-import { getCalendarService } from '@/lib/calendar/google-calendar';
+import { getCalendarService, BookingEventData } from '@/lib/calendar/google-calendar';
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     const calendarService = getCalendarService();
     
     // Create a test calendar event that matches our test booking
-    const testBookingData = {
+    const testBookingData: BookingEventData = {
       customerName: 'Graham baguley',
       contactDetails: {
         email: 'no@email.com',
