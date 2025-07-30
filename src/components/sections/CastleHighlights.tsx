@@ -33,7 +33,7 @@ export const CastleHighlights = () => {
       <h2 className="mb-8 text-center text-4xl font-bold bg-gradient-to-r from-purple-500 via-pink-500 to-yellow-500 bg-clip-text text-transparent animate-pulse">
         🏰 Our Most Popular Castles 🏰
       </h2>
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:gap-8">
         {isLoading ? (
           [1, 2, 3].map((i) => (
             <div key={i} className="animate-pulse">

@@ -6,26 +6,49 @@ import type { Castle } from "@/lib/database/castles";
 import { Button } from "@/components/ui/button";
 import { Tag, Star } from "lucide-react";
 import { MotionDiv } from "@/components/motion/MotionDiv";
+import { useState } from "react";
 
 interface CastleCardProps {
   castle: Castle;
 }
 
 const CastleCard = ({ castle }: CastleCardProps) => {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+
   return (
     <MotionDiv
       className="group relative flex flex-col overflow-hidden rounded-3xl border-4 border-pink-300 bg-gradient-to-br from-white via-pink-50 to-purple-50 shadow-xl hover:shadow-2xl transition-all duration-300"
       whileHover={{ y: -12, scale: 1.08 }}
       transition={{ type: "spring", stiffness: 300, damping: 20 }}
     >
-      <div className="aspect-h-3 aspect-w-4 bg-gradient-to-br from-pink-200 to-purple-200 sm:aspect-none group-hover:opacity-90 sm:h-60 relative overflow-hidden rounded-t-2xl">
-        <Image
-          src={castle.imageUrl}
-          alt={`Image of ${castle.name}`}
-          fill
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          className="h-full w-full object-cover object-center sm:h-full sm:w-full transform group-hover:scale-110 transition-transform duration-300"
-        />
+      <div className="castle-image-container bg-gradient-to-br from-pink-200 to-purple-200 group-hover:opacity-90 overflow-hidden rounded-t-2xl">
+        {!imageError ? (
+          <Image
+            src={castle.imageUrl}
+            alt={`Image of ${castle.name}`}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            className={`object-cover object-center transform group-hover:scale-110 transition-all duration-300 ${
+              imageLoaded ? 'opacity-100' : 'opacity-0'
+            }`}
+            priority={false}
+            onLoad={() => setImageLoaded(true)}
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-pink-200 to-purple-200">
+            <div className="text-center text-pink-600">
+              <div className="text-4xl mb-2">🏰</div>
+              <div className="text-sm font-medium">Image not available</div>
+            </div>
+          </div>
+        )}
+        {!imageLoaded && !imageError && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-pink-200 to-purple-200">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-600"></div>
+          </div>
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       </div>
       <div className="flex flex-1 flex-col space-y-3 p-6">
