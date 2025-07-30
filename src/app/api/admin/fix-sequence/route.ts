@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getPool } from '@/lib/database/bookings';
+import { getPool } from '@/lib/database/connection';
 
 export async function POST(request: NextRequest) {
   try {
