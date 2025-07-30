@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
             booking.id
           ]);
 
-          if (result.rowCount > 0) {
+          if (result.rowCount && result.rowCount > 0) {
             updatedBookings++;
             console.log(`✅ Updated booking ID ${booking.id}`);
           }
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
             castle.id
           ]);
 
-          if (result.rowCount > 0) {
+          if (result.rowCount && result.rowCount > 0) {
             updatedCastles++;
             console.log(`✅ Updated castle ID ${castle.id}`);
           }
