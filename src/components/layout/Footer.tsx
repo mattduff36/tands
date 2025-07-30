@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Heart } from "lucide-react";
+import { Heart, Facebook } from "lucide-react";
 
 const Footer = () => {
   return (
@@ -13,6 +13,19 @@ const Footer = () => {
             <p className="text-sm text-gray-600">
               Making parties unforgettable since 2024
             </p>
+          </div>
+          
+          {/* Social Media Links */}
+          <div className="mb-4 flex justify-center">
+            <a 
+              href="https://www.facebook.com/profile.php?id=61577881314560" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors duration-300 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-full border border-blue-200 hover:border-blue-300"
+            >
+              <Facebook className="h-5 w-5" />
+              <span className="font-medium">Follow us on Facebook</span>
+            </a>
           </div>
           
           {/* Legal Links */}

@@ -79,7 +79,7 @@ const ContactPage = () => {
                                             <h3 className="text-lg font-bold text-gray-900">
                                                 👥 Facebook
                                             </h3>
-                                            <a href="#" className="text-lg text-gray-700 hover:text-indigo-600 font-semibold transition-colors duration-300" target="_blank" rel="noopener noreferrer">
+                                            <a href="https://www.facebook.com/profile.php?id=61577881314560" className="text-lg text-gray-700 hover:text-indigo-600 font-semibold transition-colors duration-300" target="_blank" rel="noopener noreferrer">
                                                 Follow us on Facebook
                                             </a>
                                         </div>
