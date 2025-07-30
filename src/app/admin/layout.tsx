@@ -16,7 +16,8 @@ import {
   Home,
   Menu,
   X,
-  Castle
+  Castle,
+  Bug
 } from 'lucide-react';
 import { useState } from 'react';
 

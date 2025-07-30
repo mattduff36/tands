@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { X, Edit2, Trash2, CheckCircle } from 'lucide-react';
+import { X, Edit2, Trash2, CheckCircle, FileText } from 'lucide-react';
 import React from 'react';
 
 export interface CalendarEvent {
@@ -103,6 +103,21 @@ export function BookingDetailsModal({
                 >
                   <CheckCircle className="w-4 h-4 mr-2" />
                   Approve
+                </Button>
+              )}
+              {status === 'pending' && event.id.startsWith('db_') && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    // Extract booking reference from event description
+                    const bookingRef = event.description?.match(/Booking Ref: (TS\d{3})/)?.[1] || 
+                                     event.id.replace('db_', '');
+                    window.open(`/hire-agreement?bookingRef=${bookingRef}`, '_blank');
+                  }}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Send Hire Agreement
                 </Button>
               )}
               {status !== 'complete' && onEdit && (

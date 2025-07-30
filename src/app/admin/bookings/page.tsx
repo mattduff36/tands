@@ -59,7 +59,7 @@ interface Booking {
   paymentMethod: string;
   totalPrice: number;
   deposit: number;
-  status: 'pending' | 'confirmed' | 'complete';
+  status: 'pending' | 'confirmed' | 'completed';
   notes?: string;
   createdAt: string;
   updatedAt: string;
@@ -227,11 +227,12 @@ export default function AdminBookings() {
     // Filter database bookings based on status and search
     const databaseBookings = bookings
       .filter(booking => {
-        // Exclude confirmed bookings from database - only show confirmed bookings from calendar
-        if (booking.status === 'confirmed') return false;
-        
+        // Apply status filter
         if (filter === 'pending' && booking.status !== 'pending') return false;
-        if (filter === 'complete' && booking.status !== 'complete') return false;
+        if (filter === 'confirmed' && booking.status !== 'confirmed') return false;
+        if (filter === 'completed' && booking.status !== 'completed') return false;
+        // Exclude expired bookings from all views except debug
+        if (booking.status === 'expired') return false;
         
         const matchesSearch = searchTerm === '' || 
           booking.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -249,7 +250,7 @@ export default function AdminBookings() {
 
     // Process calendar events
     let calendarBookings: any[] = [];
-    if (filter === 'all' || filter === 'confirmed' || filter === 'complete') {
+    if (filter === 'all' || filter === 'confirmed' || filter === 'completed') {
       console.log('Raw events array length:', events.length);
       console.log('Raw events IDs:', events.map(e => e.id));
       
@@ -279,7 +280,7 @@ export default function AdminBookings() {
           const isComplete = eventEndDate && eventEndDate < new Date();
           
           if (filter === 'confirmed' && isComplete) return false;
-          if (filter === 'complete' && !isComplete) return false;
+          if (filter === 'completed' && !isComplete) return false;
           
           const matchesSearch = searchTerm === '' || 
             event.summary?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -323,7 +324,7 @@ export default function AdminBookings() {
           const eventEndDate = event.end?.dateTime ? new Date(event.end.dateTime) : 
                               event.end?.date ? new Date(event.end.date) : null;
           const isComplete = eventEndDate && eventEndDate < new Date();
-          const status = isComplete ? 'complete' as const : 'confirmed' as const;
+          const status = isComplete ? 'completed' as const : 'confirmed' as const;
           
           return {
             id: event.id,
@@ -380,12 +381,15 @@ export default function AdminBookings() {
   // Get status badge color
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'confirmed':
-        return <Badge className="bg-green-100 text-green-800">Confirmed</Badge>;
       case 'pending':
         return <Badge className="bg-yellow-100 text-yellow-800">Pending</Badge>;
-      case 'complete':
-        return <Badge className="bg-blue-100 text-blue-800">Complete</Badge>;
+      case 'confirmed':
+        return <Badge className="bg-green-100 text-green-800">Confirmed</Badge>;
+      case 'completed':
+      case 'complete': // Handle legacy 'complete' status
+        return <Badge className="bg-blue-100 text-blue-800">Completed</Badge>;
+      case 'expired':
+        return <Badge className="bg-gray-600 text-gray-100">Expired</Badge>;
       default:
         return <Badge className="bg-gray-100 text-gray-800">{status}</Badge>;
     }
@@ -486,7 +490,7 @@ export default function AdminBookings() {
     return {
       id: `db_${booking.id}`, // Prefix to identify database bookings
       summary: `🏰 ${booking.customerName} - ${booking.castleName}`,
-      description: booking.notes || '',
+      description: `${booking.notes || ''}\nBooking Ref: ${booking.bookingRef}`,
       location: booking.customerAddress,
       start: { date: booking.date },
       end: { date: booking.date },
@@ -874,15 +878,26 @@ export default function AdminBookings() {
   // Calendar-specific helper functions
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'confirmed':
         return 'bg-green-100 text-green-800 border-green-200';
-      case 'tentative':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'complete':
+      case 'completed':
+      case 'complete': // Handle legacy 'complete' status
         return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'expired':
+        return 'bg-gray-600 text-gray-100 border-gray-500';
       default:
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'bg-gray-100 text-gray-800 border-gray-200';
     }
+  };
+
+  // Helper function to determine event status based on end date
+  const getEventStatus = (event: CalendarEvent) => {
+    const eventEndDate = event.end?.dateTime ? new Date(event.end.dateTime) : 
+                        event.end?.date ? new Date(event.end.date) : null;
+    const isComplete = eventEndDate && eventEndDate < new Date();
+    return isComplete ? 'completed' : 'confirmed';
   };
 
   const formatEventTime = (event: CalendarEvent) => {
@@ -1090,7 +1105,7 @@ export default function AdminBookings() {
                {filter === 'all' ? 'All Bookings' : 
                 filter === 'pending' ? 'Pending Bookings' :
                 filter === 'confirmed' ? 'Confirmed Bookings' :
-                filter === 'complete' ? 'Complete Bookings' : 'Bookings'} ({filteredBookings.length})
+                filter === 'completed' ? 'Completed Bookings' : 'Bookings'} ({filteredBookings.length})
              </CardTitle>
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1 sm:w-64">
@@ -1112,7 +1127,7 @@ export default function AdminBookings() {
                   <SelectItem value="all">All Bookings</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="confirmed">Confirmed</SelectItem>
-                  <SelectItem value="complete">Complete</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1386,8 +1401,8 @@ export default function AdminBookings() {
                         <div key={event.id} className="border rounded-lg p-3 hover:bg-gray-50">
                           <div className="flex items-start justify-between mb-2">
                             <h4 className="font-medium text-sm line-clamp-2">{event.summary}</h4>
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getStatusColor(event.status || 'confirmed')}`}>
-                              {event.status || 'confirmed'}
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getStatusColor(getEventStatus(event))}`}>
+                              {getEventStatus(event)}
                             </span>
                           </div>
                           <div className="text-xs text-gray-600 space-y-1">

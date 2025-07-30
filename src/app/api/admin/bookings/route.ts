@@ -21,13 +21,19 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
+    const bookingRef = searchParams.get('bookingRef');
 
     const bookings = [];
 
     // 1. Get pending bookings from database
     if (!status || status === 'pending') {
       const pendingBookings = await getBookingsByStatus('pending');
-      const dbBookings = pendingBookings.map(booking => ({
+      
+      // Filter by booking reference if provided
+      const filteredBookings = bookingRef 
+        ? pendingBookings.filter(booking => booking.bookingRef === bookingRef)
+        : pendingBookings;
+      const dbBookings = filteredBookings.map(booking => ({
         id: booking.id,
         bookingRef: booking.bookingRef,
         customerName: booking.customerName,
@@ -65,11 +71,18 @@ export async function GET(request: NextRequest) {
         const confirmedBookings = calendarEvents
           .filter(event => {
             // Include events that look like booking events
-            return event.description && 
+            const isBookingEvent = event.description && 
                    event.summary && 
                    (event.description.includes('🏰 Bouncy Castle Booking') || 
                     event.description.includes('Booking Ref:')) &&
                    (event.summary.includes(' - ') || event.summary.includes('🏰'));
+            
+            // If bookingRef is provided, also filter by it
+            if (bookingRef && isBookingEvent) {
+              return event.description?.includes(`Booking Ref: ${bookingRef}`);
+            }
+            
+            return isBookingEvent;
           })
           .map(event => {
             // Parse booking information from event description

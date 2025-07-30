@@ -18,7 +18,7 @@ export interface PendingBooking {
   paymentMethod: string;
   totalPrice: number;
   deposit: number;
-  status: 'pending' | 'confirmed' | 'complete';
+  status: 'pending' | 'confirmed' | 'completed' | 'expired';
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -57,7 +57,10 @@ export async function initializeBookingsTable(): Promise<void> {
       ADD COLUMN IF NOT EXISTS start_date TIMESTAMP WITH TIME ZONE,
       ADD COLUMN IF NOT EXISTS end_date TIMESTAMP WITH TIME ZONE,
       ADD COLUMN IF NOT EXISTS total_cost INTEGER,
-      ADD COLUMN IF NOT EXISTS calendar_event_id VARCHAR(255)
+      ADD COLUMN IF NOT EXISTS calendar_event_id VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS agreement_signed BOOLEAN DEFAULT FALSE,
+      ADD COLUMN IF NOT EXISTS agreement_signed_at TIMESTAMP WITH TIME ZONE,
+      ADD COLUMN IF NOT EXISTS agreement_signed_by VARCHAR(255)
     `);
     
     console.log('Bookings table initialized successfully');
@@ -320,12 +323,25 @@ export async function getBookingsByStatus(status?: string): Promise<PendingBooki
 }
 
 // Update booking status
-export async function updateBookingStatus(id: number, status: 'pending' | 'confirmed' | 'complete'): Promise<void> {
+export async function updateBookingStatus(id: number, status: 'pending' | 'confirmed' | 'completed' | 'expired'): Promise<void> {
   const client = await getPool().connect();
   try {
     await client.query(
       'UPDATE bookings SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
       [status, id]
+    );
+  } finally {
+    client.release();
+  }
+}
+
+// Update booking agreement signing
+export async function updateBookingAgreement(id: number, agreementSigned: boolean, agreementSignedAt: string, agreementSignedBy?: string): Promise<void> {
+  const client = await getPool().connect();
+  try {
+    await client.query(
+      'UPDATE bookings SET agreement_signed = $1, agreement_signed_at = $2, agreement_signed_by = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4',
+      [agreementSigned, agreementSignedAt, agreementSignedBy || null, id]
     );
   } finally {
     client.release();
@@ -528,7 +544,7 @@ export async function getBookingStats(query?: {
   total: number;
   pending: number;
   confirmed: number;
-  complete: number;
+  completed: number;
   revenue: number;
 }> {
   const client = await getPool().connect();
@@ -538,7 +554,7 @@ export async function getBookingStats(query?: {
         COUNT(*) as total,
         COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending,
         COUNT(CASE WHEN status = 'confirmed' THEN 1 END) as confirmed,
-        COUNT(CASE WHEN status = 'complete' THEN 1 END) as complete,
+        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed,
         COALESCE(SUM(CASE WHEN status = 'confirmed' THEN total_price ELSE 0 END), 0) as revenue
       FROM bookings
     `;
@@ -580,7 +596,7 @@ export async function getBookingStats(query?: {
       total: parseInt(stats.total),
       pending: parseInt(stats.pending),
       confirmed: parseInt(stats.confirmed),
-      complete: parseInt(stats.complete),
+      completed: parseInt(stats.completed),
       revenue: parseInt(stats.revenue)
     };
   } catch (error) {

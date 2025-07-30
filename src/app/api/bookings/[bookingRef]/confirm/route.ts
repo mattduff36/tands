@@ -1,0 +1,81 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getBookingsByStatus, updateBookingStatus, updateBookingAgreement } from '@/lib/database/bookings';
+import { getCalendarService } from '@/lib/calendar/google-calendar';
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { bookingRef: string } }
+) {
+  try {
+    const bookingRef = params.bookingRef;
+    const body = await request.json();
+    const { agreementSigned, agreementSignedAt } = body;
+
+    if (!agreementSigned) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    // Get the booking by reference
+    const pendingBookings = await getBookingsByStatus('pending');
+    const booking = pendingBookings.find(b => b.bookingRef === bookingRef);
+
+    if (!booking) {
+      return NextResponse.json(
+        { error: 'Booking not found' },
+        { status: 404 }
+      );
+    }
+
+    // Create calendar event
+    const calendarService = getCalendarService();
+    
+    // Convert booking date to proper ISO format with times
+    const bookingDate = new Date(booking.date);
+    const eventStartDateTime = new Date(bookingDate);
+    const eventEndDateTime = new Date(bookingDate);
+    
+    // Set times: 9 AM to 5 PM
+    eventStartDateTime.setHours(9, 0, 0, 0);
+    eventEndDateTime.setHours(17, 0, 0, 0);
+    
+    // Add event to Google Calendar
+    const createdEvent = await calendarService.createBookingEvent({
+      customerName: booking.customerName,
+      contactDetails: {
+        email: booking.customerEmail,
+        phone: booking.customerPhone
+      },
+      location: booking.customerAddress,
+      notes: `Booking Ref: ${booking.bookingRef}\nTotal: £${booking.totalPrice}\nDeposit: £${booking.deposit}\nPayment: ${booking.paymentMethod}\nAgreement signed: ${agreementSignedAt}\n${booking.notes || ''}`,
+      duration: {
+        start: eventStartDateTime.toISOString(),
+        end: eventEndDateTime.toISOString()
+      },
+      cost: booking.totalPrice,
+      paymentMethod: booking.paymentMethod as 'cash' | 'card',
+      bouncyCastleType: booking.castleName
+    });
+
+    // Update the booking status to confirmed and add agreement details
+    await updateBookingStatus(booking.id, 'confirmed');
+    await updateBookingAgreement(booking.id, agreementSigned, agreementSignedAt, booking.customerName);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Hire agreement signed successfully and added to calendar',
+      bookingRef,
+      agreementSignedAt,
+      calendarEventId: createdEvent
+    });
+
+  } catch (error) {
+    console.error('Error confirming booking:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+} 

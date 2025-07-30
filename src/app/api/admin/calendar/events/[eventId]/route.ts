@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/nextauth.config';
 import { getCalendarService } from '@/lib/calendar/google-calendar';
+import { getBookingsByStatus, updateBookingStatus } from '@/lib/database/bookings';
 
 // GET /api/admin/calendar/events/[eventId] - Get a single calendar event by ID
 export async function GET(
@@ -156,13 +157,37 @@ export async function DELETE(
       return NextResponse.json({ error: 'Event ID is required' }, { status: 400 });
     }
 
+    // First, get the calendar event to extract booking reference
     const calendarService = getCalendarService();
+    const event = await calendarService.getEvent(eventId);
+    
+    if (!event) {
+      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+    }
+
+    // Extract booking reference from event description
+    const bookingRefMatch = event.description?.match(/Booking Ref: (TS\d{3})/);
+    const bookingRef = bookingRefMatch?.[1];
+
+    if (bookingRef) {
+      // Find the corresponding database booking and mark it as expired
+      const allBookings = await getBookingsByStatus();
+      const booking = allBookings.find(b => b.bookingRef === bookingRef);
+      
+      if (booking && booking.status === 'confirmed') {
+        await updateBookingStatus(booking.id, 'expired');
+        console.log(`Marked booking ${bookingRef} as expired after calendar event deletion`);
+      }
+    }
+
+    // Delete the calendar event
     await calendarService.deleteBookingEvent(eventId);
 
     return NextResponse.json({ 
       success: true,
       eventId,
-      message: 'Booking event deleted successfully' 
+      bookingRef,
+      message: 'Booking event deleted successfully and database booking marked as expired' 
     });
 
   } catch (error) {

@@ -142,6 +142,25 @@ export async function initializeDatabase() {
       )
     `);
     
+    // Add agreement columns to bookings table if they don't exist
+    try {
+      await query(`
+        ALTER TABLE bookings 
+        ADD COLUMN IF NOT EXISTS agreement_signed BOOLEAN DEFAULT FALSE
+      `);
+      await query(`
+        ALTER TABLE bookings 
+        ADD COLUMN IF NOT EXISTS agreement_signed_at TIMESTAMP WITH TIME ZONE
+      `);
+      await query(`
+        ALTER TABLE bookings 
+        ADD COLUMN IF NOT EXISTS agreement_signed_by VARCHAR(255)
+      `);
+      console.log('Agreement fields added to bookings table');
+    } catch (error) {
+      console.log('Agreement fields already exist or error adding them:', error);
+    }
+    
     // Check if we have any data
     const result = await query('SELECT COUNT(*) FROM castles');
     const count = parseInt(result.rows[0].count);

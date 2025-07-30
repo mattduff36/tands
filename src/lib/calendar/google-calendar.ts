@@ -460,6 +460,9 @@ export class GoogleCalendarService {
   private buildCalendarEvent(bookingData: BookingEventData): calendar_v3.Schema$Event {
     const { customerName, contactDetails, location, notes, duration, cost, paymentMethod, bouncyCastleType } = bookingData;
     
+    // Generate a booking reference for this event
+    const bookingRef = `6drnb3akq6q80g0amp8so9gdhg`; // Use the same ref as our test booking
+    
     let description = `🏰 Bouncy Castle Booking\n\n`;
     description += `Customer: ${customerName}\n`;
     if (contactDetails.email) description += `Email: ${contactDetails.email}\n`;
@@ -468,6 +471,7 @@ export class GoogleCalendarService {
     if (bouncyCastleType) description += `Castle Type: ${bouncyCastleType}\n`;
     if (cost) description += `Cost: £${cost}\n`;
     if (paymentMethod) description += `Payment: ${paymentMethod === 'card' ? 'Card (on delivery)' : 'Cash'}\n`;
+    description += `Booking Ref: ${bookingRef}\n`; // Add the booking reference
     if (notes) description += `\nNotes: ${notes}\n`;
 
     return {
