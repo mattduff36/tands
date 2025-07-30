@@ -59,7 +59,7 @@ interface Booking {
   paymentMethod: string;
   totalPrice: number;
   deposit: number;
-  status: 'pending' | 'confirmed' | 'completed';
+  status: 'pending' | 'confirmed' | 'completed' | 'expired';
   notes?: string;
   createdAt: string;
   updatedAt: string;
