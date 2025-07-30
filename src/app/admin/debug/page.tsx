@@ -174,7 +174,7 @@ export default function DebugPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
+      <div className="min-h-screen bg-red-50 p-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
@@ -188,7 +188,7 @@ export default function DebugPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-red-50 p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -232,6 +232,34 @@ export default function DebugPage() {
                >
                  <AlertCircle className="w-4 h-4" />
                  Update Database
+               </Button>
+               
+               <Button 
+                 onClick={async () => {
+                   if (!confirm('🔧 This will fix database sequence issues that prevent new bookings from being created.\n\nThis is safe to run and will resolve ID conflicts.\n\nAre you sure you want to proceed?')) {
+                     return;
+                   }
+                   
+                   try {
+                     const response = await fetch('/api/admin/fix-sequence', { 
+                       method: 'POST'
+                     });
+                     const result = await response.json();
+                     if (result.success) {
+                       toast.success(result.message);
+                       fetchDebugData(); // Refresh the data
+                     } else {
+                       toast.error(result.error || 'Failed to fix sequences');
+                     }
+                   } catch (error) {
+                     toast.error('Failed to fix sequences');
+                   }
+                 }}
+                 variant="outline"
+                 className="flex items-center gap-2 bg-yellow-50 hover:bg-yellow-100 border-yellow-300 text-yellow-700"
+               >
+                 <Bug className="w-4 h-4" />
+                 Fix Sequences
                </Button>
                                <Button 
                   onClick={async () => {

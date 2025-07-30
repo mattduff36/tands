@@ -149,10 +149,32 @@ function generateBookingRef(): string {
   return `TS${year}${month}${day}${random}`;
 }
 
+// Fix sequence if it's out of sync
+async function fixBookingSequence(): Promise<void> {
+  const client = await getPool().connect();
+  try {
+    // Get the current maximum ID
+    const maxIdResult = await client.query('SELECT COALESCE(MAX(id), 0) as max_id FROM bookings');
+    const maxId = maxIdResult.rows[0].max_id;
+    
+    // Reset the sequence to the next value after the maximum ID
+    await client.query(`SELECT setval('bookings_id_seq', $1, true)`, [maxId]);
+    
+    console.log(`Fixed bookings sequence. Set to: ${maxId}`);
+  } catch (error) {
+    console.error('Error fixing booking sequence:', error);
+  } finally {
+    client.release();
+  }
+}
+
 // Create a new pending booking
 export async function createPendingBooking(booking: Omit<PendingBooking, 'id' | 'bookingRef' | 'status' | 'createdAt' | 'updatedAt'>): Promise<PendingBooking> {
   const client = await getPool().connect();
   try {
+    // First, try to fix the sequence if there might be an issue
+    await fixBookingSequence();
+    
     const bookingRef = await generateFriendlyBookingRef();
     
     const result = await client.query(`
@@ -326,10 +348,15 @@ export async function getBookingsByStatus(status?: string): Promise<PendingBooki
 export async function updateBookingStatus(id: number, status: 'pending' | 'confirmed' | 'completed' | 'expired'): Promise<void> {
   const client = await getPool().connect();
   try {
-    await client.query(
+    console.log(`Executing updateBookingStatus: ID=${id}, Status=${status}`);
+    const result = await client.query(
       'UPDATE bookings SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
       [status, id]
     );
+    console.log(`updateBookingStatus result: ${result.rowCount} rows affected`);
+  } catch (error) {
+    console.error('Error in updateBookingStatus:', error);
+    throw error;
   } finally {
     client.release();
   }
@@ -339,10 +366,15 @@ export async function updateBookingStatus(id: number, status: 'pending' | 'confi
 export async function updateBookingAgreement(id: number, agreementSigned: boolean, agreementSignedAt: string, agreementSignedBy?: string): Promise<void> {
   const client = await getPool().connect();
   try {
-    await client.query(
+    console.log(`Executing updateBookingAgreement: ID=${id}, Signed=${agreementSigned}, At=${agreementSignedAt}, By=${agreementSignedBy}`);
+    const result = await client.query(
       'UPDATE bookings SET agreement_signed = $1, agreement_signed_at = $2, agreement_signed_by = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4',
       [agreementSigned, agreementSignedAt, agreementSignedBy || null, id]
     );
+    console.log(`updateBookingAgreement result: ${result.rowCount} rows affected`);
+  } catch (error) {
+    console.error('Error in updateBookingAgreement:', error);
+    throw error;
   } finally {
     client.release();
   }

@@ -475,6 +475,34 @@ export default function AdminBookings() {
     }
   };
 
+  // Delete calendar event
+  const handleDeleteCalendarEvent = async (eventId: string) => {
+    if (!confirm('Are you sure you want to delete this calendar event? This action cannot be undone.')) {
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const response = await fetch(`/api/admin/calendar/events/${eventId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        toast.success('Calendar event deleted successfully');
+        await fetchCalendarData();
+        setShowDetailsModal(false);
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Failed to delete calendar event');
+      }
+    } catch (error) {
+      console.error('Error deleting calendar event:', error);
+      toast.error('Error deleting calendar event');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   // Format date for display
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-GB', {
@@ -1182,22 +1210,22 @@ export default function AdminBookings() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                                         <Button
-                       variant="outline"
-                       size="sm"
-                       onClick={() => {
-                         if (booking.source === 'calendar' && booking.calendarEvent) {
-                           // For calendar events, use the original event
-                           handleViewDetails(booking.calendarEvent);
-                         } else {
-                           // For database bookings, convert to calendar event format
-                           handleViewDetails(bookingToCalendarEvent(booking));
-                         }
-                       }}
-                     >
-                       <Eye className="h-4 w-4 mr-1" />
-                       View
-                     </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (booking.source === 'calendar' && booking.calendarEvent) {
+                          // For calendar events, use the original event
+                          handleViewDetails(booking.calendarEvent);
+                        } else {
+                          // For database bookings, convert to calendar event format
+                          handleViewDetails(bookingToCalendarEvent(booking));
+                        }
+                      }}
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      View
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -1473,7 +1501,7 @@ export default function AdminBookings() {
               if (booking) {
                 handleDeleteBooking(booking.id);
               }
-            } : handleDeleteEvent}
+            } : () => handleDeleteCalendarEvent(selectedEvent.id)}
             onApprove={selectedEvent.id.startsWith('db_') ? () => {
               // Find the booking by ID for database bookings
               const bookingId = selectedEvent.id.replace('db_', '');

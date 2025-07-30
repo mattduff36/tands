@@ -22,12 +22,18 @@ export async function POST(
     const pendingBookings = await getBookingsByStatus('pending');
     const booking = pendingBookings.find(b => b.bookingRef === bookingRef);
 
+    console.log(`Looking for booking ref: ${bookingRef}`);
+    console.log(`Found ${pendingBookings.length} pending bookings`);
+    console.log(`Booking found:`, booking ? 'Yes' : 'No');
+
     if (!booking) {
       return NextResponse.json(
         { error: 'Booking not found' },
         { status: 404 }
       );
     }
+
+    console.log(`Processing booking ID: ${booking.id}, current status: ${booking.status}`);
 
     // Create calendar event
     const calendarService = getCalendarService();
@@ -60,8 +66,10 @@ export async function POST(
     });
 
     // Update the booking status to confirmed and add agreement details
+    console.log(`Updating booking ${booking.id} status to confirmed`);
     await updateBookingStatus(booking.id, 'confirmed');
     await updateBookingAgreement(booking.id, agreementSigned, agreementSignedAt, booking.customerName);
+    console.log(`Booking ${booking.id} status updated successfully`);
 
     return NextResponse.json({
       success: true,
