@@ -23,6 +23,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const bookingRef = searchParams.get('bookingRef');
+    const dateFrom = searchParams.get('dateFrom');
+    const dateTo = searchParams.get('dateTo');
 
     // Get database bookings - either all bookings or filtered by status
     let dbBookings = await getBookingsByStatus(status || undefined);
@@ -30,6 +32,17 @@ export async function GET(request: NextRequest) {
     // Filter by booking reference if provided
     if (bookingRef) {
       dbBookings = dbBookings.filter(booking => booking.bookingRef === bookingRef);
+    }
+
+    // Filter by date range if provided
+    if (dateFrom || dateTo) {
+      dbBookings = dbBookings.filter(booking => {
+        const bookingDate = new Date(booking.date);
+        const fromDate = dateFrom ? new Date(dateFrom) : new Date('2020-01-01');
+        const toDate = dateTo ? new Date(dateTo) : new Date('2030-12-31');
+        
+        return bookingDate >= fromDate && bookingDate <= toDate;
+      });
     }
     
     // Transform to consistent format with source indicator

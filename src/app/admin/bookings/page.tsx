@@ -28,7 +28,8 @@ import {
   ChevronRight,
   RefreshCw,
   FileCheck,
-  FileWarning
+  FileWarning,
+  ChevronDown
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BookingDetailsModal } from '@/components/admin/BookingDetailsModal';
@@ -102,6 +103,7 @@ export default function AdminBookings() {
     expired: false
   });
   const [searchTerm, setSearchTerm] = useState('');
+  const [timeRange, setTimeRange] = useState('all');
 
   const [showDetailsModal, setShowDetailsModal] = useState(false);
 
@@ -153,11 +155,52 @@ export default function AdminBookings() {
     }
   };
 
+  // Calculate date range based on timeRange
+  const getDateRange = () => {
+    const now = new Date();
+    const startDate = new Date();
+    
+    switch (timeRange) {
+      case 'all':
+        // For all time, use a very old start date
+        startDate.setFullYear(2020);
+        break;
+      case 'week':
+        // For week, look back 7 days but also include future bookings
+        startDate.setDate(now.getDate() - 7);
+        break;
+      case 'month':
+        // For month, look back 30 days but also include future bookings
+        startDate.setDate(now.getDate() - 30);
+        break;
+      case 'quarter':
+        // For quarter, look back 90 days but also include future bookings
+        startDate.setDate(now.getDate() - 90);
+        break;
+      case 'year':
+        // For year, look back 365 days but also include future bookings
+        startDate.setDate(now.getDate() - 365);
+        break;
+      default:
+        startDate.setDate(now.getDate() - 30);
+    }
+    
+    // Set end date to a far future date to include all future bookings
+    const endDate = new Date();
+    endDate.setFullYear(now.getFullYear() + 2); // Include bookings up to 2 years in the future
+    
+    return {
+      dateFrom: startDate.toISOString().split('T')[0],
+      dateTo: endDate.toISOString().split('T')[0]
+    };
+  };
+
   // Fetch bookings from API
   const fetchBookings = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/admin/bookings');
+      const { dateFrom, dateTo } = getDateRange();
+      const response = await fetch(`/api/admin/bookings?dateFrom=${dateFrom}&dateTo=${dateTo}`);
       if (response.ok) {
         const data = await response.json();
         setBookings(data.bookings || []);
@@ -230,7 +273,7 @@ export default function AdminBookings() {
     fetchBookings();
     fetchCastles();
     fetchCalendarData();
-  }, [currentDate]);
+  }, [currentDate, timeRange]);
 
   // Filter database bookings only - calendar events are now kept separate  
   const createFilteredBookingsList = useCallback(() => {
@@ -578,6 +621,10 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
     } finally {
   
     }
+  };
+
+  const handleTimeRangeChange = (newRange: string) => {
+    setTimeRange(newRange);
   };
 
   // Handle edit booking
@@ -1329,6 +1376,20 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
             </div>
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="relative">
+                <select
+                  value={timeRange}
+                  onChange={(e) => handleTimeRangeChange(e.target.value)}
+                  className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="all">All Time</option>
+                  <option value="week">Past Week</option>
+                  <option value="month">Past Month</option>
+                  <option value="quarter">Past Quarter</option>
+                  <option value="year">Past Year</option>
+                </select>
+                <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              </div>
+              <div className="relative">
                 <Select>
                   <SelectTrigger className="w-full sm:w-48">
                     <div className="flex items-center gap-2">
@@ -1389,8 +1450,8 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {filteredBookings.map((booking) => (
+            <div className="max-h-96 overflow-y-auto space-y-4">
+              {filteredBookings.slice(0, 6).map((booking) => (
                 <div
                   key={booking.id}
                   className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border rounded-lg hover:bg-gray-50 gap-3"
@@ -1436,6 +1497,11 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
                   </div>
                 </div>
               ))}
+              {filteredBookings.length > 6 && (
+                <div className="text-center py-4 text-sm text-gray-500">
+                  Showing 6 of {filteredBookings.length} bookings. Scroll to see more.
+                </div>
+              )}
             </div>
           )}
         </CardContent>
