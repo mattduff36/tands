@@ -170,9 +170,12 @@ export default function AdminCalendar() {
     
     // Check if event has ended
     const now = new Date();
-    const eventEnd = new Date(endDate || startDate);
-    if (eventEnd < now) {
-      status = 'completed';
+    const eventEndDate = endDate || startDate;
+    if (eventEndDate) {
+      const eventEnd = new Date(eventEndDate);
+      if (eventEnd < now) {
+        status = 'completed';
+      }
     }
 
     return {
@@ -196,9 +199,12 @@ export default function AdminCalendar() {
       }
       
       // Check if event has ended
-      const eventEnd = new Date(event.end?.dateTime || event.end?.date || event.start?.dateTime || event.start?.date || '');
-      if (eventEnd < now) {
-        return { ...event, status: 'completed' };
+      const eventEndDate = event.end?.dateTime || event.end?.date || event.start?.dateTime || event.start?.date;
+      if (eventEndDate) {
+        const eventEnd = new Date(eventEndDate);
+        if (eventEnd < now) {
+          return { ...event, status: 'completed' };
+        }
       }
       
       // Default to confirmed
