@@ -66,6 +66,12 @@ interface Booking {
   createdAt: string;
   updatedAt: string;
   source: 'database' | 'calendar';
+  
+  // Agreement information
+  agreementSigned?: boolean;
+  agreementSignedAt?: string;
+  agreementSignedBy?: string;
+  agreementSignedMethod?: 'email' | 'manual' | 'physical' | 'admin_override';
 }
 
 interface CalendarEvent {
