@@ -128,6 +128,17 @@ export async function initializeBookingsTable(): Promise<void> {
       ON bookings (castle_id, date) 
       WHERE status NOT IN ('expired')
     `);
+
+    // Add performance indexes for frequently queried fields
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_bookings_status_date 
+      ON bookings (status, date)
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_bookings_customer_email 
+      ON bookings (customer_email)
+    `);
     
     console.log('Bookings table initialized successfully');
     

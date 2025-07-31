@@ -120,6 +120,17 @@ export async function initializeDatabase() {
       console.log('Maintenance fields already exist or error adding them:', error);
     }
 
+    // Add performance index for frequently queried maintenance status
+    try {
+      await query(`
+        CREATE INDEX IF NOT EXISTS idx_castles_maintenance_status 
+        ON castles (maintenance_status)
+      `);
+      console.log('Maintenance status index added to castles table');
+    } catch (error) {
+      console.log('Maintenance status index already exists or error adding it:', error);
+    }
+
     // Create bookings table if it doesn't exist
     await query(`
       CREATE TABLE IF NOT EXISTS bookings (
