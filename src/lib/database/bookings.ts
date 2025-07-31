@@ -462,7 +462,15 @@ export async function createConfirmedBooking(booking: {
 export async function getBookingsByStatus(status?: string): Promise<PendingBooking[]> {
   const client = await getPool().connect();
   try {
-    let query = 'SELECT * FROM bookings';
+    let query = `SELECT 
+      id, booking_ref, customer_name, customer_email, customer_phone, customer_address,
+      castle_id, castle_name, date, payment_method, total_price, deposit, status, notes,
+      created_at, updated_at, email_sent, email_sent_at, manual_confirmation, confirmed_by,
+      agreement_signed, agreement_signed_at, agreement_signed_by, agreement_signed_method,
+      agreement_ip_address, agreement_user_agent, agreement_pdf_generated, agreement_pdf_generated_at,
+      agreement_email_opened, agreement_email_opened_at, agreement_viewed, agreement_viewed_at,
+      audit_trail
+    FROM bookings`;
     let params: any[] = [];
     
     if (status) {
@@ -958,7 +966,11 @@ export async function queryBookingsWithFilters(query: {
 }): Promise<{ bookings: PendingBooking[] }> {
   const client = await getPool().connect();
   try {
-    let sqlQuery = 'SELECT * FROM bookings WHERE 1=1';
+    let sqlQuery = `SELECT 
+      id, booking_ref, customer_name, customer_email, customer_phone, customer_address,
+      castle_id, castle_name, date, payment_method, total_price, deposit, status, notes,
+      created_at, updated_at
+    FROM bookings WHERE 1=1`;
     const params: any[] = [];
     let paramCount = 1;
 

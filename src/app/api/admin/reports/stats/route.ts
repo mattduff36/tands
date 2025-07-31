@@ -20,7 +20,13 @@ export async function GET(request: NextRequest) {
     try {
       const client = await getPool().connect();
       try {
-        const result = await client.query('SELECT * FROM bookings ORDER BY created_at DESC LIMIT 10');
+        const result = await client.query(`
+          SELECT id, booking_ref, customer_name, customer_email, status, 
+                 date, total_price, created_at, updated_at
+          FROM bookings 
+          ORDER BY created_at DESC 
+          LIMIT 10
+        `);
         return NextResponse.json({ bookings: result.rows });
       } finally {
         client.release();

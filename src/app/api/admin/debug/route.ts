@@ -23,15 +23,20 @@ export async function GET(request: NextRequest) {
     const client = await getPool().connect();
 
     try {
-      // Get all bookings with raw data
+      // Get all bookings with essential data
       const bookingsResult = await client.query(`
-        SELECT * FROM bookings 
+        SELECT id, booking_ref, customer_name, customer_email, status, 
+               date, total_price, castle_id, castle_name, created_at, updated_at,
+               agreement_signed, email_sent
+        FROM bookings 
         ORDER BY created_at DESC
       `);
 
-      // Get all castles with raw data
+      // Get all castles with essential data
       const castlesResult = await client.query(`
-        SELECT * FROM castles 
+        SELECT id, name, theme, size, price, description, image_url,
+               maintenance_status, maintenance_notes
+        FROM castles 
         ORDER BY id ASC
       `);
 
