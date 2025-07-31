@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Poppins } from "next/font/google";
 import "./globals.css";
 import ConditionalLayout from '@/components/layout/ConditionalLayout';
+import QueryProvider from '@/components/providers/QueryProvider';
 import { Toaster } from "@/components/ui/sonner";
 import { Analytics } from '@vercel/analytics/react';
 
@@ -39,11 +40,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={poppins.className}>
-        <ConditionalLayout>
-          {children}
-        </ConditionalLayout>
+        <QueryProvider>
+          <ConditionalLayout>
+            {children}
+          </ConditionalLayout>
+        </QueryProvider>
         <Toaster />
-      <Analytics />
+        <Analytics />
       </body>
     </html>
   );
