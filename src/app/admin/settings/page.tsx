@@ -214,26 +214,9 @@ export default function AdminSettings() {
           </p>
         </div>
         <div className="mt-4 sm:mt-0">
-          <Button onClick={fetchCastles} variant="outline" className="mr-2">
+          <Button onClick={fetchCastles} variant="outline">
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
-          </Button>
-          <Button onClick={async () => {
-            try {
-              const response = await fetch('/api/admin/seed-castles', { method: 'POST' });
-              const result = await response.json();
-              if (result.success) {
-                toast.success(result.message);
-                fetchCastles();
-              } else {
-                toast.error(result.error || 'Failed to seed castles');
-              }
-            } catch (error) {
-              toast.error('Error seeding castles');
-            }
-          }} variant="outline">
-            <Wrench className="w-4 h-4 mr-2" />
-            Seed Database
           </Button>
         </div>
       </div>

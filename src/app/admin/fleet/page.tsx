@@ -55,7 +55,6 @@ export default function FleetManagement() {
     imageUrl: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isMigrating, setIsMigrating] = useState(false);
   const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
 
   // Fetch castles data
@@ -215,33 +214,7 @@ export default function FleetManagement() {
     });
   };
 
-  // Handle image migration
-  const handleMigrateImages = async () => {
-    if (!confirm('This will migrate all existing castle images from local storage to Google Drive. This may take a few minutes. Continue?')) {
-      return;
-    }
 
-    setIsMigrating(true);
-    try {
-      const response = await fetch('/api/admin/fleet/migrate-images', {
-        method: 'POST',
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        alert(`Migration completed successfully! ${data.results.filter((r: any) => r.status === 'success').length} images migrated.`);
-        await fetchCastles(); // Refresh the castles data
-      } else {
-        const error = await response.json();
-        alert(`Migration failed: ${error.error}`);
-      }
-    } catch (error) {
-      console.error('Error migrating images:', error);
-      alert('Failed to migrate images. Please try again.');
-    } finally {
-      setIsMigrating(false);
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -256,11 +229,7 @@ export default function FleetManagement() {
             Manage your bouncy castle fleet - add, edit, or remove castles
           </p>
         </div>
-        <div className="mt-4 sm:mt-0 flex space-x-2">
-          <Button onClick={handleMigrateImages} variant="outline" disabled={isMigrating}>
-            <Upload className="w-4 h-4 mr-2" />
-            {isMigrating ? 'Migrating...' : 'Migrate Images to Drive'}
-          </Button>
+        <div className="mt-4 sm:mt-0">
           <Button onClick={handleAdd}>
             <Plus className="w-4 h-4 mr-2" />
             Add New Castle
