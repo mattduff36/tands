@@ -140,6 +140,12 @@ export interface Booking {
   cancellationReason?: string;
   cancellationDate?: string;  // ISO datetime string
   cancellationFee?: number;
+  
+  // Agreement information
+  agreementSigned?: boolean;
+  agreementSignedAt?: string;  // ISO datetime string
+  agreementSignedBy?: string;
+  agreementSignedMethod?: 'email' | 'manual' | 'physical' | 'admin_override';
 }
 
 // Database query interfaces
