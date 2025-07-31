@@ -484,13 +484,47 @@ export default function AdminBookings() {
 
   // Handle edit and send agreement
   const handleEditAndSendAgreement = async (bookingId: number) => {
-    // Open edit modal for the booking
-    const booking = filteredBookings.find(b => b.id === bookingId);
-    if (booking) {
-      handleEditBooking(booking);
-      // Note: The agreement email will be sent automatically after successful edit
-      toast.info('Edit the booking details. Agreement email will be sent automatically after saving.');
+    // Find the booking in the main bookings array (not filtered)
+    const booking = bookings.find(b => b.id === bookingId);
+    if (!booking) return;
+
+    // Parse the booking data into form format
+    const bookingDate = new Date(booking.date);
+    
+    // Find castle by name to get the correct ID - use more robust matching
+    let castle = castles.find(c => c.name === booking.castleName);
+    
+    // If not found by exact name, try partial matching
+    if (!castle) {
+      castle = castles.find(c => 
+        c.name.toLowerCase().includes(booking.castleName.toLowerCase()) ||
+        booking.castleName.toLowerCase().includes(c.name.toLowerCase())
+      );
     }
+
+    // Set up the booking form with existing data
+    setBookingForm({
+      castle: castle?.id.toString() || '',
+      customerName: booking.customerName,
+      customerEmail: booking.customerEmail,
+      customerPhone: booking.customerPhone,
+      address: booking.customerAddress,
+      singleDate: bookingDate.toISOString().split('T')[0],
+      multipleDate: false,
+      startDate: '',
+      endDate: '',
+      overnight: booking.notes?.includes('(Overnight)') || false,
+      additionalCosts: false,
+      additionalCostsDescription: '',
+      additionalCostsAmount: 0
+    });
+    
+    setIsEditing(true);
+    setShowDetailsModal(false);
+    setShowBookingModal(true);
+    
+    // Note: The agreement email will be sent automatically after successful edit
+    toast.info('Edit the booking details. Agreement email will be sent automatically after saving.');
   };
 
   // Handle expire booking
