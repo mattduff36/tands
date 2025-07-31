@@ -161,7 +161,7 @@ export default function AdminCalendar() {
     }
 
     // Determine status based on event properties
-    let status = 'confirmed';
+    let status: 'pending' | 'confirmed' | 'completed' | 'expired' = 'confirmed';
     
     // Check if event is completed (gray color or has ✅ in summary)
     if (event.colorId === '11' || event.summary?.includes('✅')) {
