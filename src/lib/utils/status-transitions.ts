@@ -36,7 +36,6 @@ export async function checkBookingForCompletion(booking: {
   status: BookingStatus;
   date: string;
   endDate?: Date;
-  calendarEventId?: string;
 }): Promise<StatusTransitionResult | null> {
   try {
     // Only check confirmed bookings
@@ -62,26 +61,8 @@ export async function checkBookingForCompletion(booking: {
       return null;
     }
 
-    // Method 2: If booking has calendar event, check calendar directly
-    if (booking.calendarEventId) {
-      const calendarService = getCalendarService();
-      const event = await calendarService.getEvent(booking.calendarEventId);
-      
-      if (event && event.end?.dateTime) {
-        const eventEndTime = new Date(event.end.dateTime);
-        if (now > eventEndTime) {
-          return {
-            bookingId: booking.id,
-            bookingRef: booking.bookingRef,
-            previousStatus: 'confirmed',
-            newStatus: 'completed',
-            reason: `Calendar event ended at ${eventEndTime.toISOString()}`,
-            transitionedAt: now
-          };
-        }
-      }
-      return null;
-    }
+    // Method 2: For database bookings, we rely on endDate or fallback to estimated end time
+    // (Calendar event lookup removed as database bookings don't have calendarEventId)
 
     // Method 3: Fallback - assume booking ends at 5 PM on booking date
     const bookingDate = new Date(booking.date);
@@ -190,17 +171,8 @@ export async function getUpcomingStatusTransitions(hoursAhead: number = 24): Pro
       // Determine event end time using same logic as checkBookingForCompletion
       if (booking.endDate) {
         eventEndTime = new Date(booking.endDate);
-      } else if (booking.calendarEventId) {
-        try {
-          const calendarService = getCalendarService();
-          const event = await calendarService.getEvent(booking.calendarEventId);
-          if (event?.end?.dateTime) {
-            eventEndTime = new Date(event.end.dateTime);
-          }
-        } catch (error) {
-          // Calendar lookup failed, use fallback
-        }
       }
+      // Skip calendar event lookup for database bookings as they don't have calendarEventId
 
       // Fallback to assumed end time
       if (!eventEndTime) {
