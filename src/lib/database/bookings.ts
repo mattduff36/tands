@@ -533,7 +533,7 @@ export async function getBookingsByStatus(status?: string): Promise<PendingBooki
       auditTrail: row.audit_trail || []
     }));
   } catch (error) {
-    log.error('Error fetching bookings', error instanceof Error ? error : new Error(String(error)));
+    console.error('Error fetching bookings:', error);
     throw error;
   } finally {
     client.release();
