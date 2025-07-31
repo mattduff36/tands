@@ -1066,17 +1066,17 @@ export async function getBookingStats(query?: {
   try {
     let sqlQuery = `
       SELECT 
-        COUNT(CASE WHEN status != 'expired' THEN 1 END) as total,
+        COUNT(CASE WHEN status IN ('pending', 'confirmed', 'completed') THEN 1 END) as total,
         COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending,
-        COUNT(CASE WHEN status = 'confirmed' AND date >= CURRENT_DATE THEN 1 END) as confirmed,
-        COUNT(CASE WHEN status = 'completed' OR (status = 'confirmed' AND date < CURRENT_DATE) THEN 1 END) as completed,
+        COUNT(CASE WHEN status = 'confirmed' THEN 1 END) as confirmed,
+        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed,
         COALESCE(SUM(CASE WHEN status IN ('confirmed', 'completed') THEN total_price ELSE 0 END), 0) as revenue
       FROM bookings
     `;
     
     const params: any[] = [];
     let paramCount = 1;
-    let whereClause = ' WHERE status != \'expired\''; // Exclude expired bookings from all calculations
+    let whereClause = ' WHERE status IN (\'pending\', \'confirmed\', \'completed\')'; // Only include active bookings
 
     // Add date range filter
     if (query?.dateFrom) {
@@ -1095,7 +1095,7 @@ export async function getBookingStats(query?: {
       params.push(...query.castleIds.map(id => parseInt(id)));
     }
 
-    // Add status filter (but still exclude expired)
+    // Add status filter (only for active bookings)
     if (query?.statuses && query.statuses.length > 0) {
       const statusPlaceholders = query.statuses.map(() => `$${paramCount++}`).join(',');
       whereClause += ` AND status IN (${statusPlaceholders})`;
@@ -1113,7 +1113,7 @@ export async function getBookingStats(query?: {
         c.name as castle_name,
         COUNT(b.id) as booking_count
       FROM castles c
-      LEFT JOIN bookings b ON c.id = b.castle_id AND b.status != 'expired'
+      LEFT JOIN bookings b ON c.id = b.castle_id AND b.status IN ('pending', 'confirmed', 'completed')
     `;
     
     let popularCastlesParams: any[] = [];

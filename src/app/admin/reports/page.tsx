@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -13,7 +14,9 @@ import {
   PoundSterling,
   MapPin,
   ChevronDown,
-  AlertCircle
+  AlertCircle,
+  Building2,
+  Trophy
 } from 'lucide-react';
 
 interface BookingStats {
@@ -123,6 +126,7 @@ export default function AdminReports() {
   const handleExport = () => {
     // TODO: Implement export functionality
     console.log('Export functionality to be implemented');
+    toast.info('Feature coming soon!');
   };
 
   const handleTimeRangeChange = (newRange: string) => {
@@ -250,7 +254,7 @@ export default function AdminReports() {
                       <span className="text-sm text-gray-500 ml-1">vs previous period</span>
                     </div>
                   </div>
-                  <Users className="h-8 w-8 text-blue-600" />
+                  <Building2 className="h-8 w-8 text-blue-600" />
                 </div>
               </CardContent>
             </Card>
@@ -265,7 +269,7 @@ export default function AdminReports() {
                       <span className="text-sm text-gray-500">Based on confirmed bookings</span>
                     </div>
                   </div>
-                  <BarChart3 className="h-8 w-8 text-purple-600" />
+                  <Trophy className="h-8 w-8 text-purple-600" />
                 </div>
               </CardContent>
             </Card>
@@ -290,7 +294,7 @@ export default function AdminReports() {
                       </span>
                     </div>
                   </div>
-                  <MapPin className="h-8 w-8 text-orange-600" />
+                  <Trophy className="h-8 w-8 text-orange-600" />
                 </div>
               </CardContent>
             </Card>

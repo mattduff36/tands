@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get database statistics
+    // Get database statistics only (no calendar data)
     const query: ReportingQuery = {
       dateFrom,
       dateTo,
@@ -82,85 +82,17 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    // Get calendar statistics
-    let calendarStats = {
-      total: 0,
-      pending: 0,
-      confirmed: 0,
-      completed: 0,
-      revenue: 0
-    };
-
-    try {
-      const calendarService = getCalendarService();
-      
-      // Get events for the date range
-      const startDate = new Date(dateFrom);
-      const endDate = new Date(dateTo);
-      
-      const calendarEvents = await calendarService.getBookingEventsInRange(startDate, endDate);
-      
-      // Filter and count calendar events that represent bookings
-      const bookingEvents = calendarEvents.filter(event => {
-        return event.description && 
-               event.summary && 
-               (event.description.includes('🏰 Bouncy Castle Booking') || 
-                event.description.includes('Booking Ref:')) &&
-               (event.summary.includes(' - ') || event.summary.includes('🏰'));
-      });
-
-      let confirmedCount = 0;
-      let completedCount = 0;
-      let totalRevenue = 0;
-      const now = new Date();
-
-      for (const event of bookingEvents) {
-        // Calculate revenue
-        const description = event.description || '';
-        const costMatch = description.match(/Cost: £([^\n]+)/);
-        const totalMatch = description.match(/Total: £([^\n]+)/);
-        
-        if (costMatch) {
-          totalRevenue += parseInt(costMatch[1] || '0');
-        } else if (totalMatch) {
-          totalRevenue += parseInt(totalMatch[1] || '0');
-        }
-
-        // Determine if event is completed
-        const isMarkedCompleted = event.colorId === '11' || event.summary?.includes('✅');
-        const eventEnd = new Date(event.end?.dateTime || event.end?.date || event.start?.dateTime || event.start?.date || '');
-        const hasEnded = eventEnd < now;
-
-        if (isMarkedCompleted || hasEnded) {
-          completedCount++;
-        } else {
-          confirmedCount++;
-        }
-      }
-
-      calendarStats = {
-        total: bookingEvents.length,
-        pending: 0, // Calendar events are always confirmed or completed
-        confirmed: confirmedCount,
-        completed: completedCount,
-        revenue: totalRevenue
-      };
-    } catch (calendarError) {
-      console.error('Error fetching calendar events for reports:', calendarError);
-      // Don't fail the entire request if calendar fails
-    }
-
-    // Combine database and calendar statistics
-    const combinedStats = {
-      total: dbStats.total + calendarStats.total,
-      pending: dbStats.pending + calendarStats.pending,
-      confirmed: dbStats.confirmed + calendarStats.confirmed,
-      complete: dbStats.completed + calendarStats.completed, // Note: using 'complete' to match the reports page interface
-      revenue: dbStats.revenue + calendarStats.revenue,
+    // Return database statistics only (no calendar data)
+    const stats = {
+      total: dbStats.total,
+      pending: dbStats.pending,
+      confirmed: dbStats.confirmed,
+      complete: dbStats.completed, // Note: using 'complete' to match the reports page interface
+      revenue: dbStats.revenue,
       popularCastles: dbStats.popularCastles || []
     };
 
-    return NextResponse.json(combinedStats);
+    return NextResponse.json(stats);
 
   } catch (error: any) {
     console.error('Error in GET /api/admin/reports/stats:', error);
