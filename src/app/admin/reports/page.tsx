@@ -22,6 +22,7 @@ interface BookingStats {
   confirmed: number;
   complete: number;
   revenue: number;
+  popularCastles?: Array<{ castleId: string; castleName: string; bookingCount: number }>;
 }
 
 interface ReportData {
@@ -273,11 +274,19 @@ export default function AdminReports() {
               <CardContent className="p-6">
                 <div className="flex items-center">
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-600">Confirmed Bookings</p>
-                    <p className="text-2xl font-bold text-gray-900">{reportData.stats.confirmed}</p>
+                    <p className="text-sm font-medium text-gray-600">Most Popular Castle</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {reportData.stats.popularCastles && reportData.stats.popularCastles.length > 0 
+                        ? reportData.stats.popularCastles[0].castleName
+                        : 'No Data'
+                      }
+                    </p>
                     <div className="flex items-center mt-2">
                       <span className="text-sm text-gray-500">
-                        {reportData.stats.total > 0 ? Math.round((reportData.stats.confirmed / reportData.stats.total) * 100) : 0}% of total
+                        {reportData.stats.popularCastles && reportData.stats.popularCastles.length > 0 
+                          ? `${reportData.stats.popularCastles[0].bookingCount} bookings`
+                          : 'No bookings found'
+                        }
                       </span>
                     </div>
                   </div>
@@ -301,23 +310,28 @@ export default function AdminReports() {
                   {[
                     { label: 'Confirmed', count: reportData.stats.confirmed, color: 'bg-green-600', percentage: reportData.stats.total > 0 ? (reportData.stats.confirmed / reportData.stats.total) * 100 : 0 },
                     { label: 'Pending', count: reportData.stats.pending, color: 'bg-yellow-600', percentage: reportData.stats.total > 0 ? (reportData.stats.pending / reportData.stats.total) * 100 : 0 },
-                    { label: 'Complete', count: reportData.stats.complete, color: 'bg-blue-600', percentage: reportData.stats.total > 0 ? (reportData.stats.complete / reportData.stats.total) * 100 : 0 }
-                  ].map((status) => (
-                    <div key={status.label} className="flex items-center space-x-4">
-                      <div className="w-24 text-sm font-medium text-gray-600">{status.label}</div>
-                      <div className="flex-1">
-                        <div className="w-full bg-gray-200 rounded-full h-3">
-                          <div 
-                            className={`${status.color} h-3 rounded-full transition-all duration-500`}
-                            style={{ width: `${status.percentage}%` }}
-                          />
+                    { label: 'Complete', count: reportData.stats.complete || 0, color: 'bg-blue-600', percentage: reportData.stats.total > 0 ? ((reportData.stats.complete || 0) / reportData.stats.total) * 100 : 0 }
+                  ].map((status) => {
+                    const safePercentage = isNaN(status.percentage) ? 0 : status.percentage;
+                    const safeCount = status.count || 0;
+                    
+                    return (
+                      <div key={status.label} className="flex items-center space-x-4">
+                        <div className="w-24 text-sm font-medium text-gray-600">{status.label}</div>
+                        <div className="flex-1">
+                          <div className="w-full bg-gray-200 rounded-full h-3">
+                            <div 
+                              className={`${status.color} h-3 rounded-full transition-all duration-500`}
+                              style={{ width: `${Math.max(0, Math.min(100, safePercentage))}%` }}
+                            />
+                          </div>
+                        </div>
+                        <div className="w-20 text-sm font-medium text-right">
+                          {safeCount} ({Math.round(safePercentage)}%)
                         </div>
                       </div>
-                      <div className="w-20 text-sm font-medium text-right">
-                        {status.count} ({Math.round(status.percentage)}%)
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>

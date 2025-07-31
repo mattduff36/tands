@@ -1060,44 +1060,45 @@ export async function getBookingStats(query?: {
   confirmed: number;
   completed: number;
   revenue: number;
+  popularCastles: Array<{ castleId: string; castleName: string; bookingCount: number }>;
 }> {
   const client = await getPool().connect();
   try {
     let sqlQuery = `
       SELECT 
-        COUNT(*) as total,
+        COUNT(CASE WHEN status != 'expired' THEN 1 END) as total,
         COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending,
-        COUNT(CASE WHEN status = 'confirmed' THEN 1 END) as confirmed,
-        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed,
-        COALESCE(SUM(CASE WHEN status = 'confirmed' THEN total_price ELSE 0 END), 0) as revenue
+        COUNT(CASE WHEN status = 'confirmed' AND date >= CURRENT_DATE THEN 1 END) as confirmed,
+        COUNT(CASE WHEN status = 'completed' OR (status = 'confirmed' AND date < CURRENT_DATE) THEN 1 END) as completed,
+        COALESCE(SUM(CASE WHEN status IN ('confirmed', 'completed') THEN total_price ELSE 0 END), 0) as revenue
       FROM bookings
     `;
     
     const params: any[] = [];
     let paramCount = 1;
-    let whereClause = '';
+    let whereClause = ' WHERE status != \'expired\''; // Exclude expired bookings from all calculations
 
     // Add date range filter
     if (query?.dateFrom) {
-      whereClause += ` WHERE date >= $${paramCount++}`;
+      whereClause += ` AND date >= $${paramCount++}`;
       params.push(query.dateFrom);
     }
     if (query?.dateTo) {
-      whereClause += whereClause ? ` AND date <= $${paramCount++}` : ` WHERE date <= $${paramCount++}`;
+      whereClause += ` AND date <= $${paramCount++}`;
       params.push(query.dateTo);
     }
 
     // Add castle filter
     if (query?.castleIds && query.castleIds.length > 0) {
       const castlePlaceholders = query.castleIds.map(() => `$${paramCount++}`).join(',');
-      whereClause += whereClause ? ` AND castle_id IN (${castlePlaceholders})` : ` WHERE castle_id IN (${castlePlaceholders})`;
+      whereClause += ` AND castle_id IN (${castlePlaceholders})`;
       params.push(...query.castleIds.map(id => parseInt(id)));
     }
 
-    // Add status filter
+    // Add status filter (but still exclude expired)
     if (query?.statuses && query.statuses.length > 0) {
       const statusPlaceholders = query.statuses.map(() => `$${paramCount++}`).join(',');
-      whereClause += whereClause ? ` AND status IN (${statusPlaceholders})` : ` WHERE status IN (${statusPlaceholders})`;
+      whereClause += ` AND status IN (${statusPlaceholders})`;
       params.push(...query.statuses);
     }
 
@@ -1105,13 +1106,58 @@ export async function getBookingStats(query?: {
 
     const result = await client.query(sqlQuery, params);
 
+    // Get popular castles data
+    let popularCastlesQuery = `
+      SELECT 
+        c.id::text as castle_id,
+        c.name as castle_name,
+        COUNT(b.id) as booking_count
+      FROM castles c
+      LEFT JOIN bookings b ON c.id = b.castle_id AND b.status != 'expired'
+    `;
+    
+    let popularCastlesParams: any[] = [];
+    let popularCastlesParamCount = 1;
+    let popularCastlesWhere = '';
+
+    // Apply same filters to popular castles query
+    if (query?.dateFrom) {
+      popularCastlesWhere += popularCastlesWhere ? ` AND b.date >= $${popularCastlesParamCount++}` : ` WHERE b.date >= $${popularCastlesParamCount++}`;
+      popularCastlesParams.push(query.dateFrom);
+    }
+    if (query?.dateTo) {
+      popularCastlesWhere += popularCastlesWhere ? ` AND b.date <= $${popularCastlesParamCount++}` : ` WHERE b.date <= $${popularCastlesParamCount++}`;
+      popularCastlesParams.push(query.dateTo);
+    }
+    if (query?.castleIds && query.castleIds.length > 0) {
+      const castlePlaceholders = query.castleIds.map(() => `$${popularCastlesParamCount++}`).join(',');
+      popularCastlesWhere += popularCastlesWhere ? ` AND c.id IN (${castlePlaceholders})` : ` WHERE c.id IN (${castlePlaceholders})`;
+      popularCastlesParams.push(...query.castleIds.map(id => parseInt(id)));
+    }
+
+    popularCastlesQuery += popularCastlesWhere + `
+      GROUP BY c.id, c.name
+      HAVING COUNT(b.id) > 0
+      ORDER BY booking_count DESC, c.name ASC
+      LIMIT 5
+    `;
+
+    const popularCastlesResult = await client.query(popularCastlesQuery, popularCastlesParams);
+
     const stats = result.rows[0];
+    const popularCastles = popularCastlesResult.rows.map(row => ({
+      castleId: row.castle_id,
+      castleName: row.castle_name,
+      bookingCount: parseInt(row.booking_count)
+    }));
+
     return {
       total: parseInt(stats.total),
       pending: parseInt(stats.pending),
       confirmed: parseInt(stats.confirmed),
       completed: parseInt(stats.completed),
-      revenue: parseInt(stats.revenue)
+      revenue: parseInt(stats.revenue),
+      popularCastles
     };
   } catch (error) {
     console.error('Error fetching booking stats', error instanceof Error ? error : new Error(String(error)), { query });

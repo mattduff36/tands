@@ -100,8 +100,8 @@ export async function GET(request: NextRequest) {
       
       const calendarEvents = await calendarService.getBookingEventsInRange(startDate, endDate);
       
-      // Filter and count calendar events that represent confirmed bookings
-      const confirmedBookings = calendarEvents.filter(event => {
+      // Filter and count calendar events that represent bookings
+      const bookingEvents = calendarEvents.filter(event => {
         return event.description && 
                event.summary && 
                (event.description.includes('🏰 Bouncy Castle Booking') || 
@@ -109,9 +109,13 @@ export async function GET(request: NextRequest) {
                (event.summary.includes(' - ') || event.summary.includes('🏰'));
       });
 
-      // Calculate revenue from confirmed calendar bookings
+      let confirmedCount = 0;
+      let completedCount = 0;
       let totalRevenue = 0;
-      for (const event of confirmedBookings) {
+      const now = new Date();
+
+      for (const event of bookingEvents) {
+        // Calculate revenue
         const description = event.description || '';
         const costMatch = description.match(/Cost: £([^\n]+)/);
         const totalMatch = description.match(/Total: £([^\n]+)/);
@@ -121,13 +125,24 @@ export async function GET(request: NextRequest) {
         } else if (totalMatch) {
           totalRevenue += parseInt(totalMatch[1] || '0');
         }
+
+        // Determine if event is completed
+        const isMarkedCompleted = event.colorId === '11' || event.summary?.includes('✅');
+        const eventEnd = new Date(event.end?.dateTime || event.end?.date || event.start?.dateTime || event.start?.date || '');
+        const hasEnded = eventEnd < now;
+
+        if (isMarkedCompleted || hasEnded) {
+          completedCount++;
+        } else {
+          confirmedCount++;
+        }
       }
 
       calendarStats = {
-        total: confirmedBookings.length,
-        pending: 0, // Calendar events are always confirmed
-        confirmed: confirmedBookings.length,
-        completed: 0,
+        total: bookingEvents.length,
+        pending: 0, // Calendar events are always confirmed or completed
+        confirmed: confirmedCount,
+        completed: completedCount,
         revenue: totalRevenue
       };
     } catch (calendarError) {
@@ -140,8 +155,9 @@ export async function GET(request: NextRequest) {
       total: dbStats.total + calendarStats.total,
       pending: dbStats.pending + calendarStats.pending,
       confirmed: dbStats.confirmed + calendarStats.confirmed,
-      completed: dbStats.completed + calendarStats.completed,
-      revenue: dbStats.revenue + calendarStats.revenue
+      complete: dbStats.completed + calendarStats.completed, // Note: using 'complete' to match the reports page interface
+      revenue: dbStats.revenue + calendarStats.revenue,
+      popularCastles: dbStats.popularCastles || []
     };
 
     return NextResponse.json(combinedStats);
