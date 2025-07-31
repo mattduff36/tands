@@ -4,7 +4,7 @@
  */
 
 import { query, initializeDatabase } from './connection';
-#import { log } from '@/lib/utils/logger';
+//import { log } from '@/lib/utils/logger';
 
 export interface Castle {
   id: number;

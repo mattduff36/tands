@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-#import { log } from '@/lib/utils/logger';
+//import { log } from '@/lib/utils/logger';
 
 // Create connection pool
 let pool: Pool | null = null;
