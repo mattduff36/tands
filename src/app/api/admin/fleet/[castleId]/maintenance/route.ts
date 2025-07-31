@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth/nextauth.config';
 import { updateCastleMaintenance, getCastleById } from '@/lib/database/castles';
 import { getCalendarService } from '@/lib/calendar/google-calendar';
-import { log } from '@/lib/utils/logger';
+//import { log } from '@/lib/utils/logger';
 
 /**
  * PUT /api/admin/fleet/[castleId]/maintenance
@@ -116,7 +116,7 @@ export async function PUT(
     try {
       const calendarService = getCalendarService();
       
-          log.info('Maintenance status update initiated', {
+          console.log('Maintenance status update initiated', {
       castleId,
       status,
       startDate,
@@ -127,11 +127,11 @@ export async function PUT(
         // Remove maintenance events from calendar
         if (startDate && endDate) {
           // Delete events in the specific date range
-          log.info('Deleting maintenance events with provided dates', { startDate, endDate });
+          console.log('Deleting maintenance events with provided dates', { startDate, endDate });
           await calendarService.deleteMaintenanceEvents(castleId, startDate, endDate);
         } else if (currentMaintenanceDates?.startDate && currentMaintenanceDates?.endDate) {
           // Use the dates we got before updating the database
-          log.info('Deleting maintenance events with current dates', { 
+          console.log('Deleting maintenance events with current dates', { 
         startDate: currentMaintenanceDates.startDate, 
         endDate: currentMaintenanceDates.endDate 
       });
@@ -141,12 +141,12 @@ export async function PUT(
             currentMaintenanceDates.endDate
           );
         } else {
-          log.warn('No maintenance dates available for castle', { castleId });
+          console.warn('No maintenance dates available for castle', { castleId });
         }
       } else {
         // Add or update maintenance event in calendar
         // Dates are already validated above for non-available status
-        log.info('Creating maintenance event for castle', { castleId });
+        console.log('Creating maintenance event for castle', { castleId });
         await calendarService.createMaintenanceEvent({
           castleId,
           castleName: castle.name,

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth/nextauth.config';
 import { initializeDatabase } from '@/lib/database/connection';
-import { log } from '@/lib/utils/logger';
+//import { log } from '@/lib/utils/logger';
 
 /**
  * POST /api/admin/init-database
@@ -27,12 +27,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    log.info('Initializing database');
+    console.log('Initializing database');
     
     // Initialize database (this will create tables and add maintenance fields)
     await initializeDatabase();
     
-    log.info('Database initialized successfully');
+    console.log('Database initialized successfully');
     
     return NextResponse.json({ 
       success: true, 

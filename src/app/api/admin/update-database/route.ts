@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/nextauth.config';
 import { getPool } from '@/lib/database/connection';
-import { log } from '@/lib/utils/logger';
+//import { log } from '@/lib/utils/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     const client = await getPool().connect();
 
     try {
-      log.audit('Manual database update initiated', session.user.email || 'unknown');
+      console.log('Manual database update initiated', session.user.email || 'unknown');
       
       let updatedBookings = 0;
       let updatedCastles = 0;
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
 
           if (result.rowCount && result.rowCount > 0) {
             updatedBookings++;
-            log.info('Booking updated successfully', { bookingId: booking.id });
+            console.log('Booking updated successfully', { bookingId: booking.id });
           }
         } catch (error) {
           console.error(`❌ Error updating booking ID ${booking.id}:`, error);
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
 
           if (result.rowCount && result.rowCount > 0) {
             updatedCastles++;
-            log.info('Castle updated successfully', { castleId: castle.id });
+            console.log('Castle updated successfully', { castleId: castle.id });
           }
         } catch (error) {
           console.error(`❌ Error updating castle ID ${castle.id}:`, error);
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
 
       const message = `Database updated: ${updatedBookings} bookings, ${updatedCastles} castles`;
       if (errors.length > 0) {
-        log.error('Some database updates failed', new Error('Multiple update failures'), { errors });
+        console.error('Some database updates failed', new Error('Multiple update failures'), { errors });
       }
 
       return NextResponse.json({

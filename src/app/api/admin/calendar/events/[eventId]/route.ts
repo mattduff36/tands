@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/nextauth.config';
 import { getCalendarService } from '@/lib/calendar/google-calendar';
 import { getBookingsByStatus, updateBookingStatus } from '@/lib/database/bookings';
-import { log } from '@/lib/utils/logger';
+//import { log } from '@/lib/utils/logger';
 
 // GET /api/admin/calendar/events/[eventId] - Get a single calendar event by ID
 export async function GET(
@@ -177,7 +177,7 @@ export async function DELETE(
       
       if (booking && booking.status === 'confirmed') {
         await updateBookingStatus(booking.id, 'expired');
-        log.business('Booking marked as expired after calendar event deletion', { bookingRef });
+        console.log('Booking marked as expired after calendar event deletion', { bookingRef });
       }
     }
 

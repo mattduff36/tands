@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBookingsByStatus, updateBookingStatus, updateBookingAgreement } from '@/lib/database/bookings';
 import { getCalendarService } from '@/lib/calendar/google-calendar';
-import { log } from '@/lib/utils/logger';
+//import { log } from '@/lib/utils/logger';
 
 export async function POST(
   request: NextRequest,
@@ -23,11 +23,11 @@ export async function POST(
     const allBookings = await getBookingsByStatus();
     const booking = allBookings.find(b => b.bookingRef === bookingRef);
 
-    log.info('Looking for booking confirmation', { bookingRef });
-    log.info('Total bookings found', { count: allBookings.length });
-    log.info('Booking search result', { found: booking ? 'Yes' : 'No' });
+    console.log('Looking for booking confirmation', { bookingRef });
+    console.log('Total bookings found', { count: allBookings.length });
+    console.log('Booking search result', { found: booking ? 'Yes' : 'No' });
     if (booking) {
-      log.info('Booking status check', { status: booking.status });
+      console.log('Booking status check', { status: booking.status });
     }
 
     if (!booking) {
@@ -39,7 +39,7 @@ export async function POST(
 
     // Check if booking is already confirmed or completed
     if (booking.status === 'confirmed') {
-      log.info('Booking already confirmed', { bookingRef });
+      console.log('Booking already confirmed', { bookingRef });
       // Just update the agreement details without changing status
       await updateBookingAgreement(booking.id, agreementSigned, agreementSignedAt, booking.customerName);
       
@@ -59,7 +59,7 @@ export async function POST(
       );
     }
 
-    log.info('Processing booking confirmation', { bookingId: booking.id, currentStatus: booking.status });
+    console.log('Processing booking confirmation', { bookingId: booking.id, currentStatus: booking.status });
 
     // Create calendar event
     const calendarService = getCalendarService();
@@ -92,10 +92,10 @@ export async function POST(
     });
 
     // Update the booking status to confirmed and add agreement details
-    log.info('Updating booking status to confirmed', { bookingId: booking.id });
+    console.log('Updating booking status to confirmed', { bookingId: booking.id });
     await updateBookingStatus(booking.id, 'confirmed');
     await updateBookingAgreement(booking.id, agreementSigned, agreementSignedAt, booking.customerName);
-    log.info('Booking status updated successfully', { bookingId: booking.id });
+    console.log('Booking status updated successfully', { bookingId: booking.id });
 
     return NextResponse.json({
       success: true,
