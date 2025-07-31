@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
+import { contactSchema, validateAndSanitize } from '@/lib/validation/schemas';
+import { createSanitizedErrorResponse, logSafeError } from '@/lib/utils/error-sanitizer';
 
 const smtpUser = process.env.SMTP_USER;
 const smtpPass = process.env.SMTP_PASS;
@@ -7,14 +9,21 @@ const contactEmail = process.env.CONTACT_EMAIL;
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, email, message } = await req.json();
-    if (!name || !email || !message) {
-      return NextResponse.json({ success: false, error: 'Missing required fields.' }, { status: 400 });
+    const body = await req.json();
+    
+    // Validate and sanitize input data
+    let validatedData;
+    try {
+      validatedData = validateAndSanitize(contactSchema, body);
+    } catch (error) {
+      return NextResponse.json({ 
+        success: false,
+        error: 'Invalid contact form data', 
+        details: error instanceof Error ? error.message : 'Validation failed' 
+      }, { status: 400 });
     }
-    // Basic email format validation
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-      return NextResponse.json({ success: false, error: 'Invalid email format.' }, { status: 400 });
-    }
+
+    const { name, email, phone, subject, message } = validatedData;
     if (!smtpUser || !smtpPass || !contactEmail) {
       return NextResponse.json({ success: false, error: 'Server email configuration error.' }, { status: 500 });
     }
@@ -28,13 +37,15 @@ export async function POST(req: NextRequest) {
     const mailOptions = {
       from: smtpUser,
       to: contactEmail,
-      subject: `Contact Form Submission from ${name}`,
-      text: `Name: ${name}\nEmail: ${email}\nMessage: ${message}`,
+      subject: subject || `Contact Form Submission from ${name}`,
+      text: `Name: ${name}\nEmail: ${email}${phone ? `\nPhone: ${phone}` : ''}\nSubject: ${subject || 'General Inquiry'}\nMessage: ${message}`,
       replyTo: email,
     };
     await transporter.sendMail(mailOptions);
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message || 'Unknown error.' }, { status: 500 });
+    logSafeError(error, 'contact-form');
+    const sanitizedError = createSanitizedErrorResponse(error, 'email', 500);
+    return NextResponse.json(sanitizedError, { status: 500 });
   }
 } 

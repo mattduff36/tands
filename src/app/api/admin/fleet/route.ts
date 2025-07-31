@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth/nextauth.config';
 import { getCastles, addCastle } from '@/lib/database/castles';
+import { castleSchema, validateAndSanitize } from '@/lib/validation/schemas';
+import { createSanitizedErrorResponse, logSafeError } from '@/lib/utils/error-sanitizer';
 
 // Helper function to trigger revalidation
 async function triggerRevalidation() {
@@ -44,8 +46,9 @@ export async function GET() {
     const castles = await getCastles();
     return NextResponse.json(castles);
   } catch (error) {
-    console.error('Error fetching castles:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logSafeError(error, 'admin-fleet-get');
+    const sanitizedError = createSanitizedErrorResponse(error, 'database', 500);
+    return NextResponse.json(sanitizedError, { status: 500 });
   }
 }
 
@@ -67,12 +70,19 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, theme, size, price, description, imageUrl } = body;
-
-    // Validate required fields
-    if (!name || !theme || !size || !price || !description || !imageUrl) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    
+    // Validate and sanitize input data
+    let validatedData;
+    try {
+      validatedData = validateAndSanitize(castleSchema, body);
+    } catch (error) {
+      return NextResponse.json({ 
+        error: 'Invalid input data', 
+        details: error instanceof Error ? error.message : 'Validation failed' 
+      }, { status: 400 });
     }
+
+    const { name, theme, size, price, description, imageUrl } = validatedData;
 
     // Add castle to persistent storage
     const newCastle = await addCastle({
@@ -89,7 +99,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(newCastle, { status: 201 });
   } catch (error) {
-    console.error('Error creating castle:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logSafeError(error, 'admin-fleet-create');
+    const sanitizedError = createSanitizedErrorResponse(error, 'database', 500);
+    return NextResponse.json(sanitizedError, { status: 500 });
   }
 }

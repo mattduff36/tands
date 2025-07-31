@@ -1,28 +1,53 @@
-import { NextRequest } from 'next/server';
-import { adminMiddleware } from './src/lib/auth/middleware';
+/**
+ * Next.js middleware for security, rate limiting, and authentication
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+import { rateLimitMiddleware, csrfMiddleware, securityHeadersMiddleware } from './src/lib/auth/middleware';
 
 export async function middleware(request: NextRequest) {
-  // Handle admin routes
-  const { pathname } = request.nextUrl;
-  
-  if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
-    return adminMiddleware(request);
+  let response: NextResponse;
+
+  try {
+    // Apply rate limiting
+    const rateLimitResponse = rateLimitMiddleware(request);
+    if (rateLimitResponse) {
+      return securityHeadersMiddleware(rateLimitResponse);
+    }
+
+    // Apply CSRF protection
+    const csrfResponse = csrfMiddleware(request);
+    if (csrfResponse) {
+      return securityHeadersMiddleware(csrfResponse);
+    }
+
+    // Continue with the request
+    response = NextResponse.next();
+
+    // Apply security headers to all responses
+    response = securityHeadersMiddleware(response);
+
+    return response;
+  } catch (error) {
+    console.error('Middleware error:', error);
+    
+    // Return a safe error response
+    const errorResponse = NextResponse.json(
+      { 
+        success: false,
+        error: 'Internal server error' 
+      },
+      { status: 500 }
+    );
+    
+    return securityHeadersMiddleware(errorResponse);
   }
-
-  // Add other middleware here as needed
-  // For example: customer route middleware, API rate limiting, etc.
-
-  // Default: continue to the requested page
-  return;
 }
 
+// Configure which routes the middleware should run on
 export const config = {
   matcher: [
-    // Admin routes
-    '/admin/:path*',
-    '/api/admin/:path*',
-    
-    // Exclude static files and API auth routes
-    '/((?!_next/static|_next/image|favicon.ico|api/auth).*)',
+    // Match all request paths except static files and images
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth/nextauth.config';
 import { getCastleById, updateCastle, deleteCastle } from '@/lib/database/castles';
 import { cleanupOldBlobImage, deleteBlobImage } from '@/lib/utils/blob-manager';
+import { castleSchema, validateAndSanitize } from '@/lib/validation/schemas';
 
 // Helper function to trigger revalidation
 async function triggerRevalidation() {
@@ -45,13 +46,24 @@ export async function PUT(
     }
 
     const castleId = parseInt(params.castleId);
-    const body = await request.json();
-    const { name, theme, size, price, description, imageUrl } = body;
-
-    // Validate required fields
-    if (!name || !theme || !size || !price || !description || !imageUrl) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    if (isNaN(castleId) || castleId <= 0) {
+      return NextResponse.json({ error: 'Invalid castle ID' }, { status: 400 });
     }
+
+    const body = await request.json();
+    
+    // Validate and sanitize input data
+    let validatedData;
+    try {
+      validatedData = validateAndSanitize(castleSchema, body);
+    } catch (error) {
+      return NextResponse.json({ 
+        error: 'Invalid input data', 
+        details: error instanceof Error ? error.message : 'Validation failed' 
+      }, { status: 400 });
+    }
+
+    const { name, theme, size, price, description, imageUrl } = validatedData;
 
     // Check if castle exists and get current data
     const existingCastle = await getCastleById(castleId);
@@ -109,6 +121,9 @@ export async function DELETE(
     }
 
     const castleId = parseInt(params.castleId);
+    if (isNaN(castleId) || castleId <= 0) {
+      return NextResponse.json({ error: 'Invalid castle ID' }, { status: 400 });
+    }
 
     // Check if castle exists and get current data for image cleanup
     const existingCastle = await getCastleById(castleId);
