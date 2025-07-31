@@ -1323,13 +1323,8 @@ export default function AdminBookings() {
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        if (booking.source === 'calendar' && booking.calendarEvent) {
-                          // For calendar events, use the original event
-                          handleViewDetails(booking.calendarEvent);
-                        } else {
-                          // For database bookings, convert to calendar event format
-                          handleViewDetails(bookingToCalendarEvent(booking));
-                        }
+                        // Since filteredBookings only contains database bookings, always convert to calendar event format
+                        handleViewDetails(bookingToCalendarEvent(booking));
                       }}
                     >
                       <Eye className="h-4 w-4 mr-1" />
