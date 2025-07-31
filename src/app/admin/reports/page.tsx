@@ -345,9 +345,9 @@ export default function AdminReports() {
               <CardContent>
                 <div className="space-y-4">
                   {[
-                    { label: 'Confirmed', count: reportData.stats.confirmed, color: 'bg-green-600', percentage: reportData.stats.total > 0 ? (reportData.stats.confirmed / reportData.stats.total) * 100 : 0 },
                     { label: 'Pending', count: reportData.stats.pending, color: 'bg-yellow-600', percentage: reportData.stats.total > 0 ? (reportData.stats.pending / reportData.stats.total) * 100 : 0 },
-                    { label: 'Complete', count: reportData.stats.complete || 0, color: 'bg-blue-600', percentage: reportData.stats.total > 0 ? ((reportData.stats.complete || 0) / reportData.stats.total) * 100 : 0 }
+                    { label: 'Confirmed', count: reportData.stats.confirmed, color: 'bg-green-600', percentage: reportData.stats.total > 0 ? (reportData.stats.confirmed / reportData.stats.total) * 100 : 0 },
+                    { label: 'Completed', count: reportData.stats.complete || 0, color: 'bg-blue-600', percentage: reportData.stats.total > 0 ? ((reportData.stats.complete || 0) / reportData.stats.total) * 100 : 0 }
                   ].map((status) => {
                     const safePercentage = isNaN(status.percentage) ? 0 : status.percentage;
                     const safeCount = status.count || 0;
