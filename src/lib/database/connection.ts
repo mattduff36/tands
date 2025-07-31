@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import { log } from '@/lib/utils/logger';
+#import { log } from '@/lib/utils/logger';
 
 // Create connection pool
 let pool: Pool | null = null;
@@ -16,7 +16,7 @@ function getPool(): Pool {
     
     // Handle pool errors
     pool.on('error', (err) => {
-      log.error('Unexpected error on idle client', err);
+      console.error('Unexpected error on idle client', err);
       process.exit(-1);
     });
   }
@@ -36,12 +36,12 @@ export async function query(text: string, params: any[] = []) {
     const duration = Date.now() - start;
     
     if (process.env.NODE_ENV === 'development') {
-      log.database('query', duration, { rows: res.rowCount });
+      console.log('query', duration, { rows: res.rowCount });
     }
     
     return res;
   } catch (error) {
-    log.error('Database query error', error instanceof Error ? error : new Error(String(error)));
+    console.error('Database query error', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
 }
@@ -77,7 +77,7 @@ export async function transaction<T>(callback: (query: (text: string, params?: a
  */
 export async function initializeDatabase() {
   try {
-    log.info('Initializing database tables');
+    console.log('Initializing database tables');
     
     // Create castles table if it doesn't exist
     await query(`
@@ -116,9 +116,9 @@ export async function initializeDatabase() {
         ALTER TABLE castles 
         ADD COLUMN IF NOT EXISTS maintenance_end_date DATE
       `);
-      log.info('Maintenance fields added to castles table');
+      console.log('Maintenance fields added to castles table');
     } catch (error) {
-      log.debug('Maintenance fields already exist or error adding them', { error: error instanceof Error ? error.message : String(error) });
+      console.log('Maintenance fields already exist or error adding them', { error: error instanceof Error ? error.message : String(error) });
     }
 
     // Add performance index for frequently queried maintenance status
@@ -127,9 +127,9 @@ export async function initializeDatabase() {
         CREATE INDEX IF NOT EXISTS idx_castles_maintenance_status 
         ON castles (maintenance_status)
       `);
-      log.info('Maintenance status index added to castles table');
+      console.log('Maintenance status index added to castles table');
     } catch (error) {
-      log.debug('Maintenance status index already exists or error adding it', { error: error instanceof Error ? error.message : String(error) });
+      console.log('Maintenance status index already exists or error adding it', { error: error instanceof Error ? error.message : String(error) });
     }
 
     // Create bookings table if it doesn't exist
@@ -168,9 +168,9 @@ export async function initializeDatabase() {
         ALTER TABLE bookings 
         ADD COLUMN IF NOT EXISTS agreement_signed_by VARCHAR(255)
       `);
-      log.info('Agreement fields added to bookings table');
+      console.log('Agreement fields added to bookings table');
     } catch (error) {
-      log.debug('Agreement fields already exist or error adding them', { error: error instanceof Error ? error.message : String(error) });
+      console.log('Agreement fields already exist or error adding them', { error: error instanceof Error ? error.message : String(error) });
     }
     
     // Check if we have any data
@@ -179,7 +179,7 @@ export async function initializeDatabase() {
     
     // Insert default data if table is empty
     if (count === 0) {
-      log.info('Inserting default castle data');
+      console.log('Inserting default castle data');
       
       const defaultCastles = [
         {
@@ -240,12 +240,12 @@ export async function initializeDatabase() {
         );
       }
       
-      log.info('Default castle data inserted successfully');
+      console.log('Default castle data inserted successfully');
     }
     
-    log.info('Database initialization completed');
+    console.log('Database initialization completed');
   } catch (error) {
-    log.error('Database initialization failed', error instanceof Error ? error : new Error(String(error)));
+    console.error('Database initialization failed', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
 }
@@ -259,10 +259,10 @@ export { getPool };
 export async function testConnection() {
   try {
     const result = await query('SELECT 1 as test');
-    log.info('Database connection successful');
+    console.log('Database connection successful');
     return true;
   } catch (error) {
-    log.error('Database connection failed', error instanceof Error ? error : new Error(String(error)));
+    console.error('Database connection failed', error instanceof Error ? error : new Error(String(error)));
     return false;
   }
 }
@@ -274,6 +274,6 @@ export async function closeConnections() {
   if (pool) {
     await pool.end();
     pool = null;
-    log.info('Database connections closed');
+    console.log('Database connections closed');
   }
 }
