@@ -345,14 +345,14 @@ export default function AdminBookings() {
   };
 
   // Resend hire agreement email
-  const handleResendAgreement = async (bookingRef: string) => {
+  const handleResendAgreement = async (bookingId: string) => {
     if (!confirm('📧 Resend Hire Agreement\n\nThis will send the hire agreement email to the customer again.\n\nProceed?')) {
       return;
     }
 
     setIsProcessing(true);
     try {
-      const response = await fetch(`/api/admin/bookings/${bookingRef}/resend-agreement`, {
+      const response = await fetch(`/api/admin/bookings/${bookingId}/send-agreement`, {
         method: 'POST',
       });
 
@@ -1311,7 +1311,9 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
             <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button onClick={() => {
+          <Button 
+            size="sm"
+            onClick={() => {
             setIsEditing(false);
             setSelectedEvent(null);
             setBookingForm({
@@ -1332,7 +1334,7 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
             setShowBookingModal(true);
           }}>
             <Plus className="w-4 h-4 mr-2" />
-            Add Event
+            New Booking
           </Button>
         </div>
       </div>
@@ -1737,7 +1739,9 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
               }
             } : undefined}
             onResendAgreement={selectedEvent.id.startsWith('db_') ? (bookingRef: string) => {
-              handleResendAgreement(bookingRef);
+              // Extract numeric booking ID from the event ID (e.g., 'db_5' -> '5')
+              const bookingId = selectedEvent.id.replace('db_', '');
+              handleResendAgreement(bookingId);
             } : undefined}
             onManualSign={selectedEvent.id.startsWith('db_') ? (bookingRef: string) => {
               window.open(`/hire-agreement?bookingRef=${bookingRef}`, '_blank');

@@ -1,5 +1,0 @@
-[33m2103004[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m fix: allow Vercel Blob storage domain for next/image bouncy castle images
-[33m95b5400[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m feat: implement PostgreSQL database for persistent fleet management
-[33m95de7e9[m Fix production fleet management save issue - replace file-based storage with in-memory database compatible with Vercel serverless environment
-[33ma4a73aa[m Fix critical syntax error in stats route causing Vercel build failure - missing 'im' in import statement
-[33m723fa0f[m[33m ([m[1;31morigin/admin-page-dev[m[33m, [m[1;32madmin-page-dev[m[33m)[m Minor updates to stats route (uncommitted changes)
