@@ -22,14 +22,14 @@ export async function POST(request: NextRequest) {
     const calendarService = getCalendarService();
     const now = new Date();
     
-    // Get all confirmed bookings from database
+    // Part 1: Check database bookings for completion
     const allBookings = await getBookingsByStatus();
     const confirmedBookings = allBookings.filter(b => b.status === 'confirmed');
     
-    let completedCount = 0;
-    let errors: string[] = [];
+    let dbCompletedCount = 0;
+    let dbErrors: string[] = [];
 
-    console.log('Checking confirmed bookings for completion', { count: confirmedBookings.length });
+    console.log('Checking confirmed database bookings for completion', { count: confirmedBookings.length });
 
     for (const booking of confirmedBookings) {
       try {
@@ -57,30 +57,55 @@ export async function POST(request: NextRequest) {
           if (eventEnd < now) {
             // Event has ended, mark booking as completed
             await updateBookingStatus(booking.id, 'completed');
-            console.log('Booking marked as completed after event ended', { bookingRef, eventEnd: eventEnd.toISOString() });
-            completedCount++;
+            console.log('Database booking marked as completed after event ended', { bookingRef, eventEnd: eventEnd.toISOString() });
+            dbCompletedCount++;
           }
         } else {
-          console.warn('No calendar event found for booking', { bookingRef });
+          console.warn('No calendar event found for database booking', { bookingRef });
         }
 
       } catch (error) {
-        const errorMsg = `Error processing booking ${booking.bookingRef}: ${error}`;
+        const errorMsg = `Error processing database booking ${booking.bookingRef}: ${error}`;
         console.error(errorMsg);
-        errors.push(errorMsg);
+        dbErrors.push(errorMsg);
       }
     }
 
-    const message = `Completed events check finished: ${completedCount} bookings marked as completed`;
-    if (errors.length > 0) {
-      console.error('Errors occurred while checking completed events', new Error('Multiple booking completion errors'), { errors });
+    // Part 2: Check calendar events for completion
+    console.log('Checking calendar events for completion...');
+    
+    let calendarCompletedCount = 0;
+    let calendarErrors: string[] = [];
+
+    try {
+      const calendarResult = await calendarService.checkAndMarkCompletedEvents();
+      calendarCompletedCount = calendarResult.completed;
+      calendarErrors = calendarResult.errors.map(err => `Calendar event ${err.eventId}: ${err.error}`);
+      
+      console.log(`Calendar completion check: ${calendarResult.completed}/${calendarResult.checked} events marked as completed`);
+    } catch (error) {
+      const errorMsg = `Error checking calendar events: ${error}`;
+      console.error(errorMsg);
+      calendarErrors.push(errorMsg);
+    }
+
+    // Combine results
+    const totalCompleted = dbCompletedCount + calendarCompletedCount;
+    const totalErrors = [...dbErrors, ...calendarErrors];
+
+    const message = `Completed events check finished: ${dbCompletedCount} database bookings and ${calendarCompletedCount} calendar events marked as completed`;
+    
+    if (totalErrors.length > 0) {
+      console.error('Errors occurred while checking completed events', new Error('Multiple completion errors'), { errors: totalErrors });
     }
 
     return NextResponse.json({
       success: true,
       message,
-      completedCount,
-      errors: errors.length > 0 ? errors : undefined
+      databaseCompleted: dbCompletedCount,
+      calendarCompleted: calendarCompletedCount,
+      totalCompleted,
+      errors: totalErrors.length > 0 ? totalErrors : undefined
     });
 
   } catch (error) {

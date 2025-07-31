@@ -116,7 +116,7 @@ export default function AdminCalendar() {
         const eventsData = await eventsResponse.json();
         
         if (eventsData.events) {
-          setEvents(eventsData.events);
+          setEvents(processCalendarEvents(eventsData.events)); // Process events here
         }
       }
     } catch (error) {
@@ -160,14 +160,50 @@ export default function AdminCalendar() {
       endTime = '18:00';
     }
 
+    // Determine status based on event properties
+    let status = 'confirmed';
+    
+    // Check if event is completed (gray color or has ✅ in summary)
+    if (event.colorId === '11' || event.summary?.includes('✅')) {
+      status = 'completed';
+    }
+    
+    // Check if event has ended
+    const now = new Date();
+    const eventEnd = new Date(endDate || startDate);
+    if (eventEnd < now) {
+      status = 'completed';
+    }
+
     return {
       id: event.id,
       date,
       startTime,
       endTime,
       castle: castleName,
-      status: 'confirmed' // Assume confirmed for calendar events
+      status
     };
+  };
+
+  // Process calendar events to detect completed status
+  const processCalendarEvents = (events: CalendarEvent[]): CalendarEvent[] => {
+    const now = new Date();
+    
+    return events.map(event => {
+      // Check if event is already marked as completed
+      if (event.colorId === '11' || event.summary?.includes('✅')) {
+        return { ...event, status: 'completed' };
+      }
+      
+      // Check if event has ended
+      const eventEnd = new Date(event.end?.dateTime || event.end?.date || event.start?.dateTime || event.start?.date || '');
+      if (eventEnd < now) {
+        return { ...event, status: 'completed' };
+      }
+      
+      // Default to confirmed
+      return { ...event, status: event.status || 'confirmed' };
+    });
   };
 
   // Extract castle name from event description or summary
@@ -491,6 +527,8 @@ export default function AdminCalendar() {
         return 'bg-green-100 text-green-800 border-green-200';
       case 'tentative':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'completed':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'complete':
         return 'bg-blue-100 text-blue-800 border-blue-200';
       default:
@@ -747,8 +785,13 @@ export default function AdminCalendar() {
                               const isEnd = eventEnd.toDateString() === day.date.toDateString();
                               const isMiddle = !isStart && !isEnd && isMultiDay;
                               
-                              // Get event color based on type
+                              // Get event color based on type and status
                               const getEventColor = () => {
+                                // Check if event is completed
+                                if (event.status === 'completed' || event.colorId === '11' || event.summary?.includes('✅')) {
+                                  return 'bg-blue-500'; // Blue for completed events
+                                }
+                                
                                 if (event.summary?.includes('🔧')) return 'bg-red-500'; // Maintenance
                                 if (event.summary?.includes('🏰')) return 'bg-green-500'; // Booking
                                 return 'bg-blue-500'; // Default

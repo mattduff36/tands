@@ -243,3 +243,101 @@ export async function forceCompleteBooking(
     throw error;
   }
 }
+
+/**
+ * Comprehensive completion check for both database bookings and calendar events
+ * This function can be called from a cron job or scheduled task
+ */
+export async function comprehensiveCompletionCheck(): Promise<{
+  databaseCompleted: number;
+  calendarCompleted: number;
+  totalCompleted: number;
+  errors: string[];
+}> {
+  const result = {
+    databaseCompleted: 0,
+    calendarCompleted: 0,
+    totalCompleted: 0,
+    errors: [] as string[]
+  };
+
+  try {
+    console.log('🔄 Starting comprehensive completion check...');
+
+    // Part 1: Check database bookings
+    try {
+      const dbSummary = await processAutomaticStatusTransitions();
+      result.databaseCompleted = dbSummary.transitionsCompleted;
+      
+      if (dbSummary.errors.length > 0) {
+        result.errors.push(...dbSummary.errors.map(err => `Database booking ${err.bookingId}: ${err.error}`));
+      }
+      
+      console.log(`✅ Database completion check: ${result.databaseCompleted} bookings completed`);
+    } catch (error) {
+      const errorMsg = `Database completion check failed: ${error}`;
+      console.error(errorMsg);
+      result.errors.push(errorMsg);
+    }
+
+    // Part 2: Check calendar events
+    try {
+      const { getCalendarService } = await import('@/lib/calendar/google-calendar');
+      const calendarService = getCalendarService();
+      
+      const calendarResult = await calendarService.checkAndMarkCompletedEvents();
+      result.calendarCompleted = calendarResult.completed;
+      
+      if (calendarResult.errors.length > 0) {
+        result.errors.push(...calendarResult.errors.map(err => `Calendar event ${err.eventId}: ${err.error}`));
+      }
+      
+      console.log(`✅ Calendar completion check: ${result.calendarCompleted} events completed`);
+    } catch (error) {
+      const errorMsg = `Calendar completion check failed: ${error}`;
+      console.error(errorMsg);
+      result.errors.push(errorMsg);
+    }
+
+    result.totalCompleted = result.databaseCompleted + result.calendarCompleted;
+    
+    console.log(`🎉 Comprehensive completion check finished: ${result.totalCompleted} total items completed`);
+    
+    if (result.errors.length > 0) {
+      console.error('⚠️ Errors during completion check:', result.errors);
+    }
+
+    return result;
+  } catch (error) {
+    console.error('💥 Comprehensive completion check failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * Scheduled task function for automatic completion checks
+ * This can be called by a cron job or scheduled task
+ */
+export async function scheduledCompletionCheck(): Promise<void> {
+  try {
+    console.log('⏰ Running scheduled completion check...');
+    
+    const result = await comprehensiveCompletionCheck();
+    
+    // Log results for monitoring
+    console.log('📊 Scheduled completion check results:', {
+      timestamp: new Date().toISOString(),
+      databaseCompleted: result.databaseCompleted,
+      calendarCompleted: result.calendarCompleted,
+      totalCompleted: result.totalCompleted,
+      errorCount: result.errors.length
+    });
+    
+    // In a production environment, you might want to send notifications
+    // or log to a monitoring service when items are completed
+    
+  } catch (error) {
+    console.error('💥 Scheduled completion check failed:', error);
+    // In production, you might want to send alerts or notifications here
+  }
+}

@@ -59,7 +59,20 @@ export function BookingDetailsModal({
 }: BookingDetailsModalProps) {
   if (!open || !event) return null;
 
-  const status = event.status || 'confirmed';
+  // Determine the correct status
+  let status = event.status || 'confirmed';
+  
+  // Check if event is completed based on visual indicators
+  if (event.colorId === '11' || event.summary?.includes('✅')) {
+    status = 'completed';
+  }
+  
+  // Check if event has ended
+  const now = new Date();
+  const eventEnd = new Date(event.end?.dateTime || event.end?.date || event.start?.dateTime || event.start?.date || '');
+  if (eventEnd < now && status !== 'completed') {
+    status = 'completed';
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">

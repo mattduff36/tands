@@ -1049,8 +1049,14 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
     }
   };
 
-  // Helper function to determine event status based on end date
+  // Helper function to determine event status based on end date and visual indicators
   const getEventStatus = (event: CalendarEvent) => {
+    // Check if event is already marked as completed (gray color or ✅ symbol)
+    if (event.colorId === '11' || event.summary?.includes('✅')) {
+      return 'completed';
+    }
+    
+    // Check if event has ended
     const eventEndDate = event.end?.dateTime ? new Date(event.end.dateTime) : 
                         event.end?.date ? new Date(event.end.date) : null;
     const isComplete = eventEndDate && eventEndDate < new Date();
@@ -1514,8 +1520,12 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
                                 const isEnd = eventEnd.toDateString() === day.date.toDateString();
                                 const isMiddle = !isStart && !isEnd && isMultiDay;
                                 
-                                // Get event color based on type
+                                // Get event color based on type and status
                                 const getEventColor = () => {
+                                  // Check if event is completed
+                                  const eventStatus = getEventStatus(event);
+                                  if (eventStatus === 'completed') return 'bg-blue-500'; // Blue for completed events
+                                  
                                   if (event.summary?.includes('🔧')) return 'bg-red-500'; // Maintenance
                                   if (event.summary?.includes('🏰')) return 'bg-green-500'; // Booking
                                   return 'bg-blue-500'; // Default

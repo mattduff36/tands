@@ -414,45 +414,126 @@ export class GoogleCalendarService {
   }
 
   async deleteMaintenanceEvents(castleId: number, startDate: string, endDate: string): Promise<void> {
-    return this.executeWithRetry(async () => {
-      console.log(`=== DELETING MAINTENANCE EVENTS ===`);
-      console.log(`Castle ID: ${castleId}`);
-      console.log(`Date Range: ${startDate} to ${endDate}`);
+    try {
+      const events = await this.getEventsInRange(new Date(startDate), new Date(endDate));
       
-      const startDateTime = new Date(startDate);
-      const endDateTime = new Date(endDate);
-      
-      // Find all events in the date range
-      const events = await this.calendar.events.list({
-        calendarId: this.settings.primaryCalendarId,
-        timeMin: startDateTime.toISOString(),
-        timeMax: endDateTime.toISOString(),
-        singleEvents: true,
-        orderBy: 'startTime'
-      });
-
-      console.log(`Found ${events.data.items?.length || 0} events in date range`);
-
-      // Delete maintenance events for this castle
-      let deletedCount = 0;
-      for (const event of events.data.items || []) {
-        const extendedProps = event.extendedProperties?.private;
-        console.log(`Checking event: ${event.id}, summary: ${event.summary}`);
-        console.log(`Extended props:`, extendedProps);
-        
-        if (extendedProps?.castleId === castleId.toString() &&
-            extendedProps?.eventType === 'maintenance') {
-          await this.calendar.events.delete({
-            calendarId: this.settings.primaryCalendarId,
-            eventId: event.id!,
-          });
-          console.log(`✅ Deleted maintenance event: ${event.id}`);
-          deletedCount++;
+      for (const event of events) {
+        if (event.description?.includes(`Castle ID: ${castleId}`)) {
+          await this.executeWithRetry(
+            () => this.calendar.events.delete({
+              calendarId: this.settings.primaryCalendarId,
+              eventId: event.id!
+            }),
+            'deleteMaintenanceEvent',
+            { maxAttempts: 3, baseDelay: 1000 }
+          );
+          console.log(`🗑️ Deleted maintenance event ${event.id} for castle ${castleId}`);
         }
       }
-      
-      console.log(`Total maintenance events deleted: ${deletedCount}`);
-    }, 'deleteMaintenanceEvents');
+    } catch (error) {
+      console.error('Error deleting maintenance events:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Mark a calendar event as completed by updating its color and adding completion note
+   */
+  async markEventAsCompleted(eventId: string, completionNote?: string): Promise<void> {
+    try {
+      const event = await this.getEvent(eventId);
+      if (!event) {
+        throw new Error(`Event ${eventId} not found`);
+      }
+
+      // Update the event to mark it as completed
+      const updatedEvent: calendar_v3.Schema$Event = {
+        ...event,
+        colorId: '11', // Gray color for completed events
+        description: `${event.description || ''}\n\n✅ COMPLETED: ${completionNote || 'Event has ended'} (${new Date().toLocaleString('en-GB')})`,
+        summary: `${event.summary} ✅`
+      };
+
+      await this.executeWithRetry(
+        () => this.calendar.events.update({
+          calendarId: this.settings.primaryCalendarId,
+          eventId,
+          requestBody: updatedEvent
+        }),
+        'markEventAsCompleted',
+        { maxAttempts: 3, baseDelay: 1000 }
+      );
+
+      console.log(`✅ Marked calendar event ${eventId} as completed`);
+    } catch (error) {
+      console.error(`Error marking event ${eventId} as completed:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check for completed calendar events and mark them as completed
+   */
+  async checkAndMarkCompletedEvents(): Promise<{
+    checked: number;
+    completed: number;
+    errors: Array<{ eventId: string; error: string }>;
+  }> {
+    const result = {
+      checked: 0,
+      completed: 0,
+      errors: [] as Array<{ eventId: string; error: string }>
+    };
+
+    try {
+      const now = new Date();
+      // Check events from the past 30 days to catch any that might have been missed
+      const startDate = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+      const endDate = new Date(now.getTime() + (1 * 24 * 60 * 60 * 1000)); // Include today + 1 day
+
+      const events = await this.getEventsInRange(startDate, endDate);
+      result.checked = events.length;
+
+      console.log(`Checking ${events.length} calendar events for completion...`);
+
+      for (const event of events) {
+        try {
+          // Skip events that are already marked as completed
+          if (event.colorId === '11' || event.summary?.includes('✅')) {
+            continue;
+          }
+
+          // Check if this is a booking event (has booking reference in description)
+          if (!event.description?.includes('Booking Ref:')) {
+            continue;
+          }
+
+          // Check if the event has ended
+          const eventEnd = new Date(event.end?.dateTime || event.end?.date || '');
+          
+          if (eventEnd < now) {
+            // Extract booking reference for logging
+            const bookingRefMatch = event.description.match(/Booking Ref: ([^\n]+)/);
+            const bookingRef = bookingRefMatch ? bookingRefMatch[1].trim() : 'Unknown';
+            
+            await this.markEventAsCompleted(event.id!, `Event ended at ${eventEnd.toLocaleString('en-GB')}`);
+            result.completed++;
+            
+            console.log(`✅ Marked completed event: ${bookingRef} (${event.summary})`);
+          }
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+          result.errors.push({ eventId: event.id || 'unknown', error: errorMsg });
+          console.error(`❌ Error processing event ${event.id}:`, error);
+        }
+      }
+
+      console.log(`Calendar completion check finished: ${result.completed}/${result.checked} events marked as completed`);
+      return result;
+    } catch (error) {
+      console.error('Error checking completed calendar events:', error);
+      throw error;
+    }
   }
 
   // Helper Methods
