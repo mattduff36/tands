@@ -39,7 +39,9 @@ import {
   Plus,
   ChevronLeft,
   ChevronRight,
-  RefreshCw
+  RefreshCw,
+  FileCheck,
+  FileWarning
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BookingDetailsModal } from '@/components/admin/BookingDetailsModal';
@@ -219,10 +221,9 @@ export default function AdminBookings() {
     fetchCalendarData();
   }, [currentDate]);
 
-  // Create a combined list of bookings and calendar events
-  const createCombinedBookingsList = useCallback(() => {
-    console.log('createCombinedBookingsList called at:', new Date().toISOString());
-    console.log('Current events length:', events.length);
+  // Filter database bookings only - calendar events are now kept separate  
+  const createFilteredBookingsList = useCallback(() => {
+    console.log('createFilteredBookingsList called at:', new Date().toISOString());
     console.log('Current bookings length:', bookings.length);
 
     // Filter database bookings based on status and search
@@ -249,135 +250,15 @@ export default function AdminBookings() {
         source: 'database' as const
       }));
 
-    // Process calendar events
-    let calendarBookings: any[] = [];
-    if (filter === 'all' || filter === 'confirmed' || filter === 'completed') {
-      console.log('Raw events array length:', events.length);
-      console.log('Raw events IDs:', events.map(e => e.id));
-      
-      const seenEventIds = new Set<string>();
-      
-      calendarBookings = events
-        .filter(event => {
-          if (seenEventIds.has(event.id)) {
-            console.log('Duplicate event ID found:', event.id);
-            return false;
-          }
-          seenEventIds.add(event.id);
-          
-          // Skip database-originated events (they start with 'db_')
-          if (event.id.startsWith('db_')) {
-            console.log('Skipping database-originated event:', event.id);
-            return false;
-          }
-          
-          // Only include events that look like confirmed bookings (not maintenance events)
-          const isBookingEvent = event.summary?.includes('🏰') || 
-            (event.summary && !event.summary.includes('🔧'));
-          
-          // Filter by status for calendar events
-          const eventEndDate = event.end?.dateTime ? new Date(event.end.dateTime) : 
-                              event.end?.date ? new Date(event.end.date) : null;
-          const isComplete = eventEndDate && eventEndDate < new Date();
-          
-          if (filter === 'confirmed' && isComplete) return false;
-          if (filter === 'completed' && !isComplete) return false;
-          
-          const matchesSearch = searchTerm === '' || 
-            event.summary?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            event.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            event.attendees?.[0]?.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            event.attendees?.[0]?.email?.toLowerCase().includes(searchTerm.toLowerCase());
-          
-          return isBookingEvent && matchesSearch;
-        })
-        .map(event => {
-          // Calculate total cost for calendar events
-          const castleName = event.summary?.split(' - ')[1] || 'Unknown Castle';
-          const castle = castles.find(c => c.name === castleName);
-          const basePrice = Math.floor(castle?.price || 0);
-          
-          // Calculate number of days first
-          let numberOfDays = 1;
-          if (event.start?.date && event.end?.date) {
-            const startDate = new Date(event.start.date);
-            const endDate = new Date(event.end.date);
-            const timeDiff = endDate.getTime() - startDate.getTime();
-            numberOfDays = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1; // +1 to include both start and end dates
-          }
-          
-          // Extract total from event description instead of recalculating
-          const totalMatch = event.description?.match(/Cost: £([^\n]+)/);
-          let totalPrice = totalMatch ? parseInt(totalMatch[1]) : 0;
-          
-          // If no cost found in description, calculate it manually as fallback
-          if (totalPrice === 0) {
-            const totalBasePrice = basePrice * numberOfDays;
-            const overnightCharge = event.description?.includes('(Overnight)') ? 20 : 0;
-            totalPrice = totalBasePrice + overnightCharge;
-          }
-          
-          // Generate calendar event reference (temporary - calendar events should be separated from bookings)
-          const bookingRef = `CAL-${event.id?.slice(-8) || 'UNKNOWN'}`;
-          console.log('Creating calendar booking with ref:', bookingRef, 'for event:', event.id);
-          
-          // Determine status based on end date
-          const eventEndDate = event.end?.dateTime ? new Date(event.end.dateTime) : 
-                              event.end?.date ? new Date(event.end.date) : null;
-          const isComplete = eventEndDate && eventEndDate < new Date();
-          const status = isComplete ? 'completed' as const : 'confirmed' as const;
-          
-          return {
-            id: event.id,
-            bookingRef: bookingRef,
-            customerName: event.summary?.replace('🏰 ', '').split(' - ')[0] || 'Unknown',
-            customerEmail: event.attendees?.[0]?.email || '',
-            customerPhone: '',
-            customerAddress: event.location || '',
-            castleId: castle?.id || 0,
-            castleName: castleName,
-            date: event.start?.date || event.start?.dateTime?.split('T')[0] || '',
-            paymentMethod: '',
-            totalPrice: totalPrice,
-            deposit: 0,
-            status: status,
-            notes: event.description || '',
-            createdAt: '',
-            updatedAt: '',
-            source: 'calendar' as const,
-            calendarEvent: event // Store the original calendar event
-          };
-        });
-    }
+    // Calendar events are now handled separately - no longer mixed with database bookings
 
-    // Debug logging to help identify duplicates
-    console.log('Calendar events processed:', calendarBookings.length);
-    console.log('Calendar booking refs:', calendarBookings.map(b => b.bookingRef));
-    console.log('Database bookings:', databaseBookings.length);
-    console.log('Total combined bookings:', databaseBookings.length + calendarBookings.length);
 
-    // Create a map of database bookings by bookingRef for quick lookup
-    const databaseBookingsMap = new Map<string, any>();
-    databaseBookings.forEach(booking => {
-      databaseBookingsMap.set(booking.bookingRef, booking);
-    });
+    console.log('Database bookings filtered:', databaseBookings.length);
 
-    // Filter out calendar bookings that have a corresponding database entry
-    const uniqueCalendarBookings = calendarBookings.filter(calendarBooking => {
-      const hasDatabaseEntry = databaseBookingsMap.has(calendarBooking.bookingRef);
-      if (hasDatabaseEntry) {
-        console.log('Filtering out calendar booking with ref:', calendarBooking.bookingRef, 'because it has a database entry');
-      }
-      return !hasDatabaseEntry;
-    });
+    return databaseBookings;
+  }, [bookings, filter, searchTerm]);
 
-    console.log('Unique calendar bookings after deduplication:', uniqueCalendarBookings.length);
-    console.log('Final total combined bookings:', databaseBookings.length + uniqueCalendarBookings.length);
-
-    return [...databaseBookings, ...uniqueCalendarBookings];
-  }, [bookings, events, castles, filter, searchTerm]);
-
-  const filteredBookings = createCombinedBookingsList();
+  const filteredBookings = createFilteredBookingsList();
 
   // Get status badge using design system variants with icons
   const getStatusBadge = (status: string) => {
@@ -393,6 +274,30 @@ export default function AdminBookings() {
         return <Badge variant="destructive" className="flex items-center gap-1"><X className="w-3 h-3" /> Expired</Badge>;
       default:
         return <Badge variant="secondary" className="flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {status}</Badge>;
+    }
+  };
+
+  // Get agreement status badge for confirmed bookings
+  const getAgreementBadge = (booking: any) => {
+    // Only show agreement status for confirmed bookings
+    if (booking.status !== 'confirmed') {
+      return null;
+    }
+
+    if (booking.agreementSigned) {
+      return (
+        <Badge variant="outline" className="flex items-center gap-1 border-green-600 text-green-700 bg-green-50">
+          <FileCheck className="w-3 h-3" />
+          Agreement Signed
+        </Badge>
+      );
+    } else {
+      return (
+        <Badge variant="outline" className="flex items-center gap-1 border-amber-600 text-amber-700 bg-amber-50">
+          <FileWarning className="w-3 h-3" />
+          Awaiting Signature
+        </Badge>
+      );
     }
   };
 
@@ -539,7 +444,7 @@ export default function AdminBookings() {
   // Handle approve and send agreement
   const handleApproveAndSendAgreement = async (bookingId: number) => {
     // Show confirmation popup for approval workflow
-    if (!confirm('📋 Approve & Send Agreement\n\nThis will:\n✅ Confirm the booking immediately\n📧 Send hire agreement email to customer (when email service is ready)\n\nThe customer will receive an automated email with a link to sign the agreement digitally.\n\nProceed with approval?')) {
+    if (!confirm('📋 Approve & Send Agreement\n\nThis will:\n✅ Confirm the booking immediately\n📧 Send hire agreement email to customer\n\nThe customer will receive an automated email with a link to sign the agreement digitally.\n\nProceed with approval?')) {
       return;
     }
 
@@ -551,8 +456,18 @@ export default function AdminBookings() {
       });
 
       if (confirmResponse.ok) {
-        // Then send agreement email (placeholder for now - email service will be implemented later)
-        toast.success('Booking approved! Agreement email will be sent once email service is implemented.');
+        // Then send agreement email
+        const emailResponse = await fetch(`/api/admin/bookings/${bookingId}/send-agreement`, {
+          method: 'POST',
+        });
+
+        if (emailResponse.ok) {
+          toast.success('Booking approved and agreement email sent to customer!');
+        } else {
+          const emailError = await emailResponse.json();
+          toast.warning(`Booking approved but email failed: ${emailError.error || 'Unknown email error'}`);
+        }
+        
         await fetchBookings(); // Refresh the list
         setShowDetailsModal(false);
       } else {
@@ -569,20 +484,13 @@ export default function AdminBookings() {
 
   // Handle edit and send agreement
   const handleEditAndSendAgreement = async (bookingId: number) => {
-    // Find the booking to get the event data
-    const booking = bookings.find(b => b.id === bookingId);
-    if (!booking) {
-      toast.error('Booking not found');
-      return;
+    // Open edit modal for the booking
+    const booking = filteredBookings.find(b => b.id === bookingId);
+    if (booking) {
+      handleEditBooking(booking);
+      // Note: The agreement email will be sent automatically after successful edit
+      toast.info('Edit the booking details. Agreement email will be sent automatically after saving.');
     }
-
-    // Convert booking to event format and trigger edit
-    const event = bookingToCalendarEvent(booking);
-    handleEditBooking(event);
-    
-    // Note: After editing is complete, the agreement will be sent automatically
-    // This will be implemented when the email service is ready
-    toast.info('Edit the booking details. Agreement will be sent after saving.');
   };
 
   // Handle expire booking
@@ -1354,6 +1262,7 @@ export default function AdminBookings() {
                     <div className="flex items-center gap-4 mb-2">
                       <h3 className="font-medium">{booking.customerName}</h3>
                       {getStatusBadge(booking.status)}
+                      {getAgreementBadge(booking)}
                       <Badge variant={booking.source === 'database' ? 'default' : 'secondary'}>
                         {booking.source === 'database' ? 'DB' : 'Calendar'}
                       </Badge>

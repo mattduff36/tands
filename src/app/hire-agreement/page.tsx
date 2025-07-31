@@ -24,7 +24,7 @@ interface BookingDetails {
 
 function HireAgreementContent() {
   const searchParams = useSearchParams();
-  const bookingRef = searchParams.get("bookingRef");
+  const bookingRef = searchParams.get("ref") || searchParams.get("bookingRef");
   
   const [bookingDetails, setBookingDetails] = useState<BookingDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);

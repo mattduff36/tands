@@ -16,6 +16,8 @@ export interface PendingBooking {
   castleId: number;
   castleName: string;
   date: string;
+  startDate?: Date;
+  endDate?: Date;
   paymentMethod: string;
   totalPrice: number;
   deposit: number;
@@ -713,6 +715,68 @@ export async function updateBookingAgreementSigning(
   } catch (error) {
     console.error('Error in updateBookingAgreementSigning:', error);
     throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// Get booking by ID for email sending
+export async function getBookingById(id: number): Promise<PendingBooking | null> {
+  const client = await getPool().connect();
+  try {
+    const result = await client.query(`
+      SELECT b.*, c.name as castle_name 
+      FROM bookings b 
+      LEFT JOIN castles c ON b.castle_id = c.id 
+      WHERE b.id = $1
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    const row = result.rows[0];
+    return {
+      id: row.id,
+      bookingRef: row.booking_ref,
+      customerName: row.customer_name,
+      customerEmail: row.customer_email,
+      customerPhone: row.customer_phone,
+      customerAddress: row.customer_address,
+      castleId: row.castle_id,
+      castleName: row.castle_name,
+      date: row.date,
+      paymentMethod: row.payment_method,
+      totalPrice: row.total_price,
+      deposit: row.deposit,
+      status: row.status,
+      notes: row.notes,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      // Email automation tracking
+      emailSent: row.email_sent || false,
+      emailSentAt: row.email_sent_at || null,
+      manualConfirmation: row.manual_confirmation || false,
+      confirmedBy: row.confirmed_by || null,
+      // Agreement tracking
+      agreementSigned: row.agreement_signed || false,
+      agreementSignedAt: row.agreement_signed_at || null,
+      agreementSignedBy: row.agreement_signed_by || null,
+      // Enhanced audit trail
+      agreementSignedMethod: row.agreement_signed_method || null,
+      agreementIpAddress: row.agreement_ip_address || null,
+      agreementUserAgent: row.agreement_user_agent || null,
+      agreementPdfGenerated: row.agreement_pdf_generated || false,
+      agreementPdfGeneratedAt: row.agreement_pdf_generated_at || null,
+      agreementEmailOpened: row.agreement_email_opened || false,
+      agreementEmailOpenedAt: row.agreement_email_opened_at || null,
+      agreementViewed: row.agreement_viewed || false,
+      agreementViewedAt: row.agreement_viewed_at || null,
+      auditTrail: row.audit_trail || []
+    };
+  } catch (error) {
+    console.error('Error getting booking by ID:', error);
+    return null;
   } finally {
     client.release();
   }

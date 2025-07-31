@@ -18,18 +18,43 @@ export async function POST(
       );
     }
 
-    // Get the booking by reference
-    const pendingBookings = await getBookingsByStatus('pending');
-    const booking = pendingBookings.find(b => b.bookingRef === bookingRef);
+    // Get the booking by reference (search all bookings)
+    const allBookings = await getBookingsByStatus();
+    const booking = allBookings.find(b => b.bookingRef === bookingRef);
 
     console.log(`Looking for booking ref: ${bookingRef}`);
-    console.log(`Found ${pendingBookings.length} pending bookings`);
+    console.log(`Found ${allBookings.length} total bookings`);
     console.log(`Booking found:`, booking ? 'Yes' : 'No');
+    if (booking) {
+      console.log(`Booking status: ${booking.status}`);
+    }
 
     if (!booking) {
       return NextResponse.json(
         { error: 'Booking not found' },
         { status: 404 }
+      );
+    }
+
+    // Check if booking is already confirmed or completed
+    if (booking.status === 'confirmed') {
+      console.log(`Booking ${bookingRef} is already confirmed`);
+      // Just update the agreement details without changing status
+      await updateBookingAgreement(booking.id, agreementSigned, agreementSignedAt, booking.customerName);
+      
+      return NextResponse.json({
+        success: true,
+        message: 'Hire agreement signed successfully (booking was already confirmed)',
+        bookingRef,
+        agreementSignedAt,
+        status: 'already_confirmed'
+      });
+    }
+
+    if (booking.status === 'completed') {
+      return NextResponse.json(
+        { error: 'Cannot sign agreement - booking is already completed' },
+        { status: 400 }
       );
     }
 

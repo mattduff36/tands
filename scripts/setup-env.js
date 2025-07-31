@@ -51,6 +51,12 @@ async function setupEnvironment() {
   const adminEmails = await question('Admin Emails (default: tsbouncycastlehire@gmail.com,matt.mpdee@gmail.com): ') || 'tsbouncycastlehire@gmail.com,matt.mpdee@gmail.com';
   const databaseUrl = await question('Database URL (optional): ') || '';
   
+  console.log('\nEmail SMTP Configuration (for automated agreement emails):');
+  const emailSmtpUser = await question('Email SMTP User (Gmail address): ') || '';
+  const emailSmtpPass = await question('Email SMTP Password (App Password): ') || '';
+  const emailFromName = await question('Email From Name (default: Taylors & Smiths Bouncy Castles): ') || 'Taylors & Smiths Bouncy Castles';
+  const emailEnabled = await question('Enable Email Service? (y/N): ') || 'n';
+  
   // Create .env.local content
   const envContent = `# Google OAuth 2.0 Credentials
 GOOGLE_CLIENT_ID=${googleClientId}
@@ -71,6 +77,20 @@ PRIMARY_CALENDAR_ID=${primaryCalendarId}
 
 # Database Configuration
 ${databaseUrl ? `DATABASE_URL=${databaseUrl}` : '# DATABASE_URL=your_database_connection_string_here'}
+
+# Email SMTP Configuration
+EMAIL_ENABLED=${emailEnabled.toLowerCase() === 'y' || emailEnabled.toLowerCase() === 'yes' ? 'true' : 'false'}
+EMAIL_SMTP_HOST=smtp.gmail.com
+EMAIL_SMTP_PORT=587
+EMAIL_SMTP_SECURE=false
+EMAIL_SMTP_USER=${emailSmtpUser}
+EMAIL_SMTP_PASS=${emailSmtpPass}
+EMAIL_FROM_NAME=${emailFromName}
+EMAIL_FROM_ADDRESS=${emailSmtpUser}
+EMAIL_DEBUG=true
+EMAIL_TRACKING_PIXEL_ENABLED=true
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_AGREEMENT_BASE_URL=http://localhost:3000/hire-agreement
 
 # Environment
 NODE_ENV=development

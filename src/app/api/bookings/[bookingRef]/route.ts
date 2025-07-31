@@ -15,9 +15,9 @@ export async function GET(
       );
     }
 
-    // Get all pending bookings and filter by booking reference
-    const pendingBookings = await getBookingsByStatus('pending');
-    const booking = pendingBookings.find(b => b.bookingRef === bookingRef);
+    // Get all bookings and filter by booking reference
+    const allBookings = await getBookingsByStatus();
+    const booking = allBookings.find(b => b.bookingRef === bookingRef);
 
     if (!booking) {
       return NextResponse.json(

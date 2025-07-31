@@ -50,6 +50,11 @@ export async function GET(request: NextRequest) {
       notes: booking.notes,
       createdAt: booking.createdAt,
       updatedAt: booking.updatedAt,
+      // Agreement fields for admin interface
+      agreementSigned: booking.agreementSigned,
+      agreementSignedAt: booking.agreementSignedAt,
+      agreementSignedBy: booking.agreementSignedBy,
+      agreementSignedMethod: booking.agreementSignedMethod,
       source: 'database'
     }));
 
