@@ -1,40 +1,121 @@
 "use client";
 
-import { useState } from "react";
+import { useReducer, useCallback, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
-export function ContactForm() {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [message, setMessage] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
+// State interface for better type safety
+interface ContactFormState {
+  formData: {
+    name: string;
+    email: string;
+    phone: string;
+    message: string;
+  };
+  ui: {
+    isSubmitting: boolean;
+    isSubmitted: boolean;
+  };
+}
 
-  const handleSubmit = async (e: React.FormEvent) => {
+// Action types for reducer
+type ContactFormAction =
+  | { type: 'UPDATE_FIELD'; field: keyof ContactFormState['formData']; value: string }
+  | { type: 'SET_SUBMITTING'; isSubmitting: boolean }
+  | { type: 'SET_SUBMITTED'; isSubmitted: boolean }
+  | { type: 'RESET_FORM' };
+
+// Initial state
+const initialState: ContactFormState = {
+  formData: {
+    name: '',
+    email: '',
+    phone: '',
+    message: '',
+  },
+  ui: {
+    isSubmitting: false,
+    isSubmitted: false,
+  },
+};
+
+// Reducer function for consolidated state management
+function contactFormReducer(state: ContactFormState, action: ContactFormAction): ContactFormState {
+  switch (action.type) {
+    case 'UPDATE_FIELD':
+      return {
+        ...state,
+        formData: {
+          ...state.formData,
+          [action.field]: action.value,
+        },
+      };
+    case 'SET_SUBMITTING':
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          isSubmitting: action.isSubmitting,
+        },
+      };
+    case 'SET_SUBMITTED':
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          isSubmitted: action.isSubmitted,
+        },
+      };
+    case 'RESET_FORM':
+      return {
+        ...initialState,
+        ui: {
+          ...state.ui,
+          isSubmitted: true,
+        },
+      };
+    default:
+      return state;
+  }
+}
+
+export const ContactForm = memo(function ContactForm() {
+  const [state, dispatch] = useReducer(contactFormReducer, initialState);
+
+  // Memoized handlers to prevent unnecessary re-renders
+  const handleFieldChange = useCallback((field: keyof ContactFormState['formData']) => {
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      dispatch({ type: 'UPDATE_FIELD', field, value: e.target.value });
+    };
+  }, []);
+
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    setIsSubmitted(false);
+    dispatch({ type: 'SET_SUBMITTING', isSubmitting: true });
+    dispatch({ type: 'SET_SUBMITTED', isSubmitted: false });
+    
     try {
       const response = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, message }),
+        body: JSON.stringify({
+          name: state.formData.name,
+          email: state.formData.email,
+          phone: state.formData.phone,
+          message: state.formData.message,
+        }),
       });
+      
       const data = await response.json();
+      
       if (data.success) {
         toast.success("Form Submitted!", {
           description: "Thank you for your message. We will get back to you shortly.",
         });
-        setName("");
-        setEmail("");
-        setPhone("");
-        setMessage("");
-        setIsSubmitted(true);
+        dispatch({ type: 'RESET_FORM' });
       } else {
         toast.error("Submission failed", {
           description: data.error || "An error occurred. Please try again.",
@@ -45,9 +126,9 @@ export function ContactForm() {
         description: error.message || "An error occurred. Please try again.",
       });
     } finally {
-      setIsSubmitting(false);
+      dispatch({ type: 'SET_SUBMITTING', isSubmitting: false });
     }
-  };
+  }, [state.formData]);
 
   return (
     <form className="flex flex-col flex-1 h-full" autoComplete="off" onSubmit={handleSubmit}>
@@ -58,8 +139,8 @@ export function ContactForm() {
         type="text"
         className="bg-white border border-blue-200 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400"
         required
-        value={name}
-        onChange={(e) => setName(e.target.value)}
+        value={state.formData.name}
+        onChange={handleFieldChange('name')}
         tabIndex={0}
         aria-label="Name input"
       />
@@ -70,8 +151,8 @@ export function ContactForm() {
         type="email"
         className="bg-white border border-blue-200 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400"
         required
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
+        value={state.formData.email}
+        onChange={handleFieldChange('email')}
         tabIndex={0}
         aria-label="Email input"
       />
@@ -81,8 +162,8 @@ export function ContactForm() {
         name="phone"
         type="tel"
         className="bg-white border border-blue-200 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400"
-        value={phone}
-        onChange={(e) => setPhone(e.target.value)}
+        value={state.formData.phone}
+        onChange={handleFieldChange('phone')}
         tabIndex={0}
         aria-label="Phone number input (optional)"
       />
@@ -92,8 +173,8 @@ export function ContactForm() {
         name="message"
         className="bg-white border border-blue-200 rounded-lg px-4 py-2 mb-4 min-h-[100px] flex-1 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
         required
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
+        value={state.formData.message}
+        onChange={handleFieldChange('message')}
         tabIndex={0}
         aria-label="Message textarea"
       />
@@ -102,10 +183,10 @@ export function ContactForm() {
         className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg shadow focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 transition-colors duration-200"
         tabIndex={0}
         aria-label="Send Message"
-        disabled={isSubmitting}
+        disabled={state.ui.isSubmitting}
       >
-        {isSubmitting ? "Submitting..." : "Send Message"}
+        {state.ui.isSubmitting ? "Submitting..." : "Send Message"}
       </button>
     </form>
   );
-} 
+}); 
