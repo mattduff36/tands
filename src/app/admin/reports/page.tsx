@@ -97,8 +97,8 @@ export default function AdminReports() {
       
       const stats: BookingStats = await response.json();
       
-      // Calculate derived metrics
-      const averageBookingValue = stats.confirmed > 0 ? Math.round(stats.revenue / stats.confirmed) : 0;
+             // Calculate derived metrics
+       const averageBookingValue = stats.total > 0 ? Math.round(stats.revenue / stats.total) : 0;
       
       // For now, we'll set growth to 0 since we don't have historical comparison data
       // This can be enhanced later when we have more historical data
@@ -265,9 +265,9 @@ export default function AdminReports() {
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-600">Avg. Booking Value</p>
                     <p className="text-2xl font-bold text-gray-900">£{reportData.averageBookingValue}</p>
-                    <div className="flex items-center mt-2">
-                      <span className="text-sm text-gray-500">Based on confirmed bookings</span>
-                    </div>
+                                       <div className="flex items-center mt-2">
+                     <span className="text-sm text-gray-500">Based on all active bookings</span>
+                   </div>
                   </div>
                   <Trophy className="h-8 w-8 text-purple-600" />
                 </div>
@@ -361,14 +361,14 @@ export default function AdminReports() {
                     <span className="text-sm font-medium text-gray-600">Average Value</span>
                     <span className="text-lg font-bold text-gray-900">£{reportData.averageBookingValue}</span>
                   </div>
-                  <div className="pt-4 border-t">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-500">Revenue per confirmed booking</span>
-                      <span className="text-sm text-gray-500">
-                        £{reportData.stats.confirmed > 0 ? Math.round(reportData.stats.revenue / reportData.stats.confirmed) : 0}
-                      </span>
-                    </div>
-                  </div>
+                                       <div className="pt-4 border-t">
+                       <div className="flex items-center justify-between">
+                         <span className="text-sm text-gray-500">Revenue per active booking</span>
+                         <span className="text-sm text-gray-500">
+                           £{reportData.stats.total > 0 ? Math.round(reportData.stats.revenue / reportData.stats.total) : 0}
+                         </span>
+                       </div>
+                     </div>
                 </div>
               </CardContent>
             </Card>
