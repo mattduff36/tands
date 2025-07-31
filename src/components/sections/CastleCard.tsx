@@ -6,13 +6,13 @@ import type { Castle } from "@/lib/database/castles";
 import { Button } from "@/components/ui/button";
 import { Tag, Star } from "lucide-react";
 import { MotionDiv } from "@/components/motion/MotionDiv";
-import { useState } from "react";
+import { useState, memo } from "react";
 
 interface CastleCardProps {
   castle: Castle;
 }
 
-const CastleCard = ({ castle }: CastleCardProps) => {
+const CastleCard = memo(({ castle }: CastleCardProps) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
 
@@ -80,6 +80,8 @@ const CastleCard = ({ castle }: CastleCardProps) => {
       </div>
     </MotionDiv>
   );
-};
+});
+
+CastleCard.displayName = 'CastleCard';
 
 export default CastleCard; 
