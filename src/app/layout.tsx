@@ -10,7 +10,37 @@ const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700
 
 export const metadata: Metadata = {
   title: "T&S Bouncy Castle Hire | Fun & Safe Castle Hire in Edwinstowe",
-  description: "T&S Bouncy Castle Hire",
+  description: "Professional bouncy castle hire service in Edwinstowe and surrounding areas. Fully insured, safe, and fun inflatables for parties, events, and celebrations.",
+  keywords: "bouncy castle hire, Edwinstowe, inflatable hire, party rentals, children's entertainment, safe bouncy castles",
+  authors: [{ name: "T&S Bouncy Castle Hire" }],
+  openGraph: {
+    title: "T&S Bouncy Castle Hire | Fun & Safe Castle Hire in Edwinstowe",
+    description: "Professional bouncy castle hire service in Edwinstowe and surrounding areas. Fully insured, safe, and fun inflatables for parties, events, and celebrations.",
+    url: "https://tandsbouncycastles.co.uk",
+    siteName: "T&S Bouncy Castle Hire",
+    images: [
+      {
+        url: "/favicon/android-chrome-512x512.png",
+        width: 512,
+        height: 512,
+        alt: "T&S Bouncy Castle Hire Logo",
+      },
+      {
+        url: "/tands_logo.png",
+        width: 240,
+        height: 64,
+        alt: "T&S Bouncy Castle Hire Logo",
+      },
+    ],
+    locale: "en_GB",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "T&S Bouncy Castle Hire | Fun & Safe Castle Hire in Edwinstowe",
+    description: "Professional bouncy castle hire service in Edwinstowe and surrounding areas. Fully insured, safe, and fun inflatables for parties, events, and celebrations.",
+    images: ["/favicon/android-chrome-512x512.png"],
+  },
   icons: {
     icon: [
       { url: '/favicon/favicon-16x16.png', sizes: '16x16', type: 'image/png' },

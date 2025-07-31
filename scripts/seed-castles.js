@@ -20,47 +20,31 @@ async function seedCastles() {
 
     console.log('No castles found, seeding sample data...');
 
-    // Sample castle data
+    // Real castle data - only the actual castles in use
     const castles = [
       {
-        name: 'Princess Castle',
-        theme: 'Princess',
-        size: '3m x 3m',
-        price: 150,
-        description: 'Beautiful pink princess castle perfect for little princesses',
-        imageUrl: '/bouncy-castle-1.jpg'
+        name: 'Emoji',
+        theme: 'Fun',
+        size: '11ft x 15ft',
+        price: 80,
+        description: 'Emoji is the perfect addition to any celebration! This fun-themed bouncy castle (11ft x 15ft) combines safety, fun, and excitement. At just £80.00 per day, it\'s an affordable way to make your event unforgettable. Fully insured, PIPA tested, and guaranteed to be the highlight of your party! Keep overnight for only an extra £20!',
+        imageUrl: '/IMG_2360.JPEG'
       },
       {
-        name: 'Superhero Obstacle',
-        theme: 'Superhero',
-        size: '4m x 3m',
-        price: 180,
-        description: 'Action-packed obstacle course for superhero adventures',
-        imageUrl: '/bouncy-castle-2.jpg'
-      },
-      {
-        name: 'Jungle Adventure',
-        theme: 'Jungle',
-        size: '3.5m x 3m',
-        price: 160,
-        description: 'Wild jungle-themed castle with animal decorations',
-        imageUrl: '/bouncy-castle-3.jpg'
-      },
-      {
-        name: 'Medieval Castle',
-        theme: 'Medieval',
-        size: '4m x 4m',
-        price: 200,
-        description: 'Grand medieval castle for knights and princesses',
-        imageUrl: '/bouncy-castle-4.jpg'
+        name: 'Party',
+        theme: 'Classic',
+        size: '11ft x 15ft',
+        price: 80,
+        description: 'A timeless classic that never goes out of style! This 11ft x 15ft bouncy castle is great for bigger celebrations and larger groups - our premium option with extra special features. Fully cleaned, safety tested, and guaranteed to bring smiles to faces of all ages! Keep overnight for only an extra £20!',
+        imageUrl: '/IMG_2361.JPEG'
       },
       {
         name: 'Disco',
-        theme: 'Party',
-        size: '3m x 3m',
+        theme: 'Adult',
+        size: '15ft x 15ft',
         price: 120,
-        description: 'Fun disco-themed castle with colorful lights',
-        imageUrl: '/bouncy-castle-1.jpg'
+        description: 'Features bright, colorful designs! This 15ft x 15ft bouncy castle is great for bigger celebrations and larger groups - our premium option with extra special features. Fully cleaned, safety tested, and guaranteed to bring smiles to faces of all ages! Keep overnight for only an extra £20!',
+        imageUrl: '/IMG_2362.JPEG'
       }
     ];
 

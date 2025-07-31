@@ -65,12 +65,9 @@ export function ReportingDashboard({ className }: ReportingDashboardProps) {
   
   // Available filter options
   const availableCastles = [
-    { id: '1', name: 'The Classic Fun' },
-    { id: '2', name: 'Princess Palace' },
-    { id: '3', name: 'Jungle Adventure' },
-    { id: '4', name: 'Superhero Base' },
-    { id: '5', name: 'Party Time Bouncer' },
-    { id: '6', name: 'Under The Sea' }
+    { id: '13', name: 'Emoji' },
+    { id: '14', name: 'Party' },
+    { id: '15', name: 'Disco' }
   ];
   
   const availableStatuses = [

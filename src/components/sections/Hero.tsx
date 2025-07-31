@@ -12,10 +12,9 @@ import { Bubblegum_Sans } from "next/font/google";
 const bubblegumSans = Bubblegum_Sans({ subsets: ["latin"], weight: ["400"] });
 
 const images = [
-  "/bouncy-castle-1.jpg",
-  "/bouncy-castle-2.jpg",
-  "/bouncy-castle-3.jpg",
-  "/bouncy-castle-4.jpg",
+  "/IMG_2360.JPEG",
+  "/IMG_2361.JPEG",
+  "/IMG_2362.JPEG",
 ];
 
 const Hero = () => {

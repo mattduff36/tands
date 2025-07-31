@@ -10,7 +10,7 @@ const AboutPage = () => {
           <div className="relative rounded-3xl overflow-hidden shadow-2xl mb-16 h-[320px] flex items-center justify-center">
             <div className="absolute inset-0">
               <Image
-                src="/bouncy-castle-3.jpg"
+                src="/IMG_2362.JPEG"
                 alt="Fun bouncy castles"
                 fill
                 className="object-cover"
