@@ -5,6 +5,7 @@
 
 import { getPool } from './connection';
 import { BookingStatus } from '@/lib/types/booking';
+import { log } from '@/lib/utils/logger';
 
 export interface PendingBooking {
   id: number;
@@ -140,12 +141,12 @@ export async function initializeBookingsTable(): Promise<void> {
       ON bookings (customer_email)
     `);
     
-    console.log('Bookings table initialized successfully');
+    log.info('Bookings table initialized successfully');
     
     // Update expired bookings to complete status
     await updateExpiredBookings();
   } catch (error) {
-    console.error('Error initializing bookings table:', error);
+    log.error('Error initializing bookings table', error instanceof Error ? error : new Error(String(error)));
     throw error;
   } finally {
     client.release();
@@ -174,7 +175,7 @@ async function generateFriendlyBookingRef(retryCount = 0): Promise<string> {
     
     // Add automatic gap detection and fixing for conflicts
     if (retryCount > 0) {
-      console.log(`Booking reference conflict detected, attempting retry ${retryCount}`);
+      log.warn('Booking reference conflict detected', { retryCount });
       // Find the first available gap in the sequence
       const allRefs = await client.query(`
         SELECT booking_ref 
@@ -187,7 +188,7 @@ async function generateFriendlyBookingRef(retryCount = 0): Promise<string> {
       for (let i = 1; i <= 999; i++) {
         if (!usedNumbers.has(i)) {
           nextNumber = i;
-          console.log(`Using gap in sequence: TS${i.toString().padStart(3, '0')}`);
+          log.info('Using gap in booking sequence', { bookingRef: `TS${i.toString().padStart(3, '0')}` });
           break;
         }
       }
@@ -218,14 +219,14 @@ async function generateFriendlyBookingRef(retryCount = 0): Promise<string> {
         const month = (date.getMonth() + 1).toString().padStart(2, '0');
         const day = date.getDate().toString().padStart(2, '0');
         const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-        console.log(`All TS### numbers used, falling back to timestamp format`);
+        log.warn('All TS### numbers used, falling back to timestamp format');
         return `TS${year}${month}${day}${random}`;
       }
     }
     
     return `TS${nextNumber.toString().padStart(3, '0')}`;
   } catch (error) {
-    console.error('Error generating friendly booking ref:', error);
+    log.error('Error generating friendly booking ref', error instanceof Error ? error : new Error(String(error)));
     // Fallback to timestamp-based ref if there's an error
     const date = new Date();
     const year = date.getFullYear().toString().slice(-2);
@@ -251,9 +252,9 @@ async function fixBookingSequence(): Promise<void> {
     // Reset the sequence to the next value after the maximum ID
     await client.query(`SELECT setval('bookings_id_seq', $1, true)`, [maxId]);
     
-    console.log(`Fixed bookings sequence. Set to: ${maxId}`);
+    log.info('Fixed bookings sequence', { sequenceValue: maxId });
   } catch (error) {
-    console.error('Error fixing booking sequence:', error);
+    log.error('Error fixing booking sequence', error instanceof Error ? error : new Error(String(error)));
   } finally {
     client.release();
   }
@@ -346,7 +347,7 @@ export async function createPendingBooking(booking: Omit<PendingBooking, 'id' | 
       // Handle booking reference constraint violation (retryable)
       if (error.code === '23505' && error.constraint === 'bookings_booking_ref_key') {
         if (attempt < maxRetries) {
-          console.log(`Booking reference conflict on attempt ${attempt + 1}, retrying...`);
+          log.warn('Booking reference conflict, retrying', { attempt: attempt + 1 });
           // Don't return here, let the finally block release and continue the loop
         } else {
           throw new Error('Booking reference conflict persisted after multiple attempts. Please try again later.');
@@ -451,7 +452,7 @@ export async function createConfirmedBooking(booking: {
       // Handle booking reference constraint violation (retryable)
       if (error.code === '23505' && error.constraint === 'bookings_booking_ref_key') {
         if (attempt < maxRetries) {
-          console.log(`Booking reference conflict on attempt ${attempt + 1}, retrying...`);
+          log.warn('Booking reference conflict, retrying', { attempt: attempt + 1 });
           // Don't return here, let the finally block release and continue the loop
         } else {
           throw new Error('Booking reference conflict persisted after multiple attempts. Please try again later.');
@@ -532,7 +533,7 @@ export async function getBookingsByStatus(status?: string): Promise<PendingBooki
       auditTrail: row.audit_trail || []
     }));
   } catch (error) {
-    console.error('Error fetching bookings:', error);
+    log.error('Error fetching bookings', error instanceof Error ? error : new Error(String(error)));
     throw error;
   } finally {
     client.release();
@@ -543,7 +544,7 @@ export async function getBookingsByStatus(status?: string): Promise<PendingBooki
 export async function updateBookingStatus(id: number, status: BookingStatus): Promise<void> {
   const client = await getPool().connect();
   try {
-    console.log(`Executing updateBookingStatus: ID=${id}, Status=${status}`);
+    log.audit('Update booking status', 'system', { bookingId: id, newStatus: status });
     
     // Get current booking status to validate transition
     const currentBookingResult = await client.query('SELECT status FROM bookings WHERE id = $1', [id]);
@@ -562,10 +563,10 @@ export async function updateBookingStatus(id: number, status: BookingStatus): Pr
       'UPDATE bookings SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
       [status, id]
     );
-    console.log(`updateBookingStatus result: ${result.rowCount} rows affected`);
-    console.log(`Status transition: ${currentStatus} → ${status}`);
+    log.database('update', 0, { operation: 'updateBookingStatus', rowsAffected: result.rowCount });
+    log.business('Status transition completed', { bookingId: id, from: currentStatus, to: status });
   } catch (error) {
-    console.error('Error in updateBookingStatus:', error);
+    log.error('Error in updateBookingStatus', error instanceof Error ? error : new Error(String(error)), { bookingId: id, targetStatus: status });
     throw error;
   } finally {
     client.release();
@@ -593,14 +594,14 @@ function isValidStatusTransition(currentStatus: string, newStatus: string): bool
 export async function updateBookingAgreement(id: number, agreementSigned: boolean, agreementSignedAt: string, agreementSignedBy?: string): Promise<void> {
   const client = await getPool().connect();
   try {
-    console.log(`Executing updateBookingAgreement: ID=${id}, Signed=${agreementSigned}, At=${agreementSignedAt}, By=${agreementSignedBy}`);
+    log.audit('Update booking agreement', agreementSignedBy || 'system', { bookingId: id, signed: agreementSigned });
     const result = await client.query(
       'UPDATE bookings SET agreement_signed = $1, agreement_signed_at = $2, agreement_signed_by = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4',
       [agreementSigned, agreementSignedAt, agreementSignedBy || null, id]
     );
-    console.log(`updateBookingAgreement result: ${result.rowCount} rows affected`);
+    log.database('update', 0, { operation: 'updateBookingAgreement', rowsAffected: result.rowCount });
   } catch (error) {
-    console.error('Error in updateBookingAgreement:', error);
+    log.error('Error in updateBookingAgreement', error instanceof Error ? error : new Error(String(error)), { bookingId: id });
     throw error;
   } finally {
     client.release();
@@ -611,14 +612,14 @@ export async function updateBookingAgreement(id: number, agreementSigned: boolea
 export async function updateBookingEmailStatus(id: number, emailSent: boolean, emailSentAt?: Date): Promise<void> {
   const client = await getPool().connect();
   try {
-    console.log(`Executing updateBookingEmailStatus: ID=${id}, EmailSent=${emailSent}, At=${emailSentAt}`);
+    log.business('Update booking email status', { bookingId: id, emailSent });
     const result = await client.query(
       'UPDATE bookings SET email_sent = $1, email_sent_at = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
       [emailSent, emailSentAt || new Date(), id]
     );
-    console.log(`updateBookingEmailStatus result: ${result.rowCount} rows affected`);
+    log.database('update', 0, { operation: 'updateBookingEmailStatus', rowsAffected: result.rowCount });
   } catch (error) {
-    console.error('Error in updateBookingEmailStatus:', error);
+    log.error('Error in updateBookingEmailStatus', error instanceof Error ? error : new Error(String(error)), { bookingId: id });
     throw error;
   } finally {
     client.release();
@@ -629,7 +630,7 @@ export async function updateBookingEmailStatus(id: number, emailSent: boolean, e
 export async function updateBookingConfirmation(id: number, manualConfirmation: boolean, confirmedBy?: string): Promise<void> {
   const client = await getPool().connect();
   try {
-    console.log(`Executing updateBookingConfirmation: ID=${id}, Manual=${manualConfirmation}, By=${confirmedBy}`);
+    log.audit('Update booking confirmation', confirmedBy || 'system', { bookingId: id, manual: manualConfirmation });
     
     // Add audit trail entry
     if (manualConfirmation && confirmedBy) {
@@ -646,9 +647,9 @@ export async function updateBookingConfirmation(id: number, manualConfirmation: 
       'UPDATE bookings SET manual_confirmation = $1, confirmed_by = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
       [manualConfirmation, confirmedBy || null, id]
     );
-    console.log(`updateBookingConfirmation result: ${result.rowCount} rows affected`);
+    log.database('update', 0, { operation: 'updateBookingConfirmation', rowsAffected: result.rowCount });
   } catch (error) {
-    console.error('Error in updateBookingConfirmation:', error);
+    log.error('Error in updateBookingConfirmation', error instanceof Error ? error : new Error(String(error)), { bookingId: id });
     throw error;
   } finally {
     client.release();
@@ -671,7 +672,7 @@ export async function addAuditTrailEntry(
       userAgent: userAgent || entry.userAgent
     };
 
-    console.log(`Adding audit trail entry for booking ${bookingId}:`, auditEntry);
+    log.audit('Add audit trail entry', auditEntry.actor, { bookingId, action: auditEntry.action });
 
     await client.query(`
       UPDATE bookings 
@@ -681,7 +682,7 @@ export async function addAuditTrailEntry(
     `, [JSON.stringify(auditEntry), bookingId]);
 
   } catch (error) {
-    console.error('Error adding audit trail entry:', error);
+    log.error('Error adding audit trail entry', error instanceof Error ? error : new Error(String(error)), { bookingId });
     throw error;
   } finally {
     client.release();
@@ -701,7 +702,7 @@ export async function updateBookingAgreementSigning(
 ): Promise<void> {
   const client = await getPool().connect();
   try {
-    console.log(`Executing updateBookingAgreementSigning: ID=${id}, Signed=${agreementSigned}, Method=${method}`);
+    log.audit('Update booking agreement signing', agreementSignedBy, { bookingId: id, method, signed: agreementSigned });
     
     // Update basic agreement fields
     const result = await client.query(
@@ -730,9 +731,9 @@ export async function updateBookingAgreementSigning(
       }
     }, ipAddress, userAgent);
 
-    console.log(`updateBookingAgreementSigning result: ${result.rowCount} rows affected`);
+    log.database('update', 0, { operation: 'updateBookingAgreementSigning', rowsAffected: result.rowCount });
   } catch (error) {
-    console.error('Error in updateBookingAgreementSigning:', error);
+    log.error('Error in updateBookingAgreementSigning', error instanceof Error ? error : new Error(String(error)), { bookingId: id });
     throw error;
   } finally {
     client.release();
@@ -794,7 +795,7 @@ export async function getBookingById(id: number): Promise<PendingBooking | null>
       auditTrail: row.audit_trail || []
     };
   } catch (error) {
-    console.error('Error getting booking by ID:', error);
+    log.error('Error getting booking by ID', error instanceof Error ? error : new Error(String(error)), { bookingId: id });
     return null;
   } finally {
     client.release();
@@ -847,9 +848,9 @@ export async function trackAgreementEmailInteraction(
       details: additionalDetails
     });
 
-    console.log(`Tracked agreement email interaction: ${action} for booking ${bookingId}`);
+    log.business('Tracked agreement email interaction', { bookingId, action });
   } catch (error) {
-    console.error('Error tracking email interaction:', error);
+    log.error('Error tracking email interaction', error instanceof Error ? error : new Error(String(error)), { bookingId });
     throw error;
   } finally {
     client.release();
@@ -870,10 +871,10 @@ export async function updateExpiredBookings(): Promise<void> {
     `);
     
     if (result.rowCount && result.rowCount > 0) {
-      console.log(`Updated ${result.rowCount} confirmed bookings to completed status`);
+      log.business('Auto-completed expired bookings', { transitionsCompleted: result.rowCount });
     }
   } catch (error) {
-    console.error('Error updating expired bookings:', error);
+    log.error('Error updating expired bookings', error instanceof Error ? error : new Error(String(error)));
   } finally {
     client.release();
   }
@@ -885,7 +886,7 @@ export async function deleteBooking(id: number): Promise<void> {
   try {
     await client.query('DELETE FROM bookings WHERE id = $1', [id]);
   } catch (error) {
-    console.error('Error deleting booking:', error);
+    log.error('Error deleting booking', error instanceof Error ? error : new Error(String(error)), { bookingId: id });
     throw error;
   } finally {
     client.release();
@@ -958,7 +959,7 @@ export async function updateBooking(id: number, updates: Partial<Omit<PendingBoo
     
     await client.query(query, values);
   } catch (error) {
-    console.error('Error updating booking:', error);
+    log.error('Error updating booking', error instanceof Error ? error : new Error(String(error)), { bookingId: id });
     throw error;
   } finally {
     client.release();
@@ -1041,7 +1042,7 @@ export async function queryBookingsWithFilters(query: {
 
     return { bookings };
   } catch (error) {
-    console.error('Error querying bookings with filters:', error);
+    log.error('Error querying bookings with filters', error instanceof Error ? error : new Error(String(error)), { query });
     throw error;
   } finally {
     client.release();
@@ -1114,7 +1115,7 @@ export async function getBookingStats(query?: {
       revenue: parseInt(stats.revenue)
     };
   } catch (error) {
-    console.error('Error fetching booking stats:', error);
+    log.error('Error fetching booking stats', error instanceof Error ? error : new Error(String(error)), { query });
     throw error;
   } finally {
     client.release();

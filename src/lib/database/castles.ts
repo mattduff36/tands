@@ -4,6 +4,7 @@
  */
 
 import { query, initializeDatabase } from './connection';
+import { log } from '@/lib/utils/logger';
 
 export interface Castle {
   id: number;
@@ -30,9 +31,9 @@ async function ensureInitialized() {
     try {
       await initializeDatabase();
       isInitialized = true;
-      console.log('Castle database initialized successfully');
+      log.info('Castle database initialized successfully');
     } catch (error) {
-      console.error('Failed to initialize castle database:', error);
+      log.error('Failed to initialize castle database', error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -55,10 +56,10 @@ export async function getCastles(): Promise<Castle[]> {
       ORDER BY id ASC
     `);
     
-    console.log(`Retrieved ${result.rows.length} castles from database`);
+    log.database('select', 0, { operation: 'getCastles', count: result.rows.length });
     return result.rows;
   } catch (error) {
-    console.error('Error retrieving castles from database:', error);
+    log.error('Error retrieving castles from database', error instanceof Error ? error : new Error(String(error)));
     throw new Error('Failed to retrieve castles');
   }
 }
@@ -81,14 +82,14 @@ export async function getCastleById(id: number): Promise<Castle | null> {
     `, [id]);
     
     if (result.rows.length === 0) {
-      console.log(`Castle with ID ${id} not found`);
+      log.debug('Castle not found', { castleId: id });
       return null;
     }
     
-    console.log(`Retrieved castle: ${result.rows[0].name}`);
+    log.database('select', 0, { operation: 'getCastleById', castleId: id, castleName: result.rows[0].name });
     return result.rows[0];
   } catch (error) {
-    console.error(`Error retrieving castle ${id} from database:`, error);
+    log.error('Error retrieving castle from database', error instanceof Error ? error : new Error(String(error)), { castleId: id });
     throw new Error('Failed to retrieve castle');
   }
 }
@@ -114,11 +115,11 @@ export async function addCastle(castleData: Omit<Castle, 'id'>): Promise<Castle>
     ]);
     
     const newCastle = result.rows[0];
-    console.log(`Castle added successfully: ${newCastle.name} (ID: ${newCastle.id})`);
+    log.business('Castle added successfully', { castleId: newCastle.id, castleName: newCastle.name });
     
     return newCastle;
   } catch (error) {
-    console.error('Error adding castle to database:', error);
+    log.error('Error adding castle to database', error instanceof Error ? error : new Error(String(error)));
     throw new Error('Failed to add castle');
   }
 }
@@ -146,16 +147,16 @@ export async function updateCastle(id: number, castleData: Omit<Castle, 'id'>): 
     ]);
     
     if (result.rows.length === 0) {
-      console.log(`Castle with ID ${id} not found for update`);
+      log.debug('Castle not found for update', { castleId: id });
       return null;
     }
     
     const updatedCastle = result.rows[0];
-    console.log(`Castle updated successfully: ${updatedCastle.name} (ID: ${updatedCastle.id})`);
+    log.business('Castle updated successfully', { castleId: updatedCastle.id, castleName: updatedCastle.name });
     
     return updatedCastle;
   } catch (error) {
-    console.error(`Error updating castle ${id} in database:`, error);
+    log.error('Error updating castle in database', error instanceof Error ? error : new Error(String(error)), { castleId: id });
     throw new Error('Failed to update castle');
   }
 }
@@ -174,16 +175,16 @@ export async function deleteCastle(id: number): Promise<boolean> {
     `, [id]);
     
     if (result.rows.length === 0) {
-      console.log(`Castle with ID ${id} not found for deletion`);
+      log.debug('Castle not found for deletion', { castleId: id });
       return false;
     }
     
     const deletedCastle = result.rows[0];
-    console.log(`Castle deleted successfully: ${deletedCastle.name} (ID: ${deletedCastle.id})`);
+    log.business('Castle deleted successfully', { castleId: deletedCastle.id, castleName: deletedCastle.name });
     
     return true;
   } catch (error) {
-    console.error(`Error deleting castle ${id} from database:`, error);
+    log.error('Error deleting castle from database', error instanceof Error ? error : new Error(String(error)), { castleId: id });
     throw new Error('Failed to delete castle');
   }
 }
@@ -195,7 +196,7 @@ export async function updateCastleImageUrls(updates: { id: number; imageUrl: str
   try {
     await ensureInitialized();
     
-    console.log(`Updating image URLs for ${updates.length} castles...`);
+    log.info('Updating castle image URLs', { count: updates.length });
     
     for (const update of updates) {
       await query(`
@@ -204,12 +205,12 @@ export async function updateCastleImageUrls(updates: { id: number; imageUrl: str
         WHERE id = $2
       `, [update.imageUrl, update.id]);
       
-      console.log(`Updated image URL for castle ID ${update.id}`);
+      log.debug('Updated castle image URL', { castleId: update.id });
     }
     
-    console.log('All castle image URLs updated successfully');
+    log.info('All castle image URLs updated successfully');
   } catch (error) {
-    console.error('Error updating castle image URLs in database:', error);
+    log.error('Error updating castle image URLs in database', error instanceof Error ? error : new Error(String(error)));
     throw new Error('Failed to update castle image URLs');
   }
 }
@@ -247,7 +248,7 @@ export async function getCastleStats(): Promise<{
       themes: themesResult.rows
     };
   } catch (error) {
-    console.error('Error retrieving castle statistics:', error);
+    log.error('Error retrieving castle statistics', error instanceof Error ? error : new Error(String(error)));
     throw new Error('Failed to retrieve castle statistics');
   }
 }
@@ -263,25 +264,25 @@ export async function testCastleDatabase(): Promise<boolean> {
     const result = await query('SELECT COUNT(*) as count FROM castles');
     const count = parseInt(result.rows[0].count);
     
-    console.log(`Castle database test successful - ${count} castles found`);
+    log.info('Castle database test successful', { castleCount: count });
     return true;
   } catch (error) {
-    console.error('Castle database test failed:', error);
+    log.error('Castle database test failed', error instanceof Error ? error : new Error(String(error)));
     return false;
   }
 }
 
 // Legacy compatibility functions (for gradual migration)
 export function clearCastleData(): void {
-  console.warn('clearCastleData() called - this function is deprecated with PostgreSQL backend');
+  log.warn('clearCastleData() called - this function is deprecated with PostgreSQL backend');
 }
 
 export function resetCastleData(): void {
-  console.warn('resetCastleData() called - this function is deprecated with PostgreSQL backend');
+  log.warn('resetCastleData() called - this function is deprecated with PostgreSQL backend');
 }
 
 export function getCastleData() {
-  console.warn('getCastleData() called - this function is deprecated with PostgreSQL backend');
+  log.warn('getCastleData() called - this function is deprecated with PostgreSQL backend');
   return [];
 }
 
@@ -320,14 +321,14 @@ export async function updateCastleMaintenance(
     ]);
     
     if (result.rows.length === 0) {
-      console.log(`Castle with ID ${id} not found for maintenance update`);
+      log.debug('Castle not found for maintenance update', { castleId: id });
       return null;
     }
     
-    console.log(`Updated maintenance status for castle: ${result.rows[0].name}`);
+    log.business('Updated castle maintenance status', { castleId: id, castleName: result.rows[0].name });
     return result.rows[0];
   } catch (error) {
-    console.error(`Error updating maintenance status for castle ${id}:`, error);
+    log.error('Error updating castle maintenance status', error instanceof Error ? error : new Error(String(error)), { castleId: id });
     throw new Error('Failed to update castle maintenance status');
   }
 }
@@ -348,10 +349,10 @@ export async function getCastlesByMaintenanceStatus(status: 'available' | 'maint
       ORDER BY id ASC
     `, [status]);
     
-    console.log(`Retrieved ${result.rows.length} castles with status: ${status}`);
+    log.database('select', 0, { operation: 'getCastlesByMaintenanceStatus', status, count: result.rows.length });
     return result.rows;
   } catch (error) {
-    console.error(`Error retrieving castles with status ${status}:`, error);
+    log.error('Error retrieving castles by maintenance status', error instanceof Error ? error : new Error(String(error)), { status });
     throw new Error('Failed to retrieve castles by maintenance status');
   }
 }
