@@ -14,6 +14,20 @@
     "jsx": "preserve",
     "incremental": true,
     "outDir": "./scripts/tmp",
+    
+    // Stricter type checking
+    "exactOptionalPropertyTypes": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noPropertyAccessFromIndexSignature": false,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "useUnknownInCatchVariables": true,
+    "allowUnusedLabels": false,
+    "allowUnreachableCode": false,
+    
     "plugins": [
       {
         "name": "next"
