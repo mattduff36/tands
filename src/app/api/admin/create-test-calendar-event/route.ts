@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/nextauth.config';
 import { getCalendarService, BookingEventData } from '@/lib/calendar/google-calendar';
+import { log } from '@/lib/utils/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    console.log('🔧 Creating test calendar event...');
+          log.info('Creating test calendar event');
     
     const calendarService = getCalendarService();
     
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
     // Create the calendar event
     const eventId = await calendarService.createBookingEvent(testBookingData);
     
-    console.log('✅ Test calendar event created successfully:', eventId);
+          log.info('Test calendar event created successfully', { eventId });
 
     return NextResponse.json({
       success: true,

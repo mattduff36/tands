@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/nextauth.config';
 import { getCalendarService } from '@/lib/calendar/google-calendar';
 import { getBookingsByStatus, updateBookingStatus } from '@/lib/database/bookings';
+import { log } from '@/lib/utils/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,7 +29,7 @@ export async function POST(request: NextRequest) {
     let completedCount = 0;
     let errors: string[] = [];
 
-    console.log(`🔍 Checking ${confirmedBookings.length} confirmed bookings for completion...`);
+    log.info('Checking confirmed bookings for completion', { count: confirmedBookings.length });
 
     for (const booking of confirmedBookings) {
       try {
@@ -56,11 +57,11 @@ export async function POST(request: NextRequest) {
           if (eventEnd < now) {
             // Event has ended, mark booking as completed
             await updateBookingStatus(booking.id, 'completed');
-            console.log(`✅ Marked booking ${bookingRef} as completed (event ended at ${eventEnd.toISOString()})`);
+            log.business('Booking marked as completed after event ended', { bookingRef, eventEnd: eventEnd.toISOString() });
             completedCount++;
           }
         } else {
-          console.log(`⚠️ No calendar event found for booking ${bookingRef}`);
+          log.warn('No calendar event found for booking', { bookingRef });
         }
 
       } catch (error) {
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
 
     const message = `Completed events check finished: ${completedCount} bookings marked as completed`;
     if (errors.length > 0) {
-      console.log('⚠️ Some errors occurred:', errors);
+      log.error('Errors occurred while checking completed events', new Error('Multiple booking completion errors'), { errors });
     }
 
     return NextResponse.json({

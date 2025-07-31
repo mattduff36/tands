@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/nextauth.config';
 import { getPool } from '@/lib/database/connection';
+import { log } from '@/lib/utils/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
     const client = await getPool().connect();
 
     try {
-      console.log('⚠️ Manual database update initiated by admin');
+      log.audit('Manual database update initiated', session.user.email || 'unknown');
       
       let updatedBookings = 0;
       let updatedCastles = 0;
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
 
           if (result.rowCount && result.rowCount > 0) {
             updatedBookings++;
-            console.log(`✅ Updated booking ID ${booking.id}`);
+            log.info('Booking updated successfully', { bookingId: booking.id });
           }
         } catch (error) {
           console.error(`❌ Error updating booking ID ${booking.id}:`, error);
@@ -121,7 +122,7 @@ export async function POST(request: NextRequest) {
 
           if (result.rowCount && result.rowCount > 0) {
             updatedCastles++;
-            console.log(`✅ Updated castle ID ${castle.id}`);
+            log.info('Castle updated successfully', { castleId: castle.id });
           }
         } catch (error) {
           console.error(`❌ Error updating castle ID ${castle.id}:`, error);
@@ -131,7 +132,7 @@ export async function POST(request: NextRequest) {
 
       const message = `Database updated: ${updatedBookings} bookings, ${updatedCastles} castles`;
       if (errors.length > 0) {
-        console.log('⚠️ Some updates failed:', errors);
+        log.error('Some database updates failed', new Error('Multiple update failures'), { errors });
       }
 
       return NextResponse.json({

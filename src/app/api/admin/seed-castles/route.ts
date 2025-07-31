@@ -5,6 +5,7 @@ import { query } from '@/lib/database/connection';
 import { addCastle } from '@/lib/database/castles';
 import fs from 'fs';
 import path from 'path';
+import { log } from '@/lib/utils/logger';
 
 /**
  * POST /api/admin/seed-castles
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    console.log('Starting castle seeding...');
+    log.info('Starting castle seeding');
 
     // Check if castles already exist
     const existingCastles = await query('SELECT COUNT(*) FROM castles');
@@ -47,13 +48,13 @@ export async function POST(request: NextRequest) {
     const rawData = fs.readFileSync(dataPath, 'utf-8');
     const castles = JSON.parse(rawData);
 
-    console.log(`Found ${castles.length} castles to seed`);
+    log.info('Castles found for seeding', { count: castles.length });
 
     // Add castles to database
     for (const castle of castles) {
       const { id, ...castleData } = castle; // Remove id to let DB auto-increment
       await addCastle(castleData);
-      console.log(`Seeded: ${castleData.name}`);
+      log.info('Castle seeded successfully', { name: castleData.name });
     }
 
     return NextResponse.json({ 

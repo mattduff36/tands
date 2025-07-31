@@ -4,6 +4,7 @@ import { SessionProvider } from 'next-auth/react';
 import { useSession } from 'next-auth/react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, ReactNode } from 'react';
+import { log } from '@/lib/utils/logger';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { signOut } from 'next-auth/react';
@@ -41,16 +42,15 @@ function AdminAuthWrapper({ children }: { children: ReactNode }) {
     const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(',').map(email => email.trim()) || [];
     const userEmail = session.user?.email?.toLowerCase();
     
-    console.log('Admin emails:', adminEmails);
-    console.log('User email:', userEmail);
+    log.debug('Admin access check', { adminEmails, userEmail });
     
     if (!userEmail || !adminEmails.some(email => email.toLowerCase() === userEmail)) {
-      console.log('Access denied for user:', userEmail);
+      log.warn('Admin access denied', { userEmail });
       router.push('/admin/error?error=access_denied');
       return;
     }
     
-    console.log('Admin access granted for:', userEmail);
+    log.info('Admin access granted', { userEmail });
   }, [session, status, router]);
 
   if (status === 'loading') {

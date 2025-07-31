@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/nextauth.config';
 import { getPool } from '@/lib/database/connection';
+import { log } from '@/lib/utils/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,7 +21,7 @@ export async function POST(request: NextRequest) {
     const client = await getPool().connect();
 
     try {
-      console.log('🔧 Adding test booking to database...');
+      log.info('Adding test booking to database');
       
       // Check if booking already exists
       const existingBooking = await client.query(
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
         null // agreement_signed_by
       ]);
 
-      console.log('✅ Test booking added successfully');
+      log.info('Test booking added successfully', { bookingRef: 'TS999' });
 
       // Verify the booking was added
       const verifyResult = await client.query(

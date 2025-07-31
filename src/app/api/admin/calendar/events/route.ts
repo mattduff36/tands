@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/nextauth.config';
 import { getCalendarService } from '@/lib/calendar/google-calendar';
+import { log } from '@/lib/utils/logger';
 
 // GET /api/admin/calendar/events - Get calendar events with optional filtering
 export async function GET(request: NextRequest) {
@@ -116,9 +117,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // Add debugging logs
-    console.log('=== CALENDAR EVENTS API CALLED ===');
-    console.log('Timestamp:', new Date().toISOString());
-    console.log('Request body:', JSON.stringify(body, null, 2));
+    log.info('Calendar events API called', { timestamp: new Date().toISOString(), body });
     
     // Validate required fields
     const { customerName, location, duration } = body;
@@ -158,12 +157,12 @@ export async function POST(request: NextRequest) {
       bouncyCastleType: body.bouncyCastleType
     };
 
-    console.log('Calling calendarService.createBookingEvent with data:', JSON.stringify(bookingData, null, 2));
+    log.info('Creating calendar booking event', { bookingData });
 
     const calendarService = getCalendarService();
     const eventId = await calendarService.createBookingEvent(bookingData);
 
-    console.log('Calendar event created successfully with ID:', eventId);
+    log.info('Calendar event created successfully', { eventId });
 
     return NextResponse.json({ 
       success: true,
