@@ -331,9 +331,6 @@ export default function AdminDashboard() {
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                         <h4 className="font-medium text-sm sm:text-base truncate">{booking.customerName}</h4>
                         <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs">
-                            {booking.source}
-                          </Badge>
                           {getStatusBadge(booking.status)}
                         </div>
                       </div>
