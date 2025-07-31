@@ -5,6 +5,7 @@
 
 import { getPool } from './connection';
 import { BookingStatus } from '@/lib/types/booking';
+import { measureDatabaseOperation } from '@/lib/utils/performance-monitor';
 // import { log } from '@/lib/utils/logger'; // Temporarily disabled
 
 export interface PendingBooking {
@@ -472,8 +473,9 @@ export async function createConfirmedBooking(booking: {
 
 // Get all bookings by status
 export async function getBookingsByStatus(status?: string): Promise<PendingBooking[]> {
-  const client = await getPool().connect();
-  try {
+  return measureDatabaseOperation('getBookingsByStatus', async () => {
+    const client = await getPool().connect();
+    try {
     let query = `SELECT 
       id, booking_ref, customer_name, customer_email, customer_phone, customer_address,
       castle_id, castle_name, date, payment_method, total_price, deposit, status, notes,
@@ -528,12 +530,13 @@ export async function getBookingsByStatus(status?: string): Promise<PendingBooki
       agreementViewedAt: undefined,
       auditTrail: undefined
     }));
-  } catch (error) {
-    console.error('Error fetching bookings:', error);
-    throw error;
-  } finally {
-    client.release();
-  }
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }, { status });
 }
 
 // Update booking status with proper flow validation

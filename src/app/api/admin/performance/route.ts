@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/nextauth.config';
 import { getPoolStats } from '@/lib/database/connection';
+import { performanceMonitor } from '@/lib/utils/performance-monitor';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +38,9 @@ export async function GET(request: NextRequest) {
       healthStatus = 'critical';
     }
 
+    // Get performance monitoring data
+    const performanceSummary = performanceMonitor.getSummary();
+    
     const performanceData = {
       timestamp: new Date().toISOString(),
       database: {
@@ -46,6 +50,20 @@ export async function GET(request: NextRequest) {
           healthStatus,
         },
         recommendations: generateRecommendations(poolStats, utilization),
+      },
+      performance: {
+        monitoring: performanceSummary,
+        optimizations: {
+          caching: {
+            serverSide: 'Implemented - /api/castles cached for 30min',
+            clientSide: 'Implemented - React Query with optimized cache durations',
+          },
+          database: {
+            indexes: 'Implemented - idx_bookings_status_date, idx_bookings_customer_email, idx_castles_maintenance_status',
+            queries: 'Optimized - Replaced SELECT * with specific columns',
+            connectionPool: 'Optimized - Production-ready pool settings',
+          },
+        },
       },
       system: {
         nodeEnv: process.env.NODE_ENV,

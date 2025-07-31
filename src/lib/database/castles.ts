@@ -4,6 +4,7 @@
  */
 
 import { query, initializeDatabase } from './connection';
+import { measureDatabaseOperation } from '@/lib/utils/performance-monitor';
 //import { log } from '@/lib/utils/logger';
 
 export interface Castle {
@@ -43,25 +44,27 @@ async function ensureInitialized() {
  * Get all castles from database
  */
 export async function getCastles(): Promise<Castle[]> {
-  try {
-    await ensureInitialized();
-    
-    const result = await query(`
-      SELECT id, name, theme, size, price, description, image_url as "imageUrl",
-             COALESCE(maintenance_status, 'available') as "maintenanceStatus", 
-             maintenance_notes as "maintenanceNotes",
-             maintenance_start_date as "maintenanceStartDate", 
-             maintenance_end_date as "maintenanceEndDate"
-      FROM castles 
-      ORDER BY id ASC
-    `);
-    
-    console.log('select', 0, { operation: 'getCastles', count: result.rows.length });
-    return result.rows;
-  } catch (error) {
-    console.error('Error retrieving castles from database', error instanceof Error ? error : new Error(String(error)));
-    throw new Error('Failed to retrieve castles');
-  }
+  return measureDatabaseOperation('getCastles', async () => {
+    try {
+      await ensureInitialized();
+      
+      const result = await query(`
+        SELECT id, name, theme, size, price, description, image_url as "imageUrl",
+               COALESCE(maintenance_status, 'available') as "maintenanceStatus", 
+               maintenance_notes as "maintenanceNotes",
+               maintenance_start_date as "maintenanceStartDate", 
+               maintenance_end_date as "maintenanceEndDate"
+        FROM castles 
+        ORDER BY id ASC
+      `);
+      
+      console.log('select', 0, { operation: 'getCastles', count: result.rows.length });
+      return result.rows;
+    } catch (error) {
+      console.error('Error retrieving castles from database', error instanceof Error ? error : new Error(String(error)));
+      throw new Error('Failed to retrieve castles');
+    }
+  }, { table: 'castles' });
 }
 
 /**

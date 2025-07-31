@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 //import { log } from '@/lib/utils/logger';
+import { performanceMonitor } from '@/lib/utils/performance-monitor';
 
 // Create connection pool
 let pool: Pool | null = null;
@@ -80,11 +81,16 @@ export function getPoolStats() {
  */
 export async function query(text: string, params: any[] = []) {
   const pool = getPool();
-  const start = Date.now();
+  const queryType = text.trim().split(' ')[0].toUpperCase();
+  const timer = performanceMonitor.startTimer(`db_query_${queryType}`, {
+    queryLength: text.length,
+    paramCount: params.length,
+    queryPreview: text.substring(0, 50)
+  });
   
   try {
     const res = await pool.query(text, params);
-    const duration = Date.now() - start;
+    const duration = timer.end();
     
     if (process.env.NODE_ENV === 'development') {
       console.log('query', duration, { 
@@ -104,10 +110,9 @@ export async function query(text: string, params: any[] = []) {
     
     return res;
   } catch (error) {
-    const duration = Date.now() - start;
+    timer.end();
     console.error('Database query error', {
       error: error instanceof Error ? error.message : String(error),
-      duration: `${duration}ms`,
       query: text.substring(0, 100) + (text.length > 100 ? '...' : ''),
       poolStats: getPoolStats()
     });
