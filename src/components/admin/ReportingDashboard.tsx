@@ -143,7 +143,9 @@ export function ReportingDashboard({ className }: ReportingDashboardProps) {
       }
       
       const data: BookingQueryResult = await response.json();
-      setRecentBookings(data.bookings);
+      // Filter out expired bookings from recent bookings
+      const filteredBookings = (data.bookings || []).filter((booking: any) => booking.status !== 'expired');
+      setRecentBookings(filteredBookings);
     } catch (error) {
       console.error('Error fetching recent bookings:', error);
     }

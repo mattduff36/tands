@@ -73,8 +73,11 @@ export default function AdminDashboard() {
       const bookingsData = await bookingsResponse.json();
       const allBookings = bookingsData.bookings || [];
       
-      // Get recent bookings (first 5)
-      const recent = allBookings.slice(0, 5).map((booking: any) => ({
+      // Get recent bookings (first 5, excluding expired)
+      const recent = allBookings
+        .filter((booking: any) => booking.status !== 'expired')
+        .slice(0, 5)
+        .map((booking: any) => ({
         id: booking.id,
         customerName: booking.customerName,
         castleName: booking.castleName,

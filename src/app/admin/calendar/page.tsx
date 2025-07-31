@@ -95,11 +95,24 @@ export default function AdminCalendar() {
       setCalendarStatus(statusData);
 
       if (statusData.status === 'connected') {
-        // Fetch events for current month
+        // Calculate date range that includes adjacent month dates visible in calendar
         const year = currentDate.getFullYear();
-        const month = currentDate.getMonth() + 1;
+        const month = currentDate.getMonth();
+        const firstDay = new Date(year, month, 1);
+        const startDate = new Date(firstDay);
+        startDate.setDate(startDate.getDate() - firstDay.getDay()); // Start from Sunday (may be previous month)
         
-        const eventsResponse = await fetch(`/api/admin/calendar/events?year=${year}&month=${month}`);
+        // End date should be 6 weeks from start to cover all possible calendar days
+        const endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + (6 * 7) - 1);
+        
+        // Format dates for API call
+        const startDateStr = startDate.toISOString().split('T')[0];
+        const endDateStr = endDate.toISOString().split('T')[0];
+        
+        console.log(`Fetching calendar events from ${startDateStr} to ${endDateStr}`);
+        
+        const eventsResponse = await fetch(`/api/admin/calendar/events?startDate=${startDateStr}&endDate=${endDateStr}`);
         const eventsData = await eventsResponse.json();
         
         if (eventsData.events) {

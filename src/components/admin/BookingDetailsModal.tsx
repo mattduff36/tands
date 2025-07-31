@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { X, Edit2, Trash2, CheckCircle, FileText, Mail, UserCheck } from 'lucide-react';
+import { X, Edit2, Trash2, CheckCircle, FileText, Mail, UserCheck, RefreshCw, FileCheck } from 'lucide-react';
 import React from 'react';
 
 export interface CalendarEvent {
@@ -34,6 +34,8 @@ interface BookingDetailsModalProps {
   onApproveAndSendAgreement?: (eventId: string) => void;
   onEditAndSendAgreement?: (event: CalendarEvent) => void;
   onExpireBooking?: (eventId: string) => void;
+  onResendAgreement?: (bookingRef: string) => void;
+  onManualSign?: (bookingRef: string) => void;
   formatEventDate: (event: CalendarEvent) => string;
   formatEventTime: (event: CalendarEvent) => string;
   getStatusColor: (status: string) => string;
@@ -49,6 +51,8 @@ export function BookingDetailsModal({
   onApproveAndSendAgreement,
   onEditAndSendAgreement,
   onExpireBooking,
+  onResendAgreement,
+  onManualSign,
   formatEventDate,
   formatEventTime,
   getStatusColor
@@ -58,12 +62,12 @@ export function BookingDetailsModal({
   const status = event.status || 'confirmed';
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+        <div className="p-4 sm:p-6">
           {/* Modal Header */}
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Booking Details</h2>
+          <div className="flex items-center justify-between mb-4 sm:mb-6">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Booking Details</h2>
             <Button
               variant="outline"
               size="sm"
@@ -104,14 +108,15 @@ export function BookingDetailsModal({
             <div className="flex flex-col gap-3 pt-4 border-t">
               {/* Primary Actions for Pending Bookings */}
               {status === 'pending' && event.id.startsWith('db_') && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3">
                   {onApproveAndSendAgreement && (
                     <Button
                       onClick={() => onApproveAndSendAgreement(event.id)}
                       className="bg-green-600 hover:bg-green-700 text-white"
                     >
                       <Mail className="w-4 h-4 mr-2" />
-                      Approve & Send Agreement
+                      <span className="hidden sm:inline">Approve & Send Agreement</span>
+                      <span className="sm:hidden">Approve & Send</span>
                     </Button>
                   )}
                   {onEditAndSendAgreement && (
@@ -120,14 +125,15 @@ export function BookingDetailsModal({
                       className="bg-blue-600 hover:bg-blue-700 text-white"
                     >
                       <Edit2 className="w-4 h-4 mr-2" />
-                      Edit & Send Agreement
+                      <span className="hidden sm:inline">Edit & Send Agreement</span>
+                      <span className="sm:hidden">Edit & Send</span>
                     </Button>
                   )}
                 </div>
               )}
 
               {/* Secondary Actions */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 {/* Legacy Approve button for backward compatibility */}
                 {status === 'pending' && onApprove && !event.id.startsWith('db_') && (
                   <Button
@@ -153,7 +159,8 @@ export function BookingDetailsModal({
                     className="text-blue-600 border-blue-200 hover:bg-blue-50"
                   >
                     <FileText className="w-4 h-4 mr-2" />
-                    Manual Agreement
+                    <span className="hidden sm:inline">Manual Agreement</span>
+                    <span className="sm:hidden">Manual</span>
                   </Button>
                 )}
 
@@ -178,6 +185,47 @@ export function BookingDetailsModal({
                     <X className="w-4 h-4 mr-2" />
                     Expire
                   </Button>
+                )}
+
+                {/* Agreement actions for confirmed bookings awaiting signature */}
+                {status === 'confirmed' && event.id.startsWith('db_') && (
+                  <>
+                    {/* Check if agreement is not signed by looking for "Awaiting Signature" in description */}
+                    {(event.description?.includes('Awaiting Signature') || !event.description?.includes('Agreement Signed')) && (
+                      <>
+                        {onResendAgreement && (
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              const bookingRef = event.description?.match(/Booking Ref: (TS\d{3})/)?.[1] || 
+                                             event.id.replace('db_', '');
+                              onResendAgreement(bookingRef);
+                            }}
+                            className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                          >
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                            <span className="hidden sm:inline">Resend Agreement</span>
+                            <span className="sm:hidden">Resend</span>
+                          </Button>
+                        )}
+                        {onManualSign && (
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              const bookingRef = event.description?.match(/Booking Ref: (TS\d{3})/)?.[1] || 
+                                             event.id.replace('db_', '');
+                              onManualSign(bookingRef);
+                            }}
+                            className="text-green-600 border-green-200 hover:bg-green-50"
+                          >
+                            <FileCheck className="w-4 h-4 mr-2" />
+                            <span className="hidden lg:inline">Manual Sign</span>
+                            <span className="lg:hidden">Sign</span>
+                          </Button>
+                        )}
+                      </>
+                    )}
+                  </>
                 )}
 
                 {/* Delete button */}

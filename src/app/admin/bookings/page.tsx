@@ -102,7 +102,12 @@ interface CalendarStatus {
 export default function AdminBookings() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [filter, setFilter] = useState('all');
+  const [statusFilters, setStatusFilters] = useState({
+    pending: true,
+    confirmed: true,
+    completed: true,
+    expired: false
+  });
   const [searchTerm, setSearchTerm] = useState('');
 
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -185,11 +190,24 @@ export default function AdminBookings() {
       setCalendarStatus(statusData);
 
       if (statusData.status === 'connected') {
-        // Fetch events for current month
+        // Calculate date range that includes adjacent month dates visible in calendar
         const year = currentDate.getFullYear();
-        const month = currentDate.getMonth() + 1;
+        const month = currentDate.getMonth();
+        const firstDay = new Date(year, month, 1);
+        const startDate = new Date(firstDay);
+        startDate.setDate(startDate.getDate() - firstDay.getDay()); // Start from Sunday (may be previous month)
         
-        const eventsResponse = await fetch(`/api/admin/calendar/events?year=${year}&month=${month}`);
+        // End date should be 6 weeks from start to cover all possible calendar days
+        const endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + (6 * 7) - 1);
+        
+        // Format dates for API call
+        const startDateStr = startDate.toISOString().split('T')[0];
+        const endDateStr = endDate.toISOString().split('T')[0];
+        
+        console.log(`Fetching calendar events from ${startDateStr} to ${endDateStr}`);
+        
+        const eventsResponse = await fetch(`/api/admin/calendar/events?startDate=${startDateStr}&endDate=${endDateStr}`);
         const eventsData = await eventsResponse.json();
         
         if (eventsData.events) {
@@ -229,12 +247,8 @@ export default function AdminBookings() {
     // Filter database bookings based on status and search
     const databaseBookings = bookings
       .filter(booking => {
-        // Apply status filter
-        if (filter === 'pending' && booking.status !== 'pending') return false;
-        if (filter === 'confirmed' && booking.status !== 'confirmed') return false;
-        if (filter === 'completed' && booking.status !== 'completed') return false;
-        // Exclude expired bookings from all views except debug
-        if (booking.status === 'expired') return false;
+        // Apply status filter based on selected statuses
+        if (!statusFilters[booking.status as keyof typeof statusFilters]) return false;
         
         const matchesSearch = searchTerm === '' || 
           booking.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -256,7 +270,7 @@ export default function AdminBookings() {
     console.log('Database bookings filtered:', databaseBookings.length);
 
     return databaseBookings;
-  }, [bookings, filter, searchTerm]);
+  }, [bookings, statusFilters, searchTerm]);
 
   const filteredBookings = createFilteredBookingsList();
 
@@ -325,6 +339,32 @@ export default function AdminBookings() {
     } catch (error) {
       console.error('Error confirming booking:', error);
       toast.error('Error confirming booking');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Resend hire agreement email
+  const handleResendAgreement = async (bookingRef: string) => {
+    if (!confirm('📧 Resend Hire Agreement\n\nThis will send the hire agreement email to the customer again.\n\nProceed?')) {
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const response = await fetch(`/api/admin/bookings/${bookingRef}/resend-agreement`, {
+        method: 'POST',
+      });
+
+      if (response.ok) {
+        toast.success('Hire agreement email resent successfully!');
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Failed to resend agreement');
+      }
+    } catch (error) {
+      console.error('Error resending agreement:', error);
+      toast.error('Error resending hire agreement');
     } finally {
       setIsProcessing(false);
     }
@@ -426,10 +466,24 @@ export default function AdminBookings() {
 
   // Helper to convert Booking to CalendarEvent
   function bookingToCalendarEvent(booking: Booking): CalendarEvent {
+    // Determine agreement status text
+    const agreementStatus = booking.agreementSigned 
+      ? 'Agreement Signed' 
+      : (booking.status === 'confirmed' ? 'Awaiting Signature' : '');
+    
+    const description = `${booking.notes || ''}
+Booking Ref: ${booking.bookingRef}
+Customer: ${booking.customerName}
+Email: ${booking.customerEmail}
+Phone: ${booking.customerPhone}
+Castle: ${booking.castleName}
+Total: £${booking.totalPrice}
+Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` : ''}`;
+
     return {
       id: `db_${booking.id}`, // Prefix to identify database bookings
       summary: `🏰 ${booking.customerName} - ${booking.castleName}`,
-      description: `${booking.notes || ''}\nBooking Ref: ${booking.bookingRef}`,
+      description: description,
       location: booking.customerAddress,
       start: { date: booking.date },
       end: { date: booking.date },
@@ -1153,6 +1207,22 @@ export default function AdminBookings() {
     setShowDetailsModal(true);
   };
 
+  // Helper function to extract customer name from calendar event summary
+  const extractCustomerNameFromSummary = (summary: string): string => {
+    if (!summary) return '';
+    
+    // Try to match the pattern: 🏰 CustomerName - CastleType
+    const match = summary.match(/🏰\s(.+?)\s-/);
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+    
+    // Fallback: remove emoji and take everything before the first " - "
+    const cleaned = summary.replace('🏰 ', '').trim();
+    const parts = cleaned.split(' - ');
+    return parts[0].trim();
+  };
+
   const handleEditEvent = (event: CalendarEvent) => {
     // Parse event data back into form format
     const eventStart = new Date(event.start?.dateTime || event.start?.date || '');
@@ -1178,7 +1248,7 @@ export default function AdminBookings() {
     
     setBookingForm({
       castle: castle?.id.toString() || '',
-      customerName: event.summary?.replace('🏰 ', '') || '',
+      customerName: extractCustomerNameFromSummary(event.summary || ''),
       customerEmail: email,
       customerPhone: phone,
       address: event.location || '',
@@ -1224,12 +1294,46 @@ export default function AdminBookings() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Bookings</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl font-bold text-gray-900">Bookings</h1>
+          <p className="mt-2 text-gray-600">
             Manage pending and confirmed bookings
           </p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2 sm:space-x-2 sm:gap-0">
+          <Button
+            onClick={refreshCalendar}
+            variant="outline"
+            size="sm"
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Button onClick={() => {
+            setIsEditing(false);
+            setSelectedEvent(null);
+            setBookingForm({
+              castle: '',
+              customerName: '',
+              customerEmail: '',
+              customerPhone: '',
+              address: '',
+              singleDate: '',
+              multipleDate: false,
+              startDate: '',
+              endDate: '',
+              overnight: false,
+              additionalCosts: false,
+              additionalCostsDescription: '',
+              additionalCostsAmount: 0
+            });
+            setShowBookingModal(true);
+          }}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Event
+          </Button>
         </div>
       </div>
 
@@ -1237,35 +1341,59 @@ export default function AdminBookings() {
       <Card>
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                         <CardTitle>
-               {filter === 'all' ? 'All Bookings' : 
-                filter === 'pending' ? 'Pending Bookings' :
-                filter === 'confirmed' ? 'Confirmed Bookings' :
-                filter === 'completed' ? 'Completed Bookings' : 'Bookings'} ({filteredBookings.length})
-             </CardTitle>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1 sm:w-64">
-                <div className="relative">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search bookings..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-8"
-                  />
-                </div>
+            <div className="flex-1 sm:w-64">
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search bookings..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-8"
+                />
               </div>
-              <Select value={filter} onValueChange={setFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Bookings</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="confirmed">Confirmed</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                </SelectContent>
-              </Select>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative">
+                <Select>
+                  <SelectTrigger className="w-full sm:w-48">
+                    <div className="flex items-center gap-2">
+                      <Filter className="w-4 h-4" />
+                      <SelectValue placeholder="Filter by Status" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <div className="p-2 space-y-2">
+                      <div className="text-sm font-medium text-gray-700 mb-2">Select Statuses:</div>
+                      {[
+                        { key: 'pending', label: 'Pending', icon: Clock },
+                        { key: 'confirmed', label: 'Confirmed', icon: CheckCircle },
+                        { key: 'completed', label: 'Completed', icon: CheckCircle },
+                        { key: 'expired', label: 'Expired', icon: X }
+                      ].map(({ key, label, icon: Icon }) => (
+                        <div key={key} className="flex items-center space-x-2 p-1 hover:bg-gray-50 rounded">
+                          <Checkbox
+                            id={`status-${key}`}
+                            checked={statusFilters[key as keyof typeof statusFilters]}
+                            onCheckedChange={(checked) =>
+                              setStatusFilters(prev => ({
+                                ...prev,
+                                [key]: checked
+                              }))
+                            }
+                          />
+                          <Label
+                            htmlFor={`status-${key}`}
+                            className="flex items-center gap-2 text-sm cursor-pointer flex-1"
+                          >
+                            <Icon className="w-4 h-4" />
+                            {label}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -1280,7 +1408,7 @@ export default function AdminBookings() {
               <AlertCircle className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">No bookings found</h3>
               <p className="mt-1 text-sm text-gray-500">
-                {searchTerm || filter !== 'all' 
+                {searchTerm || !Object.values(statusFilters).every(Boolean) 
                   ? 'Try adjusting your search or filter criteria.' 
                   : 'Customer bookings will appear here once submitted.'}
               </p>
@@ -1290,18 +1418,17 @@ export default function AdminBookings() {
               {filteredBookings.map((booking) => (
                 <div
                   key={booking.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border rounded-lg hover:bg-gray-50 gap-3"
                 >
                   <div className="flex-1">
-                    <div className="flex items-center gap-4 mb-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-2">
                       <h3 className="font-medium">{booking.customerName}</h3>
-                      {getStatusBadge(booking.status)}
-                      {getAgreementBadge(booking)}
-                      <Badge variant={booking.source === 'database' ? 'default' : 'secondary'}>
-                        {booking.source === 'database' ? 'DB' : 'Calendar'}
-                      </Badge>
+                      <div className="flex gap-2">
+                        {getStatusBadge(booking.status)}
+                        {getAgreementBadge(booking)}
+                      </div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-2 text-sm text-gray-600">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-sm text-gray-600">
                       {booking.status !== 'pending' && (
                         <div>
                           <strong>Booking Ref:</strong> {booking.bookingRef}
@@ -1318,7 +1445,7 @@ export default function AdminBookings() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 sm:ml-4">
                     <Button
                       variant="outline"
                       size="sm"
@@ -1326,6 +1453,7 @@ export default function AdminBookings() {
                         // Since filteredBookings only contains database bookings, always convert to calendar event format
                         handleViewDetails(bookingToCalendarEvent(booking));
                       }}
+                      className="w-full sm:w-auto"
                     >
                       <Eye className="h-4 w-4 mr-1" />
                       View
@@ -1345,47 +1473,11 @@ export default function AdminBookings() {
       {/* Calendar Section - Copied from Calendar Tab */}
       <div className="space-y-6">
         {/* Calendar Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Calendar</h1>
-            <p className="mt-2 text-gray-600">
-              Manage your bookings and schedule
-            </p>
-          </div>
-          <div className="mt-4 sm:mt-0 flex space-x-2">
-            <Button
-              onClick={refreshCalendar}
-              variant="outline"
-              size="sm"
-              disabled={isRefreshing}
-            >
-              <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-            <Button onClick={() => {
-              setIsEditing(false);
-              setSelectedEvent(null);
-              setBookingForm({
-                castle: '',
-                customerName: '',
-                customerEmail: '',
-                customerPhone: '',
-                address: '',
-                singleDate: '',
-                multipleDate: false,
-                startDate: '',
-                endDate: '',
-                overnight: false,
-                additionalCosts: false,
-                additionalCostsDescription: '',
-                additionalCostsAmount: 0
-              });
-              setShowBookingModal(true);
-            }}>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Event
-            </Button>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Calendar</h1>
+          <p className="mt-2 text-gray-600">
+            Manage your bookings and schedule
+          </p>
         </div>
 
         
@@ -1478,7 +1570,10 @@ export default function AdminBookings() {
                                     }}
                                   >
                                     <span className="truncate">
-                                      {event.summary?.replace('🏰 ', '').replace('🔧 ', '')}
+                                      {event.summary?.includes('🏰') 
+                                        ? extractCustomerNameFromSummary(event.summary)
+                                        : event.summary?.replace('🔧 ', '')
+                                      }
                                     </span>
                                   </div>
                                 );
@@ -1532,7 +1627,12 @@ export default function AdminBookings() {
                       .map((event) => (
                         <div key={event.id} className="border rounded-lg p-3 hover:bg-gray-50">
                           <div className="flex items-start justify-between mb-2">
-                            <h4 className="font-medium text-sm line-clamp-2">{event.summary}</h4>
+                            <h4 className="font-medium text-sm line-clamp-2">
+                              {event.summary?.includes('🏰') 
+                                ? extractCustomerNameFromSummary(event.summary)
+                                : event.summary
+                              }
+                            </h4>
                             <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getStatusColor(getEventStatus(event))}`}>
                               {getEventStatus(event)}
                             </span>
@@ -1635,6 +1735,12 @@ export default function AdminBookings() {
               if (booking && booking.status === 'pending') {
                 handleExpireBooking(booking.id);
               }
+            } : undefined}
+            onResendAgreement={selectedEvent.id.startsWith('db_') ? (bookingRef: string) => {
+              handleResendAgreement(bookingRef);
+            } : undefined}
+            onManualSign={selectedEvent.id.startsWith('db_') ? (bookingRef: string) => {
+              window.open(`/hire-agreement?bookingRef=${bookingRef}`, '_blank');
             } : undefined}
             formatEventDate={formatEventDate}
             formatEventTime={formatEventTime}
