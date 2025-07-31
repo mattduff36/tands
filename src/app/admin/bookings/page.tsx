@@ -510,6 +510,7 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
 
     // Parse the booking data into form format
     const bookingDate = new Date(booking.date);
+    const dateString = bookingDate.toISOString().split('T')[0] || '';
     
     // Find castle by name to get the correct ID - use more robust matching
     let castle = castles.find(c => c.name === booking.castleName);
@@ -529,7 +530,7 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
       customerEmail: booking.customerEmail,
       customerPhone: booking.customerPhone,
       address: booking.customerAddress,
-      singleDate: bookingDate.toISOString().split('T')[0],
+      singleDate: dateString,
       multipleDate: false,
       startDate: '',
       endDate: '',
