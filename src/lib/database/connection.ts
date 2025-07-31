@@ -6,22 +6,73 @@ let pool: Pool | null = null;
 
 function getPool(): Pool {
   if (!pool) {
+    const isProduction = process.env.NODE_ENV === 'production';
+    
     pool = new Pool({
       connectionString: process.env.DATABASE_URL,
       ssl: { rejectUnauthorized: false },
-      max: 10, // Maximum number of connections in pool
-      idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
-      connectionTimeoutMillis: 2000, // Return error after 2 seconds if connection could not be established
+      
+      // Connection pool sizing - optimized for Vercel/serverless environment
+      max: isProduction ? 20 : 5, // Max connections: more in production, fewer in dev
+      min: isProduction ? 2 : 1, // Min connections: keep some warm connections in production
+      
+      // Timeouts - more generous for production reliability
+      idleTimeoutMillis: isProduction ? 60000 : 30000, // Keep idle connections longer in production
+      connectionTimeoutMillis: isProduction ? 5000 : 2000, // More time to establish connections in production
+      
+      // Query and statement timeouts to prevent hanging
+      statement_timeout: 30000, // 30 seconds max per statement
+      query_timeout: 25000, // 25 seconds max per query (shorter than statement_timeout)
+      
+      // Connection validation and recovery
+      application_name: 'taylors-smiths-booking-system',
+      keepAlive: true,
+      keepAliveInitialDelayMillis: 10000, // 10 seconds before first keep-alive
     });
     
-    // Handle pool errors
+    // Enhanced error handling with connection pool monitoring
     pool.on('error', (err) => {
       console.error('Unexpected error on idle client', err);
-      process.exit(-1);
+      if (pool) {
+        console.error('Pool stats:', {
+          totalCount: pool.totalCount,
+          idleCount: pool.idleCount,
+          waitingCount: pool.waitingCount
+        });
+      }
+      
+      // Don't exit process in production - let it recover
+      if (!isProduction) {
+        process.exit(-1);
+      }
     });
+    
+    // Log pool creation in development
+    if (!isProduction) {
+      console.log('Database pool created with optimized settings:', {
+        max: pool.options.max,
+        min: pool.options.min,
+        idleTimeoutMillis: pool.options.idleTimeoutMillis,
+        connectionTimeoutMillis: pool.options.connectionTimeoutMillis
+      });
+    }
   }
   
   return pool;
+}
+
+/**
+ * Get database pool statistics for monitoring
+ */
+export function getPoolStats() {
+  const currentPool = getPool();
+  return {
+    totalCount: currentPool.totalCount,
+    idleCount: currentPool.idleCount,
+    waitingCount: currentPool.waitingCount,
+    maxConnections: currentPool.options.max,
+    minConnections: currentPool.options.min,
+  };
 }
 
 /**
@@ -36,12 +87,30 @@ export async function query(text: string, params: any[] = []) {
     const duration = Date.now() - start;
     
     if (process.env.NODE_ENV === 'development') {
-      console.log('query', duration, { rows: res.rowCount });
+      console.log('query', duration, { 
+        rows: res.rowCount,
+        poolStats: getPoolStats()
+      });
+    }
+    
+    // Log slow queries in production for monitoring
+    if (process.env.NODE_ENV === 'production' && duration > 5000) {
+      console.warn('Slow query detected', {
+        duration: `${duration}ms`,
+        query: text.substring(0, 100) + (text.length > 100 ? '...' : ''),
+        poolStats: getPoolStats()
+      });
     }
     
     return res;
   } catch (error) {
-    console.error('Database query error', error instanceof Error ? error : new Error(String(error)));
+    const duration = Date.now() - start;
+    console.error('Database query error', {
+      error: error instanceof Error ? error.message : String(error),
+      duration: `${duration}ms`,
+      query: text.substring(0, 100) + (text.length > 100 ? '...' : ''),
+      poolStats: getPoolStats()
+    });
     throw error;
   }
 }
