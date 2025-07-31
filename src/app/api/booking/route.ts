@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { bookingSchema, validateAndSanitize } from '@/lib/validation/schemas';
-import { createBooking } from '@/lib/database/bookings';
+import { createPendingBooking } from '@/lib/database/bookings';
 import { getCastleById } from '@/lib/database/castles';
-import { sendBookingConfirmationEmail } from '@/lib/email/email-service';
+import { sendAgreementEmail } from '@/lib/email/email-service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,18 +40,38 @@ export async function POST(request: NextRequest) {
     }
 
     // Create booking in database
-    const booking = await createBooking({
-      ...validatedData,
-      status: 'pending',
-      paymentStatus: 'pending',
-      createdAt: new Date().toISOString(),
+    const booking = await createPendingBooking({
+      customerName: validatedData.customerName,
+      customerEmail: validatedData.customerEmail,
+      customerPhone: validatedData.customerPhone || '',
+      customerAddress: validatedData.eventAddress,
+      castleId: validatedData.castleId,
+      castleName: castle.name,
+      date: new Date(validatedData.eventDate).toISOString().split('T')[0],
+      paymentMethod: 'pending',
+      totalPrice: validatedData.totalPrice,
+      deposit: Math.floor(validatedData.totalPrice * 0.3), // 30% deposit
+      notes: validatedData.specialRequests,
     });
 
-    // Send confirmation email
+    // Send agreement email
     try {
-      await sendBookingConfirmationEmail(booking, castle);
+      await sendAgreementEmail({
+        bookingId: booking.id,
+        bookingRef: booking.bookingRef,
+        customerName: booking.customerName,
+        customerEmail: booking.customerEmail,
+        customerPhone: booking.customerPhone,
+        castleName: booking.castleName,
+        date: booking.date,
+        startDate: validatedData.eventDate,
+        endDate: new Date(new Date(validatedData.eventDate).getTime() + (validatedData.eventDuration * 60 * 60 * 1000)).toISOString(),
+        totalCost: booking.totalPrice,
+        deposit: booking.deposit,
+        notes: booking.notes,
+      });
     } catch (emailError) {
-      console.error('Failed to send confirmation email:', emailError);
+      console.error('Failed to send agreement email:', emailError);
       // Don't fail the booking if email fails
     }
 

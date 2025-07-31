@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { MapPin, Truck, Award } from "lucide-react";
+import { MapPin, Truck } from "lucide-react";
 
 const AboutPage = () => {
   return (
