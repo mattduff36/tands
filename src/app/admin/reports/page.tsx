@@ -254,7 +254,7 @@ export default function AdminReports() {
                       <span className="text-sm text-gray-500 ml-1">vs previous period</span>
                     </div>
                   </div>
-                  <Building2 className="h-8 w-8 text-blue-600" />
+                                     <Calendar className="h-8 w-8 text-blue-600" />
                 </div>
               </CardContent>
             </Card>
@@ -269,7 +269,7 @@ export default function AdminReports() {
                      <span className="text-sm text-gray-500">Based on all active bookings</span>
                    </div>
                   </div>
-                  <Trophy className="h-8 w-8 text-purple-600" />
+                                     <Calendar className="h-8 w-8 text-purple-600" />
                 </div>
               </CardContent>
             </Card>
