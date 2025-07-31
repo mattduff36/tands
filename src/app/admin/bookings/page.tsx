@@ -315,7 +315,7 @@ export default function AdminBookings() {
       return;
     }
 
-    setIsProcessing(true);
+
     try {
       const response = await fetch(`/api/admin/bookings/${bookingId}/confirm`, {
         method: 'POST',
@@ -333,7 +333,7 @@ export default function AdminBookings() {
       console.error('Error confirming booking:', error);
       toast.error('Error confirming booking');
     } finally {
-      setIsProcessing(false);
+  
     }
   };
 
@@ -343,7 +343,7 @@ export default function AdminBookings() {
       return;
     }
 
-    setIsProcessing(true);
+
     try {
       const response = await fetch(`/api/admin/bookings/${bookingId}/send-agreement`, {
         method: 'POST',
@@ -359,13 +359,13 @@ export default function AdminBookings() {
       console.error('Error resending agreement:', error);
       toast.error('Error resending hire agreement');
     } finally {
-      setIsProcessing(false);
+  
     }
   };
 
   // Update booking status
   const handleUpdateStatus = async (bookingId: number, status: string) => {
-    setIsProcessing(true);
+
     try {
       const response = await fetch(`/api/admin/bookings/${bookingId}`, {
         method: 'PUT',
@@ -387,7 +387,7 @@ export default function AdminBookings() {
       console.error('Error updating booking:', error);
       toast.error('Error updating booking');
     } finally {
-      setIsProcessing(false);
+  
     }
   };
 
@@ -397,7 +397,7 @@ export default function AdminBookings() {
       return;
     }
 
-    setIsProcessing(true);
+
     try {
       const response = await fetch(`/api/admin/bookings/${bookingId}`, {
         method: 'DELETE',
@@ -415,7 +415,7 @@ export default function AdminBookings() {
       console.error('Error deleting booking:', error);
       toast.error('Error deleting booking');
     } finally {
-      setIsProcessing(false);
+  
     }
   };
 
@@ -425,7 +425,7 @@ export default function AdminBookings() {
       return;
     }
 
-    setIsProcessing(true);
+
     try {
       const response = await fetch(`/api/admin/calendar/events/${eventId}`, {
         method: 'DELETE',
@@ -443,7 +443,7 @@ export default function AdminBookings() {
       console.error('Error deleting calendar event:', error);
       toast.error('Error deleting calendar event');
     } finally {
-      setIsProcessing(false);
+  
     }
   };
 
@@ -495,7 +495,7 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
       return;
     }
 
-    setIsProcessing(true);
+
     try {
       // First, confirm the booking
       const confirmResponse = await fetch(`/api/admin/bookings/${bookingId}/confirm`, {
@@ -525,7 +525,7 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
       console.error('Error approving booking:', error);
       toast.error('Error approving booking');
     } finally {
-      setIsProcessing(false);
+  
     }
   };
 
@@ -580,7 +580,7 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
       return;
     }
 
-    setIsProcessing(true);
+
     try {
       const response = await fetch(`/api/admin/bookings/${bookingId}`, {
         method: 'PUT',
@@ -602,7 +602,7 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
       console.error('Error expiring booking:', error);
       toast.error('Error expiring booking');
     } finally {
-      setIsProcessing(false);
+  
     }
   };
 
