@@ -16,7 +16,10 @@ import {
   ChevronDown,
   AlertCircle,
   Building2,
-  Trophy
+  Trophy,
+  Clock,
+  CheckCircle,
+  AlertTriangle
 } from 'lucide-react';
 
 interface BookingStats {
@@ -28,6 +31,17 @@ interface BookingStats {
   popularCastles?: Array<{ castleId: string; castleName: string; bookingCount: number }>;
 }
 
+interface RecentChange {
+  id: number;
+  bookingRef: string;
+  customerName: string;
+  status: string;
+  totalPrice: number;
+  date: string;
+  updatedAt: string;
+  createdAt: string;
+}
+
 interface ReportData {
   stats: BookingStats;
   averageBookingValue: number;
@@ -37,6 +51,7 @@ interface ReportData {
 
 export default function AdminReports() {
   const [reportData, setReportData] = useState<ReportData | null>(null);
+  const [recentChanges, setRecentChanges] = useState<RecentChange[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState('all');
@@ -81,7 +96,7 @@ export default function AdminReports() {
     };
   };
 
-  // Fetch report data from API
+    // Fetch report data from API
   const fetchReportData = async () => {
     setIsLoading(true);
     setError(null);
@@ -97,8 +112,8 @@ export default function AdminReports() {
       
       const stats: BookingStats = await response.json();
       
-             // Calculate derived metrics
-       const averageBookingValue = stats.total > 0 ? Math.round(stats.revenue / stats.total) : 0;
+              // Calculate derived metrics
+        const averageBookingValue = stats.total > 0 ? Math.round(stats.revenue / stats.total) : 0;
       
       // For now, we'll set growth to 0 since we don't have historical comparison data
       // This can be enhanced later when we have more historical data
@@ -119,8 +134,26 @@ export default function AdminReports() {
     }
   };
 
+  // Fetch recent changes
+  const fetchRecentChanges = async () => {
+    try {
+      const response = await fetch('/api/admin/reports/recent-changes');
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch recent changes: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      setRecentChanges(data.recentChanges || []);
+    } catch (err) {
+      console.error('Error fetching recent changes:', err);
+      // Don't fail the entire page if recent changes fail
+    }
+  };
+
   useEffect(() => {
     fetchReportData();
+    fetchRecentChanges();
   }, [timeRange]);
 
   const handleExport = () => {
@@ -340,35 +373,71 @@ export default function AdminReports() {
               </CardContent>
             </Card>
 
-            <Card>
+                        <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <Users className="w-5 h-5 mr-2" />
-                  Revenue Overview
+                  <Clock className="w-5 h-5 mr-2" />
+                  Recent Changes
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-600">Total Revenue</span>
-                    <span className="text-lg font-bold text-gray-900">£{reportData.stats.revenue.toLocaleString()}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-600">Confirmed Bookings</span>
-                    <span className="text-lg font-bold text-gray-900">{reportData.stats.confirmed}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-600">Average Value</span>
-                    <span className="text-lg font-bold text-gray-900">£{reportData.averageBookingValue}</span>
-                  </div>
-                                       <div className="pt-4 border-t">
-                       <div className="flex items-center justify-between">
-                         <span className="text-sm text-gray-500">Revenue per active booking</span>
-                         <span className="text-sm text-gray-500">
-                           £{reportData.stats.total > 0 ? Math.round(reportData.stats.revenue / reportData.stats.total) : 0}
-                         </span>
-                       </div>
-                     </div>
+                <div className="space-y-3">
+                  {recentChanges.length > 0 ? (
+                    recentChanges.map((change) => {
+                      const getStatusIcon = () => {
+                        switch (change.status) {
+                          case 'confirmed':
+                            return <CheckCircle className="w-4 h-4 text-green-600" />;
+                          case 'pending':
+                            return <Clock className="w-4 h-4 text-yellow-600" />;
+                          case 'completed':
+                            return <CheckCircle className="w-4 h-4 text-blue-600" />;
+                          default:
+                            return <AlertTriangle className="w-4 h-4 text-gray-600" />;
+                        }
+                      };
+
+                      const getStatusColor = () => {
+                        switch (change.status) {
+                          case 'confirmed':
+                            return 'text-green-600';
+                          case 'pending':
+                            return 'text-yellow-600';
+                          case 'completed':
+                            return 'text-blue-600';
+                          default:
+                            return 'text-gray-600';
+                        }
+                      };
+
+                      return (
+                        <div key={change.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              {getStatusIcon()}
+                              <span className={`text-sm font-medium ${getStatusColor()}`}>
+                                {change.status.charAt(0).toUpperCase() + change.status.slice(1)}
+                              </span>
+                            </div>
+                            <div className="text-sm font-medium text-gray-900">
+                              {change.customerName}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {change.bookingRef} • {new Date(change.date).toLocaleDateString()} • £{change.totalPrice}
+                            </div>
+                          </div>
+                          <div className="text-xs text-gray-400 text-right">
+                            {new Date(change.updatedAt).toLocaleDateString()}
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-center py-4">
+                      <Clock className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500">No recent changes</p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
