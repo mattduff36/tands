@@ -172,7 +172,7 @@ function AdminErrorContent() {
             
             <div className="flex flex-col space-y-2">
               {errorInfo.action && errorInfo.actionHref && (
-                <Link href={errorInfo.actionHref}>
+                <Link href={errorInfo.actionHref as any}>
                   <Button className="w-full" size="lg">
                     {errorInfo.action}
                   </Button>

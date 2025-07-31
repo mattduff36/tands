@@ -178,7 +178,7 @@ export default function AdminCalendar() {
     // Look for "Castle: " pattern in description
     const castleMatch = description.match(/Castle:\s*([^(\n]+)/);
     if (castleMatch) {
-      return castleMatch[1].trim();
+              return castleMatch[1]?.trim() || '';
     }
     
     // Fallback to summary if no castle found in description

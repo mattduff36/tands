@@ -4,6 +4,7 @@
  */
 
 import '@testing-library/jest-dom';
+import React, { useState, useEffect } from 'react';
 import { beforeAll, vi } from 'vitest';
 
 // Mock Next.js router
@@ -36,8 +37,8 @@ vi.mock('next/navigation', () => ({
 // Mock Next.js Image component
 vi.mock('next/image', () => ({
   default: ({ src, alt, ...props }: any) => {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={src} alt={alt} {...props} />;
+    // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
+    return React.createElement('img', { src, alt, ...props });
   },
 }));
 
@@ -53,8 +54,8 @@ vi.mock('next/dynamic', () => ({
         });
       }, []);
       
-      if (!LoadedComponent) return <div>Loading...</div>;
-      return <LoadedComponent {...props} />;
+      if (!LoadedComponent) return React.createElement('div', null, 'Loading...');
+      return React.createElement(LoadedComponent, props);
     };
     return Component;
   },

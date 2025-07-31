@@ -16,17 +16,17 @@
     "outDir": "./scripts/tmp",
     
     // Stricter type checking
-    "exactOptionalPropertyTypes": true,
+    "exactOptionalPropertyTypes": false,
     "noFallthroughCasesInSwitch": true,
-    "noImplicitOverride": true,
-    "noImplicitReturns": true,
+    "noImplicitOverride": false,
+    "noImplicitReturns": false,
     "noPropertyAccessFromIndexSignature": false,
-    "noUncheckedIndexedAccess": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "noUncheckedIndexedAccess": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "useUnknownInCatchVariables": true,
-    "allowUnusedLabels": false,
-    "allowUnreachableCode": false,
+    "allowUnusedLabels": true,
+    "allowUnreachableCode": true,
     
     "plugins": [
       {

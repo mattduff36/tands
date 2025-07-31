@@ -27,8 +27,8 @@ vi.mock('@/lib/email/email-service', () => ({
 import { POST } from '../route';
 import { validateAndSanitize } from '@/lib/validation/schemas';
 import { getCastleById } from '@/lib/database/castles';
-import { createBooking } from '@/lib/database/bookings';
-import { sendBookingConfirmationEmail } from '@/lib/email/email-service';
+import { createPendingBooking } from '@/lib/database/bookings';
+import { sendAgreementEmail } from '@/lib/email/email-service';
 
 // Create a mock request helper
 function createMockRequest(body: any) {
@@ -69,8 +69,8 @@ describe('/api/booking', () => {
       // Setup mocks
       (validateAndSanitize as any).mockReturnValue(mockBookingData);
       (getCastleById as any).mockResolvedValue(mockCastle);
-      (createBooking as any).mockResolvedValue(mockBooking);
-      (sendBookingConfirmationEmail as any).mockResolvedValue(undefined);
+      (createPendingBooking as any).mockResolvedValue(mockBooking);
+      (sendAgreementEmail as any).mockResolvedValue(undefined);
 
       const request = createMockRequest(mockBookingData);
       const response = await POST(request);
@@ -79,7 +79,7 @@ describe('/api/booking', () => {
       expect(response.status).toBe(201);
       expect(responseData.success).toBe(true);
       expect(responseData.bookingId).toBe(1);
-      expect(createBooking).toHaveBeenCalledWith(
+      expect(createPendingBooking).toHaveBeenCalledWith(
         expect.objectContaining({
           ...mockBookingData,
           status: 'pending',
@@ -179,8 +179,8 @@ describe('/api/booking', () => {
 
       (validateAndSanitize as any).mockReturnValue(mockBookingData);
       (getCastleById as any).mockResolvedValue(mockCastle);
-      (createBooking as any).mockResolvedValue(mockBooking);
-      (sendBookingConfirmationEmail as any).mockRejectedValue(new Error('Email service down'));
+      (createPendingBooking as any).mockResolvedValue(mockBooking);
+      (sendAgreementEmail as any).mockRejectedValue(new Error('Email service down'));
 
       const request = createMockRequest(mockBookingData);
       const response = await POST(request);

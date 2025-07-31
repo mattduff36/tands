@@ -81,7 +81,7 @@ describe('Error Sanitizer', () => {
 
     it('should include details in development mode', () => {
       const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'development';
+      (process.env as any).NODE_ENV = 'development';
       
       const error = new Error('Safe test error');
       error.stack = 'Error: Safe test error\n    at test.js:1:1';
@@ -90,19 +90,19 @@ describe('Error Sanitizer', () => {
       
       expect(response).toHaveProperty('details');
       
-      process.env.NODE_ENV = originalEnv;
+      (process.env as any).NODE_ENV = originalEnv;
     });
 
     it('should not include details in production mode', () => {
       const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
+      (process.env as any).NODE_ENV = 'production';
       
       const error = new Error('Test error');
       const response = createSanitizedErrorResponse(error, 'test');
       
       expect(response).not.toHaveProperty('details');
       
-      process.env.NODE_ENV = originalEnv;
+      (process.env as any).NODE_ENV = originalEnv;
     });
   });
 

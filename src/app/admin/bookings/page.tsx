@@ -604,7 +604,7 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
     // If still not found, try to extract castle name from notes (like Calendar tab does)
     if (!castle && booking.notes) {
       const castleMatch = booking.notes.match(/Castle:\s*([^(\n]+)/);
-      if (castleMatch) {
+      if (castleMatch && castleMatch[1]) {
         const extractedCastleName = castleMatch[1].trim();
         castle = castles.find(c => c.name === extractedCastleName);
       }
@@ -621,7 +621,7 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
       customerEmail: booking.customerEmail,
       customerPhone: booking.customerPhone,
       address: booking.customerAddress,
-      singleDate: bookingDate.toISOString().split('T')[0],
+      singleDate: bookingDate.toISOString().split('T')[0] || '',
       multipleDate: false,
       startDate: '',
       endDate: '',
@@ -1219,10 +1219,10 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
       customerEmail: email,
       customerPhone: phone,
       address: event.location || '',
-      singleDate: isMultiDay ? '' : eventStart.toISOString().split('T')[0],
+      singleDate: isMultiDay ? '' : (eventStart.toISOString().split('T')[0] || ''),
       multipleDate: isMultiDay,
-      startDate: isMultiDay ? eventStart.toISOString().split('T')[0] : '',
-      endDate: isMultiDay ? eventEnd.toISOString().split('T')[0] : '',
+      startDate: isMultiDay ? (eventStart.toISOString().split('T')[0] || '') : '',
+      endDate: isMultiDay ? (eventEnd.toISOString().split('T')[0] || '') : '',
       overnight: isOvernight,
       additionalCosts: false,
       additionalCostsDescription: '',

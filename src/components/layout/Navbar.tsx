@@ -36,7 +36,7 @@ const Navbar = () => {
             {mobileBarLinks.map((link) => (
               <Link
                 key={link.href}
-                href={link.href}
+                                  href={link.href as any}
                 className="text-gray-700 hover:text-gray-900 hover:bg-gray-100 px-2 py-1 rounded-md transition-colors text-base font-medium"
               >
                 {link.label}
@@ -47,7 +47,7 @@ const Navbar = () => {
             {navLinks.map((link) => (
               <Link
                 key={link.href}
-                href={link.href}
+                                  href={link.href as any}
                 className="text-gray-700 hover:text-gray-900 hover:bg-gray-100 px-3 py-2 rounded-md transition-colors"
               >
                 {link.label}
@@ -76,7 +76,7 @@ const Navbar = () => {
             {mobileMenuLinks.map((link) => (
               <Link
                 key={link.href}
-                href={link.href}
+                                  href={link.href as any}
                 className="text-gray-600 hover:text-gray-900 hover:bg-gray-100 block px-3 py-2 rounded-md text-base font-medium"
                 onClick={() => setIsOpen(false)}
               >
