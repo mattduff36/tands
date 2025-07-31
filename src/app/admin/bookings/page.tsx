@@ -457,7 +457,6 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
       attendees: [
         { email: booking.customerEmail, displayName: booking.customerName, responseStatus: 'accepted' }
       ],
-      colorId: undefined,
       status: booking.status
     };
   }
