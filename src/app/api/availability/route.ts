@@ -2,6 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { getCastles } from '@/lib/database/castles';
 
+// Helper function to add appropriate caching headers for availability data
+function createCachedResponse(data: any, status: number = 200) {
+  const response = NextResponse.json(data, { status });
+  
+  if (status === 200) {
+    // Cache for 2 minutes with stale-while-revalidate for availability data
+    // Short cache duration since availability can change with new bookings
+    response.headers.set('Cache-Control', 'public, s-maxage=120, max-age=60, stale-while-revalidate=300');
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=120');
+  } else {
+    // Don't cache error responses
+    response.headers.set('Cache-Control', 'no-store');
+  }
+  
+  return response;
+}
+
 // Interface for calendar events from Google Calendar API
 interface CalendarEvent {
   id: string;
@@ -158,13 +175,13 @@ export async function GET(request: NextRequest) {
     // Single date query
     if (date) {
       const availability = await getAvailabilityForDate(date, castle);
-      return NextResponse.json(availability);
+      return createCachedResponse(availability);
     }
 
     // Date range query
     if (startDate && endDate) {
       const availability = await getAvailabilityForRange(startDate, endDate, castle, format);
-      return NextResponse.json(availability);
+      return createCachedResponse(availability);
     }
 
     // Default: return next 30 days
@@ -179,7 +196,7 @@ export async function GET(request: NextRequest) {
       format
     );
 
-    return NextResponse.json({
+    return createCachedResponse({
       range: {
         start: today.toISOString().split('T')[0],
         end: thirtyDaysLater.toISOString().split('T')[0]
@@ -189,12 +206,12 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Error fetching availability:', error);
-    return NextResponse.json(
+    return createCachedResponse(
       { 
         error: 'Failed to fetch availability',
         message: error instanceof Error ? error.message : 'Unknown error'
       },
-      { status: 500 }
+      500
     );
   }
 }
@@ -338,9 +355,9 @@ export async function POST(request: NextRequest) {
     const { date, startTime, endTime, castle } = body;
 
     if (!date || !startTime || !endTime) {
-      return NextResponse.json(
+      return createCachedResponse(
         { error: 'Missing required fields: date, startTime, endTime' },
-        { status: 400 }
+        400
       );
     }
 
@@ -420,12 +437,12 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Error checking availability:', error);
-    return NextResponse.json(
+    return createCachedResponse(
       { 
         error: 'Failed to check availability',
         message: error instanceof Error ? error.message : 'Unknown error'
       },
-      { status: 500 }
+      500
     );
   }
 }

@@ -1,27 +1,30 @@
 import { NextResponse } from 'next/server';
 import { getCastles } from '@/lib/database/castles';
 
-// Force the route to be dynamic and not cached
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+// Enable static generation with revalidation for better performance
+export const revalidate = 1800; // Revalidate every 30 minutes
 
 // GET - Public endpoint to fetch all castles for the main website
 export async function GET() {
   try {
     const castles = await getCastles();
     
-    // Create response with no-cache headers to ensure fresh data
+    // Create response with optimized caching headers for static data
     const response = NextResponse.json(castles);
     
-    // Prevent caching in production to ensure admin changes are reflected immediately
-    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    response.headers.set('Pragma', 'no-cache');
-    response.headers.set('Expires', '0');
-    response.headers.set('Surrogate-Control', 'no-store');
+    // Cache for 30 minutes with stale-while-revalidate for better performance
+    // This allows serving cached data while fetching fresh data in background
+    response.headers.set('Cache-Control', 'public, s-maxage=1800, max-age=300, stale-while-revalidate=3600');
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=1800');
+    response.headers.set('Vercel-CDN-Cache-Control', 'public, s-maxage=1800');
     
     return response;
   } catch (error) {
     console.error('Error fetching castles:', error);
-    return NextResponse.json({ error: 'Failed to fetch castles' }, { status: 500 });
+    
+    // Don't cache error responses
+    const errorResponse = NextResponse.json({ error: 'Failed to fetch castles' }, { status: 500 });
+    errorResponse.headers.set('Cache-Control', 'no-store');
+    return errorResponse;
   }
 }
