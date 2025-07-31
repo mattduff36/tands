@@ -170,6 +170,77 @@
       transform: translateZ(0);
     }
   }
+  
+  /* Toast styling - solid backgrounds for better readability */
+  .toaster {
+    --toast-bg: hsl(var(--popover)) !important;
+    --toast-border: hsl(var(--border)) !important;
+    --toast-text: hsl(var(--popover-foreground)) !important;
+  }
+  
+  .toaster [data-sonner-toast] {
+    background: var(--toast-bg) !important;
+    border: 1px solid var(--toast-border) !important;
+    color: var(--toast-text) !important;
+    opacity: 1 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+  }
+  
+  .toaster [data-sonner-toast][data-type="success"] {
+    background: hsl(142 76% 36% / 0.1) !important;
+    border-color: hsl(142 76% 36% / 0.3) !important;
+    color: hsl(142 76% 36%) !important;
+  }
+  
+  .toaster [data-sonner-toast][data-type="error"] {
+    background: hsl(var(--destructive) / 0.1) !important;
+    border-color: hsl(var(--destructive) / 0.3) !important;
+    color: hsl(var(--destructive)) !important;
+  }
+  
+  .toaster [data-sonner-toast][data-type="warning"] {
+    background: hsl(38 92% 50% / 0.1) !important;
+    border-color: hsl(38 92% 50% / 0.3) !important;
+    color: hsl(38 92% 50%) !important;
+  }
+  
+  .toaster [data-sonner-toast][data-type="info"] {
+    background: hsl(221 83% 53% / 0.1) !important;
+    border-color: hsl(221 83% 53% / 0.3) !important;
+    color: hsl(221 83% 53%) !important;
+  }
+  
+  .toaster .dark [data-sonner-toast] {
+    background: hsl(var(--popover)) !important;
+    border-color: hsl(var(--border)) !important;
+    color: hsl(var(--popover-foreground)) !important;
+  }
+  
+  .toaster .dark [data-sonner-toast][data-type="success"] {
+    background: hsl(142 76% 36% / 0.2) !important;
+    border-color: hsl(142 76% 36% / 0.4) !important;
+    color: hsl(142 70% 45%) !important;
+  }
+  
+  .toaster .dark [data-sonner-toast][data-type="error"] {
+    background: hsl(var(--destructive) / 0.2) !important;
+    border-color: hsl(var(--destructive) / 0.4) !important;
+    color: hsl(var(--destructive-foreground)) !important;
+  }
+  
+  .toaster .dark [data-sonner-toast][data-type="warning"] {
+    background: hsl(38 92% 50% / 0.2) !important;
+    border-color: hsl(38 92% 50% / 0.4) !important;
+    color: hsl(48 96% 53%) !important;
+  }
+  
+  .toaster .dark [data-sonner-toast][data-type="info"] {
+    background: hsl(221 83% 53% / 0.2) !important;
+    border-color: hsl(221 83% 53% / 0.4) !important;
+    color: hsl(213 94% 68%) !important;
+  }
 }
 
 @keyframes wiggle {

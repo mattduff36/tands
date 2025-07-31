@@ -4,7 +4,6 @@
  */
 
 import nodemailer from 'nodemailer';
-import { trackAgreementEmailInteraction } from '@/lib/database/bookings';
 
 export interface EmailConfig {
   host: string;
@@ -190,12 +189,12 @@ ${config.fromName}
       console.log('Preview URL:', nodemailer.getTestMessageUrl(result));
     }
 
-    // Track email sent
-    await trackAgreementEmailInteraction(bookingData.bookingId, 'email_sent', {
-      to: bookingData.customerEmail,
-      subject: mailOptions.subject,
-      messageId: result.messageId
-    });
+    // Track email sent (disabled - database schema doesn't include email tracking columns)
+    // await trackAgreementEmailInteraction(bookingData.bookingId, 'email_sent', {
+    //   to: bookingData.customerEmail,
+    //   subject: mailOptions.subject,
+    //   messageId: result.messageId
+    // });
 
     return true;
   } catch (error) {
