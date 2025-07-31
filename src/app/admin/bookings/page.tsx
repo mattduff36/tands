@@ -363,33 +363,7 @@ export default function AdminBookings() {
     }
   };
 
-  // Update booking status
-  const handleUpdateStatus = async (bookingId: number, status: string) => {
 
-    try {
-      const response = await fetch(`/api/admin/bookings/${bookingId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status }),
-      });
-
-      if (response.ok) {
-        toast.success(`Booking ${status}!`);
-        await fetchBookings();
-        setShowDetailsModal(false);
-      } else {
-        const error = await response.json();
-        toast.error(error.error || 'Failed to update booking');
-      }
-    } catch (error) {
-      console.error('Error updating booking:', error);
-      toast.error('Error updating booking');
-    } finally {
-  
-    }
-  };
 
   // Delete booking
   const handleDeleteBooking = async (bookingId: number) => {
