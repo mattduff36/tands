@@ -477,11 +477,7 @@ export async function getBookingsByStatus(status?: string): Promise<PendingBooki
     let query = `SELECT 
       id, booking_ref, customer_name, customer_email, customer_phone, customer_address,
       castle_id, castle_name, date, payment_method, total_price, deposit, status, notes,
-      created_at, updated_at, email_sent, email_sent_at, manual_confirmation, confirmed_by,
-      agreement_signed, agreement_signed_at, agreement_signed_by, agreement_signed_method,
-      agreement_ip_address, agreement_user_agent, agreement_pdf_generated, agreement_pdf_generated_at,
-      agreement_email_opened, agreement_email_opened_at, agreement_viewed, agreement_viewed_at,
-      audit_trail
+      created_at, updated_at
     FROM bookings`;
     let params: any[] = [];
     
@@ -511,26 +507,26 @@ export async function getBookingsByStatus(status?: string): Promise<PendingBooki
       notes: row.notes,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-      // Email automation tracking
-      emailSent: row.email_sent || false,
-      emailSentAt: row.email_sent_at || null,
-      manualConfirmation: row.manual_confirmation || false,
-      confirmedBy: row.confirmed_by || null,
-      // Agreement tracking
-      agreementSigned: row.agreement_signed || false,
-      agreementSignedAt: row.agreement_signed_at || null,
-      agreementSignedBy: row.agreement_signed_by || null,
-      // Enhanced audit trail
-      agreementSignedMethod: row.agreement_signed_method || null,
-      agreementIpAddress: row.agreement_ip_address || null,
-      agreementUserAgent: row.agreement_user_agent || null,
-      agreementPdfGenerated: row.agreement_pdf_generated || false,
-      agreementPdfGeneratedAt: row.agreement_pdf_generated_at || null,
-      agreementEmailOpened: row.agreement_email_opened || false,
-      agreementEmailOpenedAt: row.agreement_email_opened_at || null,
-      agreementViewed: row.agreement_viewed || false,
-      agreementViewedAt: row.agreement_viewed_at || null,
-      auditTrail: row.audit_trail || []
+      // Email automation tracking - default values since columns don't exist yet
+      emailSent: false,
+      emailSentAt: undefined,
+      manualConfirmation: false,
+      confirmedBy: undefined,
+      // Agreement tracking - default values since columns don't exist yet
+      agreementSigned: false,
+      agreementSignedAt: undefined,
+      agreementSignedBy: undefined,
+      // Enhanced audit trail - default values since columns don't exist yet
+      agreementSignedMethod: undefined,
+      agreementIpAddress: undefined,
+      agreementUserAgent: undefined,
+      agreementPdfGenerated: false,
+      agreementPdfGeneratedAt: undefined,
+      agreementEmailOpened: false,
+      agreementEmailOpenedAt: undefined,
+      agreementViewed: false,
+      agreementViewedAt: undefined,
+      auditTrail: undefined
     }));
   } catch (error) {
     console.error('Error fetching bookings:', error);
