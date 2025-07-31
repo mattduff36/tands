@@ -104,7 +104,7 @@ export default function AdminBookings() {
   const [searchTerm, setSearchTerm] = useState('');
 
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
