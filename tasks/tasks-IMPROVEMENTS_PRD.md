@@ -31,7 +31,7 @@
   - [x] 1.2 Create database indexes for frequently queried fields (status + date, customer_email, maintenance_status)
   - [x] 1.3 Remove all console.log statements from production code (100+ instances identified)
   - [x] 1.4 Implement API response caching with Next.js Cache-Control headers
-  - [ ] 1.5 Add React Query for client-side caching of static data (castles, settings)
+  - [x] 1.5 Add React Query for client-side caching of static data (castles, settings)
   - [ ] 1.6 Optimize database connection pooling configuration
   - [ ] 1.7 Test and measure performance impact of optimizations
 
