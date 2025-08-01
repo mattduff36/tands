@@ -491,12 +491,13 @@ export default function AdminBookings() {
       ? 'Agreement Signed' 
       : (booking.status === 'confirmed' ? 'Awaiting Signature' : '');
     
-    const description = `${booking.notes || ''}
-Booking Ref: ${booking.bookingRef}
+    const description = `Booking Ref: ${booking.bookingRef}
 Customer: ${booking.customerName}
 Email: ${booking.customerEmail}
 Phone: ${booking.customerPhone}
 Castle: ${booking.castleName}
+Duration: ${booking.eventDuration || 8} hours
+Special Requests: ${booking.notes || '[none]'}
 Total: £${booking.totalPrice}
 Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` : ''}`;
 
