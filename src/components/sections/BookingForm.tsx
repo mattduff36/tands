@@ -347,7 +347,8 @@ export function BookingForm() {
               if (!selectedCastle) return null;
               
               const basePrice = Math.floor(selectedCastle.price);
-              const totalPrice = basePrice; // For now, same price regardless of duration
+              const overnightSurcharge = eventDuration === 24 ? 20 : 0; // £20 surcharge for 24-hour bookings
+              const totalPrice = basePrice + overnightSurcharge;
               const deposit = Math.floor(totalPrice * 0.3);
               
               return (
@@ -358,7 +359,7 @@ export function BookingForm() {
                   </div>
                   <div className="flex justify-between">
                     <span>Duration: {eventDuration} hours</span>
-                    <span>-</span>
+                    <span>{overnightSurcharge > 0 ? `+£${overnightSurcharge}` : '-'}</span>
                   </div>
                   <div className="flex justify-between font-medium border-t pt-1">
                     <span>Total Price:</span>

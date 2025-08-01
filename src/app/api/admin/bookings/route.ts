@@ -63,6 +63,10 @@ export async function GET(request: NextRequest) {
       notes: booking.notes,
       createdAt: booking.createdAt,
       updatedAt: booking.updatedAt,
+      // Duration fields
+      startDate: booking.startDate,
+      endDate: booking.endDate,
+      eventDuration: booking.eventDuration,
       // Agreement fields for admin interface
       agreementSigned: booking.agreementSigned,
       agreementSignedAt: booking.agreementSignedAt,

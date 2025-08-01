@@ -55,6 +55,11 @@ interface Booking {
   updatedAt: string;
   source: 'database' | 'calendar';
   
+  // Duration fields
+  startDate?: string;
+  endDate?: string;
+  eventDuration?: number;
+  
   // Agreement information
   agreementSigned?: boolean;
   agreementSignedAt?: string;
