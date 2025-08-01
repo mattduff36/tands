@@ -93,6 +93,15 @@ export async function getCastleById(id: number): Promise<Castle | null> {
     return result.rows[0];
   } catch (error) {
     console.error('Error retrieving castle from database', error instanceof Error ? error : new Error(String(error)), { castleId: id });
+    
+    // Fallback to static data if database is unavailable
+    const { castles: staticCastles } = await import('@/lib/castle-data');
+    const staticCastle = staticCastles.find(castle => castle.id === id);
+    if (staticCastle) {
+      console.warn('Database unavailable, returning static castle data for ID:', id);
+      return staticCastle;
+    }
+    
     throw new Error('Failed to retrieve castle');
   }
 }

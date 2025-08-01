@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCastles } from '@/lib/database/castles';
+import { castles as staticCastles } from '@/lib/castle-data';
 
 // Enable static generation with revalidation for better performance
 export const revalidate = 1800; // Revalidate every 30 minutes
@@ -7,7 +8,14 @@ export const revalidate = 1800; // Revalidate every 30 minutes
 // GET - Public endpoint to fetch all castles for the main website
 export async function GET() {
   try {
-    const castles = await getCastles();
+    // Try database first, fallback to static data if DB is unavailable
+    let castles;
+    try {
+      castles = await getCastles();
+    } catch (dbError) {
+      console.warn('Database unavailable, using static castle data:', dbError);
+      castles = staticCastles;
+    }
     
     // Create response with optimized caching headers for static data
     const response = NextResponse.json(castles);

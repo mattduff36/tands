@@ -7,7 +7,7 @@ import { z } from 'zod';
 
 // Common validation patterns
 const emailSchema = z.string().email().max(254).toLowerCase().trim();
-const phoneSchema = z.string().regex(/^[\+]?[1-9][\d]{0,15}$/, 'Invalid phone number format').optional();
+const phoneSchema = z.string().regex(/^[\+]?[0-9][\d\s\-\(\)]{0,20}$/, 'Invalid phone number format').optional();
 const nameSchema = z.string().min(1).max(100).trim();
 const messageSchema = z.string().min(1).max(2000).trim();
 

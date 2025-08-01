@@ -31,6 +31,10 @@ export function BookingForm() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [postcode, setPostcode] = useState("");
+  const [eventDuration, setEventDuration] = useState(8); // Default 8 hours
+  const [specialRequests, setSpecialRequests] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -70,8 +74,8 @@ export function BookingForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedCastleId || !date || !name || !email || !phone || !address) {
-      toast.error("Please fill in all required fields");
+    if (!selectedCastleId || !date || !name || !email || !phone || !address || !postcode || !agreedToTerms) {
+      toast.error("Please fill in all required fields and agree to terms");
       return;
     }
 
@@ -80,17 +84,23 @@ export function BookingForm() {
     try {
       const selectedCastle = castles.find(c => c.id.toString() === selectedCastleId);
       
+      // Create datetime string for eventDate (start of day)
+      const eventDateTime = new Date(date);
+      eventDateTime.setHours(9, 0, 0, 0); // Default to 9 AM
+      
       const bookingData = {
-        castleId: selectedCastleId,
-        castleName: selectedCastle?.name,
-        date: format(date, "yyyy-MM-dd"),
+        castleId: parseInt(selectedCastleId), // Convert to number
         customerName: name,
         customerEmail: email,
         customerPhone: phone,
-        customerAddress: address,
-        paymentMethod,
+        eventDate: eventDateTime.toISOString(),
+        eventDuration: eventDuration,
+        eventAddress: address,
+        eventPostcode: postcode,
+        specialRequests: specialRequests || undefined,
+        agreedToTerms: agreedToTerms,
+        isOvernight: false,
         totalPrice: selectedCastle ? Math.floor(selectedCastle.price) : 0,
-        deposit: selectedCastle ? Math.floor(selectedCastle.price * 0.3) : 0,
       };
 
       const response = await fetch('/api/booking', {
@@ -245,6 +255,54 @@ export function BookingForm() {
           </div>
         </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="postcode" className="text-sm font-medium">
+              Postcode *
+            </Label>
+            <Input
+              id="postcode"
+              value={postcode}
+              onChange={(e) => setPostcode(e.target.value.toUpperCase())}
+              placeholder="SW1A 1AA"
+              required
+              className="bg-white"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="duration" className="text-sm font-medium">
+              Event Duration (hours) *
+            </Label>
+            <Select value={eventDuration.toString()} onValueChange={(value) => setEventDuration(parseInt(value))}>
+              <SelectTrigger className="bg-white">
+                <SelectValue placeholder="Select duration" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="4">4 hours</SelectItem>
+                <SelectItem value="6">6 hours</SelectItem>
+                <SelectItem value="8">8 hours (Standard)</SelectItem>
+                <SelectItem value="12">12 hours</SelectItem>
+                <SelectItem value="24">24 hours (Overnight)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Special Requests */}
+        <div className="space-y-2">
+          <Label htmlFor="requests" className="text-sm font-medium">
+            Special Requests (Optional)
+          </Label>
+          <Textarea
+            id="requests"
+            value={specialRequests}
+            onChange={(e) => setSpecialRequests(e.target.value)}
+            placeholder="Any special requests or additional information..."
+            className="bg-white min-h-[80px]"
+            maxLength={500}
+          />
+        </div>
+
         {/* Payment Method */}
         <div className="space-y-2">
           <Label className="text-sm font-medium">Preferred Payment Method</Label>
@@ -282,19 +340,56 @@ export function BookingForm() {
               const selectedCastle = castles.find(c => c.id.toString() === selectedCastleId);
               if (!selectedCastle) return null;
               
-              const totalPrice = Math.floor(selectedCastle.price);
+              const basePrice = Math.floor(selectedCastle.price);
+              const totalPrice = basePrice; // For now, same price regardless of duration
+              const deposit = Math.floor(totalPrice * 0.3);
               
               return (
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
                     <span>Castle: {selectedCastle.name}</span>
+                    <span>£{basePrice}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Duration: {eventDuration} hours</span>
+                    <span>-</span>
+                  </div>
+                  <div className="flex justify-between font-medium border-t pt-1">
+                    <span>Total Price:</span>
                     <span>£{totalPrice}</span>
+                  </div>
+                  <div className="flex justify-between text-gray-600">
+                    <span>Deposit Required (30%):</span>
+                    <span>£{deposit}</span>
                   </div>
                 </div>
               );
             })()}
           </div>
         )}
+
+        {/* Terms and Conditions */}
+        <div className="flex items-start space-x-3">
+          <input
+            type="checkbox"
+            id="terms"
+            checked={agreedToTerms}
+            onChange={(e) => setAgreedToTerms(e.target.checked)}
+            className="mt-1 h-4 w-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+            required
+          />
+          <Label htmlFor="terms" className="text-sm text-gray-700 leading-relaxed">
+            I agree to the{" "}
+            <a href="/terms" target="_blank" className="text-red-600 hover:text-red-700 underline">
+              terms and conditions
+            </a>{" "}
+            and{" "}
+            <a href="/hire-agreement" target="_blank" className="text-red-600 hover:text-red-700 underline">
+              hire agreement
+            </a>
+            . I understand that a 30% deposit is required to confirm the booking. *
+          </Label>
+        </div>
 
         {/* Submit Button */}
         <Button 
