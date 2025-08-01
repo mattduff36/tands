@@ -36,7 +36,6 @@ export const bookingSchema = z.object({
   eventEndTime: z.string().datetime('Invalid end time format').optional(),
   castleId: z.number().int().positive(),
   eventAddress: z.string().min(1, 'Address is required').max(200).trim(),
-  eventPostcode: z.string().min(1, 'Postcode is required').max(10).trim().toUpperCase(),
   specialRequests: z.string().max(500).trim().optional(),
   isOvernight: z.boolean().default(false),
   totalPrice: z.number().min(0).max(10000),

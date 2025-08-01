@@ -31,7 +31,7 @@ export function BookingForm() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
-  const [postcode, setPostcode] = useState("");
+
   const [eventDuration, setEventDuration] = useState(8); // Default 8 hours
   const [specialRequests, setSpecialRequests] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
@@ -73,7 +73,7 @@ export function BookingForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedCastleId || !date || !name || !email || !phone || !address || !postcode) {
+    if (!selectedCastleId || !date || !name || !email || !phone || !address) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -106,7 +106,6 @@ export function BookingForm() {
         eventStartTime: eventStartTime.toISOString(),
         eventEndTime: eventEndTime.toISOString(),
         eventAddress: address,
-        eventPostcode: postcode,
         specialRequests: specialRequests || undefined,
         isOvernight: eventDuration === 24,
         totalPrice: selectedCastle ? Math.floor(selectedCastle.price) + (eventDuration === 24 ? 20 : 0) : 0,
@@ -264,34 +263,19 @@ export function BookingForm() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="postcode" className="text-sm font-medium">
-              Postcode *
-            </Label>
-            <Input
-              id="postcode"
-              value={postcode}
-              onChange={(e) => setPostcode(e.target.value.toUpperCase())}
-              placeholder="SW1A 1AA"
-              required
-              className="bg-white"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="duration" className="text-sm font-medium">
-              Event Duration *
-            </Label>
-            <Select value={eventDuration.toString()} onValueChange={(value) => setEventDuration(parseInt(value))}>
-              <SelectTrigger className="bg-white">
-                <SelectValue placeholder="Select duration" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="8">8 hours (Standard)</SelectItem>
-                <SelectItem value="24">24 hours (Overnight)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="duration" className="text-sm font-medium">
+            Event Duration *
+          </Label>
+          <Select value={eventDuration.toString()} onValueChange={(value) => setEventDuration(parseInt(value))}>
+            <SelectTrigger className="bg-white">
+              <SelectValue placeholder="Select duration" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="8">8 hours (Standard)</SelectItem>
+              <SelectItem value="24">24 hours (Overnight)</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Special Requests */}
