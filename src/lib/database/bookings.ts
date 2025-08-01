@@ -6,6 +6,7 @@
 import { getPool } from './connection';
 import { BookingStatus } from '@/lib/types/booking';
 import { measureDatabaseOperation } from '@/lib/utils/performance-monitor';
+import { GoogleCalendarService } from '@/lib/calendar/google-calendar';
 // import { log } from '@/lib/utils/logger'; // Temporarily disabled
 
 export interface PendingBooking {
@@ -48,6 +49,8 @@ export interface PendingBooking {
   agreementViewed?: boolean;
   agreementViewedAt?: Date;
   auditTrail?: AuditTrailEntry[];
+  // Calendar integration
+  calendarEventId?: string;
 }
 
 export interface AuditTrailEntry {
@@ -801,7 +804,9 @@ export async function getBookingById(id: number): Promise<PendingBooking | null>
       agreementEmailOpenedAt: row.agreement_email_opened_at || null,
       agreementViewed: row.agreement_viewed || false,
       agreementViewedAt: row.agreement_viewed_at || null,
-      auditTrail: row.audit_trail || []
+      auditTrail: row.audit_trail || [],
+      // Calendar integration
+      calendarEventId: row.calendar_event_id || null
     };
   } catch (error) {
     console.error('Error getting booking by ID', error instanceof Error ? error : new Error(String(error)), { bookingId: id });
@@ -893,7 +898,26 @@ export async function updateExpiredBookings(): Promise<void> {
 export async function deleteBooking(id: number): Promise<void> {
   const client = await getPool().connect();
   try {
+    // First get the booking details to check if it has a calendar event
+    const booking = await getBookingById(id);
+    
+    if (booking?.calendarEventId) {
+      try {
+        // Delete the calendar event first
+        const calendarService = new GoogleCalendarService();
+        await calendarService.deleteBookingEvent(booking.calendarEventId);
+        console.log(`✅ Deleted calendar event ${booking.calendarEventId} for booking ${id}`);
+      } catch (calendarError) {
+        // Log the error but continue with database deletion
+        // This prevents database deletion from failing if calendar deletion fails
+        console.error(`⚠️ Failed to delete calendar event ${booking.calendarEventId} for booking ${id}:`, calendarError);
+      }
+    }
+    
+    // Delete the booking from database
     await client.query('DELETE FROM bookings WHERE id = $1', [id]);
+    console.log(`✅ Deleted booking ${id} from database`);
+    
   } catch (error) {
     console.error('Error deleting booking', error instanceof Error ? error : new Error(String(error)), { bookingId: id });
     throw error;

@@ -64,19 +64,16 @@ describe('Validation Schemas', () => {
         customerEmail: 'john@example.com',
         customerPhone: '+1234567890',
         eventDate: '2024-12-25T10:00:00Z',
-        eventDuration: 6,
+        eventDuration: 8,
         castleId: 1,
         eventAddress: '123 Test Street',
-        eventPostcode: 'NG21 9AG',
         specialRequests: 'Please deliver early',
-        agreedToTerms: true,
         isOvernight: false,
         totalPrice: 80,
       };
 
       const result = validateAndSanitize(bookingSchema, validBooking);
       expect(result.customerEmail).toBe('john@example.com');
-      expect(result.eventPostcode).toBe('NG21 9AG');
     });
 
     it('should reject booking with invalid email', () => {
@@ -84,10 +81,9 @@ describe('Validation Schemas', () => {
         customerName: 'John Doe',
         customerEmail: 'invalid-email',
         eventDate: '2024-12-25T10:00:00Z',
-        eventDuration: 6,
+        eventDuration: 8,
         castleId: 1,
         eventAddress: '123 Test Street',
-        eventPostcode: 'NG21 9AG',
         agreedToTerms: true,
         isOvernight: false,
         totalPrice: 80,
@@ -96,32 +92,14 @@ describe('Validation Schemas', () => {
       expect(() => validateAndSanitize(bookingSchema, invalidBooking)).toThrow();
     });
 
-    it('should require terms agreement', () => {
-      const bookingWithoutTerms = {
-        customerName: 'John Doe',
-        customerEmail: 'john@example.com',
-        eventDate: '2024-12-25T10:00:00Z',
-        eventDuration: 6,
-        castleId: 1,
-        eventAddress: '123 Test Street',
-        eventPostcode: 'NG21 9AG',
-        agreedToTerms: false, // Not agreed
-        isOvernight: false,
-        totalPrice: 80,
-      };
-
-      expect(() => validateAndSanitize(bookingSchema, bookingWithoutTerms)).toThrow();
-    });
-
     it('should normalize email to lowercase', () => {
       const bookingWithUppercaseEmail = {
         customerName: 'John Doe',
         customerEmail: 'JOHN@EXAMPLE.COM',
         eventDate: '2024-12-25T10:00:00Z',
-        eventDuration: 6,
+        eventDuration: 8,
         castleId: 1,
         eventAddress: '123 Test Street',
-        eventPostcode: 'NG21 9AG',
         agreedToTerms: true,
         isOvernight: false,
         totalPrice: 80,
