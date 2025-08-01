@@ -162,7 +162,7 @@ export function BookingForm() {
     <div className="p-6">
       <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Castle and Date Selection */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="castle" className="text-sm font-medium">
               Select Bouncy Castle *
@@ -296,7 +296,7 @@ export function BookingForm() {
         {/* Payment Method */}
         <div className="space-y-2">
           <Label className="text-sm font-medium">Preferred Payment Method</Label>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
               type="button"
               onClick={() => setPaymentMethod("cash")}
