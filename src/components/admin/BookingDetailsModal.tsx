@@ -118,8 +118,8 @@ export function BookingDetailsModal({
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">
                     🏰 {customerName}
                   </h3>
-                  <div className="space-y-3 text-sm">
-                    <div className="grid grid-cols-1 gap-3">
+                  <div className="space-y-1 text-sm">
+                    <div className="grid grid-cols-1 gap-1">
                       <div>
                         <span className="font-bold text-gray-700">Bouncy Castle:</span>{' '}
                         <span className="text-gray-900">{castleName}</span>
@@ -136,7 +136,7 @@ export function BookingDetailsModal({
                       </div>
                       
                       {/* Spacer */}
-                      <div className="h-2"></div>
+                      <div className="h-1"></div>
                       
                       {event.location && (
                         <div>
@@ -168,7 +168,7 @@ export function BookingDetailsModal({
                       </div>
                       
                       {/* Spacer */}
-                      <div className="h-2"></div>
+                      <div className="h-1"></div>
                       
                       <div>
                         <span className="font-bold text-gray-700">Total Cost:</span>{' '}
