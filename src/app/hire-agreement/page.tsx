@@ -108,7 +108,7 @@ function HireAgreementContent() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center pt-24 sm:pt-28">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading booking details...</p>
@@ -119,7 +119,7 @@ function HireAgreementContent() {
 
   if (!bookingDetails) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center pt-24 sm:pt-28">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Booking Not Found</h1>
           <p className="text-gray-600 mb-6">The booking reference provided could not be found.</p>
@@ -130,7 +130,7 @@ function HireAgreementContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 py-8 pt-24 sm:pt-28">
       <div className="max-w-4xl mx-auto px-4">
         {/* Header */}
         <div className="text-center mb-8">
@@ -338,7 +338,7 @@ function HireAgreementContent() {
 export default function HireAgreementPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center pt-24 sm:pt-28">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading hire agreement...</p>
