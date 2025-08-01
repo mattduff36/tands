@@ -3,7 +3,7 @@ import { BookingForm } from "@/components/sections/BookingForm";
 
 const BookingPage = () => {
   return (
-    <div className="bg-gradient-booking py-4 pt-16 sm:py-12 sm:pt-24">
+    <div className="bg-gradient-booking py-4 pt-24 sm:py-12 sm:pt-28">
       <main className="container mx-auto px-2 sm:px-8">
         <div className="bg-gradient-to-r from-pink-100 to-purple-100 p-2 sm:p-8 rounded-xl sm:rounded-3xl border-4 border-pink-300 shadow-xl flex flex-col min-h-[400px] h-full max-w-3xl mx-auto">
           <h2 className="text-2xl sm:text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-500 via-green-500 to-purple-500 bg-clip-text text-transparent sm:text-5xl animate-pulse mb-2 sm:mb-6 text-center leading-tight pb-1 sm:pb-2" tabIndex={0} aria-label="Booking Request">📝 Booking Request</h2>
