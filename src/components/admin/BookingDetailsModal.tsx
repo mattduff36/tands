@@ -180,28 +180,27 @@ export function BookingDetailsModal({
                         <span className="text-gray-900">{bookingRef}</span>
                       </div>
                       
-                      {/* Agreement badge for confirmed bookings */}
-                      {status === 'confirmed' && (
-                        <div>
-                          {agreementSigned ? (
-                            <Badge className="flex items-center gap-1 bg-black text-white border-black hover:bg-black w-fit">
-                              <FileCheck className="w-3 h-3" />
-                              Agreement Signed
-                            </Badge>
-                          ) : (
-                            <Badge className="flex items-center gap-1 bg-white text-black border-black hover:bg-white w-fit">
-                              <FileWarning className="w-3 h-3" />
-                              Awaiting Signature
-                            </Badge>
-                          )}
-                        </div>
-                      )}
-                      
-                      <div>
-                        <span className="font-bold text-gray-700">Status:</span>{' '}
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-gray-700">Status:</span>
                         <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getStatusColor(status)}`}>
                           {status}
                         </span>
+                        {/* Agreement badge for confirmed bookings - appears right after status */}
+                        {status === 'confirmed' && (
+                          <>
+                            {agreementSigned ? (
+                              <Badge className="flex items-center gap-1 bg-black text-white border-black hover:bg-black w-fit">
+                                <FileCheck className="w-3 h-3" />
+                                Agreement Signed
+                              </Badge>
+                            ) : (
+                              <Badge className="flex items-center gap-1 bg-white text-black border-black hover:bg-white w-fit">
+                                <FileWarning className="w-3 h-3" />
+                                Awaiting Signature
+                              </Badge>
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -312,8 +311,8 @@ export function BookingDetailsModal({
                             className="text-green-600 border-green-200 hover:bg-green-50"
                           >
                             <FileCheck className="w-4 h-4 mr-2" />
-                            <span className="hidden lg:inline">Manual Sign</span>
-                            <span className="lg:hidden">Sign</span>
+                            <span className="hidden lg:inline">View Hire Agreement</span>
+                            <span className="lg:hidden">View Agreement</span>
                           </Button>
                         )}
                       </>
