@@ -109,7 +109,7 @@ export function BookingForm() {
         eventPostcode: postcode,
         specialRequests: specialRequests || undefined,
         isOvernight: eventDuration === 24,
-        totalPrice: selectedCastle ? Math.floor(selectedCastle.price) : 0,
+        totalPrice: selectedCastle ? Math.floor(selectedCastle.price) + (eventDuration === 24 ? 20 : 0) : 0,
       };
 
       const response = await fetch('/api/booking', {
@@ -359,7 +359,7 @@ export function BookingForm() {
                   </div>
                   <div className="flex justify-between">
                     <span>Duration: {eventDuration} hours</span>
-                    <span>{overnightSurcharge > 0 ? `+£${overnightSurcharge}` : '-'}</span>
+                    <span>{overnightSurcharge > 0 ? `£${overnightSurcharge}` : '-'}</span>
                   </div>
                   <div className="flex justify-between font-medium border-t pt-1">
                     <span>Total Price:</span>
