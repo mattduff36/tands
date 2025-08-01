@@ -42,6 +42,8 @@ export async function POST(
       date: booking.date,
       startDate: booking.startDate ? booking.startDate.toISOString() : booking.createdAt.toISOString(),
       endDate: booking.endDate ? booking.endDate.toISOString() : booking.createdAt.toISOString(),
+      eventDuration: booking.eventDuration,
+      eventAddress: booking.customerAddress,
       totalCost: booking.totalPrice,
       deposit: booking.deposit,
       notes: booking.notes

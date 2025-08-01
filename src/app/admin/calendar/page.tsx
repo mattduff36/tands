@@ -529,6 +529,8 @@ export default function AdminCalendar() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'confirmed':
         return 'bg-green-100 text-green-800 border-green-200';
       case 'tentative':
@@ -537,6 +539,8 @@ export default function AdminCalendar() {
         return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'complete':
         return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'expired':
+        return 'bg-gray-600 text-gray-100 border-gray-500';
       default:
         return 'bg-blue-100 text-blue-800 border-blue-200';
     }

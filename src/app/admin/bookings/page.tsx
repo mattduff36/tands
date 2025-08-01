@@ -310,24 +310,29 @@ export default function AdminBookings() {
 
   const filteredBookings = createFilteredBookingsList();
 
-  // Get status badge using design system variants with icons
-  const getStatusBadge = (status: string) => {
+  // Get status badge using consistent colors across database and calendar
+  const getStatusBadge = (status: string, booking?: any) => {
     switch (status) {
       case 'pending':
-        return <Badge variant="secondary" className="flex items-center gap-1"><Clock className="w-3 h-3" /> Pending</Badge>;
+        return <Badge className="flex items-center gap-1 bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-100"><Clock className="w-3 h-3" /> Pending</Badge>;
       case 'confirmed':
-        return <Badge variant="default" className="flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Confirmed</Badge>;
+        // Show different shades of green based on agreement status
+        if (booking?.agreementSigned) {
+          return <Badge className="flex items-center gap-1 bg-green-100 text-green-800 border-green-200 hover:bg-green-100"><CheckCircle className="w-3 h-3" /> Confirmed</Badge>;
+        } else {
+          return <Badge className="flex items-center gap-1 bg-green-50 text-green-700 border-green-100 hover:bg-green-50"><CheckCircle className="w-3 h-3" /> Confirmed</Badge>;
+        }
       case 'completed':
       case 'complete': // Handle legacy 'complete' status
-        return <Badge variant="outline" className="flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Completed</Badge>;
+        return <Badge className="flex items-center gap-1 bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100"><CheckCircle className="w-3 h-3" /> Completed</Badge>;
       case 'expired':
-        return <Badge variant="destructive" className="flex items-center gap-1"><X className="w-3 h-3" /> Expired</Badge>;
+        return <Badge className="flex items-center gap-1 bg-gray-600 text-gray-100 border-gray-500 hover:bg-gray-600"><X className="w-3 h-3" /> Expired</Badge>;
       default:
-        return <Badge variant="secondary" className="flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {status}</Badge>;
+        return <Badge className="flex items-center gap-1 bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-100"><AlertCircle className="w-3 h-3" /> {status}</Badge>;
     }
   };
 
-  // Get agreement status badge for confirmed bookings
+  // Get agreement status badge for confirmed bookings with consistent colors
   const getAgreementBadge = (booking: any) => {
     // Only show agreement status for confirmed bookings
     if (booking.status !== 'confirmed') {
@@ -336,14 +341,14 @@ export default function AdminBookings() {
 
     if (booking.agreementSigned) {
       return (
-        <Badge variant="outline" className="flex items-center gap-1 border-green-600 text-green-700 bg-green-50">
+        <Badge className="flex items-center gap-1 bg-black text-white border-black hover:bg-black">
           <FileCheck className="w-3 h-3" />
           Agreement Signed
         </Badge>
       );
     } else {
       return (
-        <Badge variant="outline" className="flex items-center gap-1 border-amber-600 text-amber-700 bg-amber-50">
+        <Badge className="flex items-center gap-1 bg-white text-black border-black hover:bg-white">
           <FileWarning className="w-3 h-3" />
           Awaiting Signature
         </Badge>
@@ -1460,16 +1465,11 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-2">
                       <h3 className="font-medium">{booking.customerName}</h3>
                       <div className="flex gap-2">
-                        {getStatusBadge(booking.status)}
+                        {getStatusBadge(booking.status, booking)}
                         {getAgreementBadge(booking)}
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-sm text-gray-600">
-                      {booking.status !== 'pending' && (
-                        <div>
-                          <strong>Booking Ref:</strong> {booking.bookingRef}
-                        </div>
-                      )}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 text-sm text-gray-600">
                       <div>
                         <strong>Castle:</strong> {booking.castleName}
                       </div>
@@ -1477,7 +1477,13 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
                         <strong>Date:</strong> {formatDate(booking.date)}
                       </div>
                       <div>
+                        <strong>Duration:</strong> {booking.eventDuration ? `${booking.eventDuration} hours` : '8 hours'}
+                      </div>
+                      <div>
                         <strong>Total:</strong> £{booking.totalPrice}
+                      </div>
+                      <div>
+                        <strong>Booking Ref:</strong> {booking.bookingRef}
                       </div>
                     </div>
                   </div>
@@ -1683,11 +1689,24 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
                             </span>
                           </div>
                           <div className="text-xs text-gray-600 space-y-1">
-                            <p>{formatEventDate(event)} • {formatEventTime(event)}</p>
-                            {event.location && <p>📍 {event.location}</p>}
-                            {event.attendees && event.attendees.length > 0 && (
-                              <p>👤 {event.attendees[0].displayName || event.attendees[0].email}</p>
-                            )}
+                            {(() => {
+                              const description = event.description || '';
+                              const castleName = event.summary?.split(' - ')[1] || 'Unknown Castle';
+                              const total = description.match(/Total: £(\d+)/)?.[1] || '0';
+                              const duration = description.match(/Duration: (\d+) hours/)?.[1] || 
+                                             (description.includes('24 hours') || description.includes('Overnight') ? '24' : '8');
+                              const bookingRef = description.match(/Booking Ref: (TS\d{3})/)?.[1] || 'N/A';
+                              
+                              return (
+                                <>
+                                  <p><strong>Castle:</strong> {castleName}</p>
+                                  <p><strong>Date:</strong> {formatEventDate(event)}</p>
+                                  <p><strong>Duration:</strong> {duration} hours</p>
+                                  <p><strong>Total:</strong> £{total}</p>
+                                  <p><strong>Booking Ref:</strong> {bookingRef}</p>
+                                </>
+                              );
+                            })()}
                           </div>
                           <div className="mt-3">
                             <Button 

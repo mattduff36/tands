@@ -34,7 +34,6 @@ export function BookingForm() {
   const [postcode, setPostcode] = useState("");
   const [eventDuration, setEventDuration] = useState(8); // Default 8 hours
   const [specialRequests, setSpecialRequests] = useState("");
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -74,8 +73,8 @@ export function BookingForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedCastleId || !date || !name || !email || !phone || !address || !postcode || !agreedToTerms) {
-      toast.error("Please fill in all required fields and agree to terms");
+    if (!selectedCastleId || !date || !name || !email || !phone || !address || !postcode) {
+      toast.error("Please fill in all required fields");
       return;
     }
 
@@ -84,22 +83,32 @@ export function BookingForm() {
     try {
       const selectedCastle = castles.find(c => c.id.toString() === selectedCastleId);
       
-      // Create datetime string for eventDate (start of day)
-      const eventDateTime = new Date(date);
-      eventDateTime.setHours(9, 0, 0, 0); // Default to 9 AM
+      // Create datetime strings based on event duration
+      const eventStartTime = new Date(date);
+      eventStartTime.setHours(10, 0, 0, 0); // Start at 10:00 AM
+      
+      const eventEndTime = new Date(date);
+      if (eventDuration === 8) {
+        // 8 hours: 10:00 - 18:00
+        eventEndTime.setHours(18, 0, 0, 0);
+      } else if (eventDuration === 24) {
+        // 24 hours (overnight): 10:00 - 23:59
+        eventEndTime.setHours(23, 59, 0, 0);
+      }
       
       const bookingData = {
         castleId: parseInt(selectedCastleId), // Convert to number
         customerName: name,
         customerEmail: email,
         customerPhone: phone,
-        eventDate: eventDateTime.toISOString(),
+        eventDate: eventStartTime.toISOString(),
         eventDuration: eventDuration,
+        eventStartTime: eventStartTime.toISOString(),
+        eventEndTime: eventEndTime.toISOString(),
         eventAddress: address,
         eventPostcode: postcode,
         specialRequests: specialRequests || undefined,
-        agreedToTerms: agreedToTerms,
-        isOvernight: false,
+        isOvernight: eventDuration === 24,
         totalPrice: selectedCastle ? Math.floor(selectedCastle.price) : 0,
       };
 
@@ -271,17 +280,14 @@ export function BookingForm() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="duration" className="text-sm font-medium">
-              Event Duration (hours) *
+              Event Duration *
             </Label>
             <Select value={eventDuration.toString()} onValueChange={(value) => setEventDuration(parseInt(value))}>
               <SelectTrigger className="bg-white">
                 <SelectValue placeholder="Select duration" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="4">4 hours</SelectItem>
-                <SelectItem value="6">6 hours</SelectItem>
                 <SelectItem value="8">8 hours (Standard)</SelectItem>
-                <SelectItem value="12">12 hours</SelectItem>
                 <SelectItem value="24">24 hours (Overnight)</SelectItem>
               </SelectContent>
             </Select>
@@ -358,38 +364,14 @@ export function BookingForm() {
                     <span>Total Price:</span>
                     <span>£{totalPrice}</span>
                   </div>
-                  <div className="flex justify-between text-gray-600">
-                    <span>Deposit Required (30%):</span>
-                    <span>£{deposit}</span>
-                  </div>
+
                 </div>
               );
             })()}
           </div>
         )}
 
-        {/* Terms and Conditions */}
-        <div className="flex items-start space-x-3">
-          <input
-            type="checkbox"
-            id="terms"
-            checked={agreedToTerms}
-            onChange={(e) => setAgreedToTerms(e.target.checked)}
-            className="mt-1 h-4 w-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
-            required
-          />
-          <Label htmlFor="terms" className="text-sm text-gray-700 leading-relaxed">
-            I agree to the{" "}
-            <a href="/terms" target="_blank" className="text-red-600 hover:text-red-700 underline">
-              terms and conditions
-            </a>{" "}
-            and{" "}
-            <a href="/hire-agreement" target="_blank" className="text-red-600 hover:text-red-700 underline">
-              hire agreement
-            </a>
-            . I understand that a 30% deposit is required to confirm the booking. *
-          </Label>
-        </div>
+
 
         {/* Submit Button */}
         <Button 

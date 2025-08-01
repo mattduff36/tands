@@ -144,16 +144,16 @@ export default function AdminDashboard() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
-        return <Badge variant="secondary" className="flex items-center gap-1"><Clock className="w-3 h-3" /> Pending</Badge>;
+        return <Badge className="flex items-center gap-1 bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-100"><Clock className="w-3 h-3" /> Pending</Badge>;
       case 'confirmed':
-        return <Badge variant="default" className="flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Confirmed</Badge>;
+        return <Badge className="flex items-center gap-1 bg-green-100 text-green-800 border-green-200 hover:bg-green-100"><CheckCircle className="w-3 h-3" /> Confirmed</Badge>;
       case 'completed':
       case 'complete': // Handle legacy status
-        return <Badge variant="outline" className="flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Completed</Badge>;
+        return <Badge className="flex items-center gap-1 bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100"><CheckCircle className="w-3 h-3" /> Completed</Badge>;
       case 'expired':
-        return <Badge variant="destructive" className="flex items-center gap-1"><X className="w-3 h-3" /> Expired</Badge>;
+        return <Badge className="flex items-center gap-1 bg-gray-600 text-gray-100 border-gray-500 hover:bg-gray-600"><X className="w-3 h-3" /> Expired</Badge>;
       default:
-        return <Badge variant="secondary" className="flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {status}</Badge>;
+        return <Badge className="flex items-center gap-1 bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-100"><AlertCircle className="w-3 h-3" /> {status}</Badge>;
     }
   };
 

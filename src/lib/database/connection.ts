@@ -153,6 +153,9 @@ export async function initializeDatabase() {
   try {
     console.log('Initializing database tables');
     
+    // Import bookings initialization function
+    const { initializeBookingsTable } = await import('./bookings');
+    
     // Create castles table if it doesn't exist
     await query(`
       CREATE TABLE IF NOT EXISTS castles (
@@ -206,46 +209,7 @@ export async function initializeDatabase() {
       console.log('Maintenance status index already exists or error adding it', { error: error instanceof Error ? error.message : String(error) });
     }
 
-    // Create bookings table if it doesn't exist
-    await query(`
-      CREATE TABLE IF NOT EXISTS bookings (
-        id SERIAL PRIMARY KEY,
-        booking_ref VARCHAR(50) UNIQUE NOT NULL,
-        customer_name VARCHAR(255) NOT NULL,
-        customer_email VARCHAR(255) NOT NULL,
-        customer_phone VARCHAR(50) NOT NULL,
-        customer_address TEXT NOT NULL,
-        castle_id INTEGER NOT NULL,
-        castle_name VARCHAR(255) NOT NULL,
-        date DATE NOT NULL,
-        payment_method VARCHAR(50) NOT NULL,
-        total_price INTEGER NOT NULL,
-        deposit INTEGER NOT NULL,
-        status VARCHAR(20) DEFAULT 'pending',
-        notes TEXT,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    
-    // Add agreement columns to bookings table if they don't exist
-    try {
-      await query(`
-        ALTER TABLE bookings 
-        ADD COLUMN IF NOT EXISTS agreement_signed BOOLEAN DEFAULT FALSE
-      `);
-      await query(`
-        ALTER TABLE bookings 
-        ADD COLUMN IF NOT EXISTS agreement_signed_at TIMESTAMP WITH TIME ZONE
-      `);
-      await query(`
-        ALTER TABLE bookings 
-        ADD COLUMN IF NOT EXISTS agreement_signed_by VARCHAR(255)
-      `);
-      console.log('Agreement fields added to bookings table');
-    } catch (error) {
-      console.log('Agreement fields already exist or error adding them', { error: error instanceof Error ? error.message : String(error) });
-    }
+    // Bookings table will be initialized by initializeBookingsTable() below
     
     // Check if we have any data
     const result = await query('SELECT COUNT(*) FROM castles');
@@ -292,6 +256,9 @@ export async function initializeDatabase() {
       
       console.log('Default castle data inserted successfully');
     }
+    
+    // Initialize bookings table with all the latest fields
+    await initializeBookingsTable();
     
     console.log('Database initialization completed');
   } catch (error) {

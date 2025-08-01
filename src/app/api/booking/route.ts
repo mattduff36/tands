@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { bookingSchema, validateAndSanitize } from '@/lib/validation/schemas';
 import { createPendingBooking } from '@/lib/database/bookings';
 import { getCastleById } from '@/lib/database/castles';
-import { sendAgreementEmail } from '@/lib/email/email-service';
+import { sendBookingReceivedEmail } from '@/lib/email/email-service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -54,6 +54,9 @@ export async function POST(request: NextRequest) {
         totalPrice: validatedData.totalPrice,
         deposit: Math.floor(validatedData.totalPrice * 0.3), // 30% deposit
         notes: validatedData.specialRequests,
+        startDate: validatedData.eventStartTime ? new Date(validatedData.eventStartTime) : undefined,
+        endDate: validatedData.eventEndTime ? new Date(validatedData.eventEndTime) : undefined,
+        eventDuration: validatedData.eventDuration,
       });
     } catch (dbError) {
       console.warn('Database unavailable, creating mock booking for testing:', dbError);
@@ -72,15 +75,18 @@ export async function POST(request: NextRequest) {
         totalPrice: validatedData.totalPrice,
         deposit: Math.floor(validatedData.totalPrice * 0.3),
         notes: validatedData.specialRequests,
+        startDate: validatedData.eventStartTime ? new Date(validatedData.eventStartTime) : undefined,
+        endDate: validatedData.eventEndTime ? new Date(validatedData.eventEndTime) : undefined,
+        eventDuration: validatedData.eventDuration,
         status: 'pending',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
     }
 
-    // Send agreement email
+    // Send booking received email
     try {
-      await sendAgreementEmail({
+      await sendBookingReceivedEmail({
         bookingId: booking.id,
         bookingRef: booking.bookingRef,
         customerName: booking.customerName,
@@ -88,14 +94,16 @@ export async function POST(request: NextRequest) {
         customerPhone: booking.customerPhone,
         castleName: booking.castleName,
         date: booking.date,
-        startDate: validatedData.eventDate,
-        endDate: new Date(new Date(validatedData.eventDate).getTime() + (validatedData.eventDuration * 60 * 60 * 1000)).toISOString(),
+        startDate: validatedData.eventStartTime || validatedData.eventDate,
+        endDate: validatedData.eventEndTime || new Date(new Date(validatedData.eventDate).getTime() + (validatedData.eventDuration * 60 * 60 * 1000)).toISOString(),
+        eventDuration: validatedData.eventDuration,
+        eventAddress: validatedData.eventAddress,
         totalCost: booking.totalPrice,
         deposit: booking.deposit,
         notes: booking.notes,
       });
     } catch (emailError) {
-      console.error('Failed to send agreement email:', emailError);
+      console.error('Failed to send booking received email:', emailError);
       // Don't fail the booking if email fails
     }
 

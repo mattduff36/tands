@@ -20,6 +20,7 @@ export interface PendingBooking {
   date: string;
   startDate?: Date;
   endDate?: Date;
+  eventDuration?: number;
   paymentMethod: string;
   totalPrice: number;
   deposit: number;
@@ -92,6 +93,7 @@ export async function initializeBookingsTable(): Promise<void> {
       ADD COLUMN IF NOT EXISTS castle_type VARCHAR(255),
       ADD COLUMN IF NOT EXISTS start_date TIMESTAMP WITH TIME ZONE,
       ADD COLUMN IF NOT EXISTS end_date TIMESTAMP WITH TIME ZONE,
+      ADD COLUMN IF NOT EXISTS event_duration INTEGER,
       ADD COLUMN IF NOT EXISTS total_cost INTEGER,
       ADD COLUMN IF NOT EXISTS calendar_event_id VARCHAR(255),
       ADD COLUMN IF NOT EXISTS agreement_signed BOOLEAN DEFAULT FALSE,
@@ -279,8 +281,8 @@ export async function createPendingBooking(booking: Omit<PendingBooking, 'id' | 
       INSERT INTO bookings (
         booking_ref, customer_name, customer_email, customer_phone, 
         customer_address, castle_id, castle_name, date, payment_method, 
-        total_price, deposit, notes
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        total_price, deposit, notes, start_date, end_date, event_duration
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       RETURNING *
     `, [
       bookingRef,
@@ -294,7 +296,10 @@ export async function createPendingBooking(booking: Omit<PendingBooking, 'id' | 
       booking.paymentMethod,
       booking.totalPrice,
       booking.deposit,
-      booking.notes || null
+      booking.notes || null,
+      booking.startDate || null,
+      booking.endDate || null,
+      booking.eventDuration || null
     ]);
 
       // Success! Return the booking
@@ -479,7 +484,9 @@ export async function getBookingsByStatus(status?: string): Promise<PendingBooki
     let query = `SELECT 
       id, booking_ref, customer_name, customer_email, customer_phone, customer_address,
       castle_id, castle_name, date, payment_method, total_price, deposit, status, notes,
-      created_at, updated_at
+      created_at, updated_at, start_date, end_date, event_duration,
+      agreement_signed, agreement_signed_at, agreement_signed_by, agreement_signed_method,
+      email_sent, email_sent_at, manual_confirmation, confirmed_by
     FROM bookings`;
     let params: any[] = [];
     
@@ -509,26 +516,29 @@ export async function getBookingsByStatus(status?: string): Promise<PendingBooki
       notes: row.notes,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-      // Email automation tracking - default values since columns don't exist yet
-      emailSent: false,
-      emailSentAt: undefined,
-      manualConfirmation: false,
-      confirmedBy: undefined,
-      // Agreement tracking - default values since columns don't exist yet
-      agreementSigned: false,
-      agreementSignedAt: undefined,
-      agreementSignedBy: undefined,
-      // Enhanced audit trail - default values since columns don't exist yet
-      agreementSignedMethod: undefined,
-      agreementIpAddress: undefined,
-      agreementUserAgent: undefined,
-      agreementPdfGenerated: false,
-      agreementPdfGeneratedAt: undefined,
-      agreementEmailOpened: false,
-      agreementEmailOpenedAt: undefined,
-      agreementViewed: false,
-      agreementViewedAt: undefined,
-      auditTrail: undefined
+      startDate: row.start_date,
+      endDate: row.end_date,
+      eventDuration: row.event_duration,
+      // Email automation tracking
+      emailSent: row.email_sent || false,
+      emailSentAt: row.email_sent_at || undefined,
+      manualConfirmation: row.manual_confirmation || false,
+      confirmedBy: row.confirmed_by || undefined,
+      // Agreement tracking
+      agreementSigned: row.agreement_signed || false,
+      agreementSignedAt: row.agreement_signed_at || undefined,
+      agreementSignedBy: row.agreement_signed_by || undefined,
+      // Enhanced audit trail
+      agreementSignedMethod: row.agreement_signed_method || undefined,
+      agreementIpAddress: undefined, // Not selected in this query
+      agreementUserAgent: undefined, // Not selected in this query
+      agreementPdfGenerated: false, // Not selected in this query
+      agreementPdfGeneratedAt: undefined, // Not selected in this query
+      agreementEmailOpened: false, // Not selected in this query
+      agreementEmailOpenedAt: undefined, // Not selected in this query
+      agreementViewed: false, // Not selected in this query
+      agreementViewedAt: undefined, // Not selected in this query
+      auditTrail: undefined // Not selected in this query
     }));
     } catch (error) {
       console.error('Error fetching bookings:', error);

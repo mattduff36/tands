@@ -31,12 +31,13 @@ export const bookingSchema = z.object({
   customerEmail: emailSchema,
   customerPhone: phoneSchema,
   eventDate: z.string().datetime('Invalid date format'),
-  eventDuration: z.number().int().min(1).max(168), // Max 1 week
+  eventDuration: z.number().int().refine(val => val === 8 || val === 24, 'Duration must be 8 or 24 hours'),
+  eventStartTime: z.string().datetime('Invalid start time format').optional(),
+  eventEndTime: z.string().datetime('Invalid end time format').optional(),
   castleId: z.number().int().positive(),
   eventAddress: z.string().min(1, 'Address is required').max(200).trim(),
   eventPostcode: z.string().min(1, 'Postcode is required').max(10).trim().toUpperCase(),
   specialRequests: z.string().max(500).trim().optional(),
-  agreedToTerms: z.boolean().refine(val => val === true, 'Must agree to terms'),
   isOvernight: z.boolean().default(false),
   totalPrice: z.number().min(0).max(10000),
 });
