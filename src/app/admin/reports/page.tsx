@@ -204,7 +204,10 @@ export default function AdminReports() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Reports & Analytics</h1>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center">
+            <BarChart3 className="w-6 h-6 mr-2" />
+            Reports & Analytics
+          </h1>
           <p className="mt-2 text-gray-600">
             Track your business performance and insights
           </p>

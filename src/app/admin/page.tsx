@@ -17,7 +17,8 @@ import {
   RefreshCw,
   Castle,
   ExternalLink,
-  X
+  X,
+  Home
 } from 'lucide-react';
 
 interface DashboardStats {
@@ -196,7 +197,7 @@ export default function AdminDashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center">
-            <TrendingUp className="w-6 h-6 mr-2" />
+            <Home className="w-6 h-6 mr-2" />
             Dashboard
           </h1>
           <p className="mt-2 text-gray-600">
