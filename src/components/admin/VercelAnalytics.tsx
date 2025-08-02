@@ -80,6 +80,12 @@ export default function VercelAnalytics({ timeRange = '30d' }: VercelAnalyticsPr
       
       if (result.success) {
         setAnalyticsData(result.data);
+        // Show data source status
+        if (result.dataSource === 'fallback') {
+          console.warn('⚠️  Using fallback analytics data. Check your Vercel API configuration in .env.local');
+        } else if (result.dataSource === 'live') {
+          console.log('✅ Successfully loaded live Vercel analytics data');
+        }
       } else {
         throw new Error(result.message || 'Failed to fetch analytics data');
       }
