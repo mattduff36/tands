@@ -84,23 +84,20 @@ export default function Home() {
                       Perfect for Every Occasion
                     </h3>
                     <p className="text-gray-700 mb-6 text-lg">
-                      Our bouncy castles are ideal for <strong>children's birthday parties</strong>, 
-                      <strong> school events</strong>, <strong>family gatherings</strong>, 
-                      <strong> community festivals</strong>, and <strong>corporate fun days</strong> 
-                      throughout Nottinghamshire.
+                      Our bouncy castles are ideal for <strong>children's birthday parties</strong>, <strong>school events</strong>, <strong>family gatherings</strong>, <strong>community festivals</strong>, and <strong>corporate fun days</strong> throughout Nottinghamshire.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
                       <a 
                         href="/castles" 
                         className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
                       >
-                        Browse Our Castle Fleet
+                        🏰 View Our Castles
                       </a>
                       <a 
-                        href="/contact" 
+                        href="/booking" 
                         className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
                       >
-                        Get a Free Quote
+                        📅 Book Now
                       </a>
                     </div>
                   </div>
