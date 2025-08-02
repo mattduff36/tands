@@ -1,11 +1,54 @@
+import { Metadata } from 'next';
 import Image from "next/image";
 import { MapPin, Truck } from "lucide-react";
+import { BreadcrumbStructuredData } from '@/components/seo/StructuredData';
+
+export const metadata: Metadata = {
+  title: "About T&S Bouncy Castle Hire | Professional Party Equipment Rental Edwinstowe",
+  description: "Learn about T&S Bouncy Castle Hire - your trusted local bouncy castle rental service in Edwinstowe. Fully insured, reliable, and committed to making your events unforgettable.",
+  keywords: "T&S bouncy castle hire, about us, Edwinstowe party rental, local business, insured bouncy castles, professional service",
+  openGraph: {
+    title: "About T&S Bouncy Castle Hire | Professional Party Equipment Rental",
+    description: "Learn about T&S Bouncy Castle Hire - your trusted local bouncy castle rental service in Edwinstowe.",
+    url: "https://www.bouncy-castle-hire.com/about",
+    images: [
+      {
+        url: "/IMG_2362.JPEG",
+        width: 1200,
+        height: 630,
+        alt: "T&S Bouncy Castle Hire Team",
+      },
+    ],
+  },
+};
 
 const AboutPage = () => {
+  const breadcrumbItems = [
+    { name: 'Home', url: 'https://www.bouncy-castle-hire.com' },
+    { name: 'About Us', url: 'https://www.bouncy-castle-hire.com/about' }
+  ];
+
   return (
-    <div className="bg-gradient-about py-6 pt-20 sm:py-12 sm:pt-24">
-      <main className="container mx-auto px-2 sm:px-8">
-        <div className="rounded-3xl border-4 border-green-300 bg-gradient-to-br from-green-100 via-blue-100 to-purple-100 p-2 sm:p-8 shadow-2xl backdrop-blur-md">
+    <>
+      <BreadcrumbStructuredData items={breadcrumbItems} />
+      <div className="bg-gradient-about py-6 pt-20 sm:py-12 sm:pt-24">
+        <main className="container mx-auto px-2 sm:px-8">
+          {/* Breadcrumb Navigation */}
+          <nav className="mb-8" aria-label="Breadcrumb">
+            <ol className="flex items-center space-x-2 text-sm">
+              <li>
+                <a href="/" className="text-blue-600 hover:text-blue-800 transition-colors">
+                  Home
+                </a>
+              </li>
+              <li className="text-gray-500">/</li>
+              <li className="text-gray-900 font-medium" aria-current="page">
+                About Us
+              </li>
+            </ol>
+          </nav>
+
+          <div className="rounded-3xl border-4 border-green-300 bg-gradient-to-br from-green-100 via-blue-100 to-purple-100 p-2 sm:p-8 shadow-2xl backdrop-blur-md">
           {/* Hero Section */}
           <div className="relative rounded-3xl overflow-hidden shadow-2xl mb-16 h-[320px] flex items-center justify-center">
             <div className="absolute inset-0">
@@ -72,8 +115,8 @@ const AboutPage = () => {
                         <Truck className="h-8 w-8 text-green-500 animate-bounce" />
                       </div>
                       <div className="ml-4">
-                        <dt className="text-lg font-bold text-gray-900">🆓 Free Delivery (10-Mile Radius)</dt>
-                        <dd className="mt-1 text-base text-gray-600 font-medium">We offer free delivery and setup for all locations within a 10-mile radius of Edwinstowe.</dd>
+                        <dt className="text-lg font-bold text-gray-900">🆓 Free Delivery (20-Mile Radius)</dt>
+                        <dd className="mt-1 text-base text-gray-600 font-medium">We offer free delivery and setup for all locations within a 20-mile radius of Edwinstowe.</dd>
                       </div>
                     </div>
                     <div className="flex items-start bg-white/80 rounded-2xl p-6 shadow-lg border-2 border-yellow-300 transform hover:scale-105 transition-all duration-300">
@@ -81,8 +124,8 @@ const AboutPage = () => {
                         <Truck className="h-8 w-8 text-yellow-500 animate-bounce" />
                       </div>
                       <div className="ml-4">
-                        <dt className="text-lg font-bold text-gray-900">💰 Extended Delivery (10-20 Miles)</dt>
-                        <dd className="mt-1 text-base text-gray-600 font-medium">For locations between 10 and 20 miles away, we apply a small delivery charge of just £5.</dd>
+                        <dt className="text-lg font-bold text-gray-900">💰 Extended Delivery (20+ Miles)</dt>
+                        <dd className="mt-1 text-base text-gray-600 font-medium">For locations over 20 miles away, we apply a small delivery charge based on the distance and time taken to get to your event.</dd>
                       </div>
                     </div>
                   </dl>
@@ -114,8 +157,9 @@ const AboutPage = () => {
             </div>
           </div>
         </div>
-      </main>
-    </div>
+        </main>
+      </div>
+    </>
   );
 };
 

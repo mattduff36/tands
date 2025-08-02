@@ -82,7 +82,7 @@ const nextConfig = {
     return config;
   },
 
-  // Security headers
+  // Security and SEO headers
   async headers() {
     return [
       {
@@ -103,9 +103,38 @@ const nextConfig = {
           {
             key: 'Referrer-Policy',
             value: 'origin-when-cross-origin'
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY'
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block'
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'geolocation=(), microphone=(), camera=()'
           }
         ]
       }
+    ];
+  },
+
+  // SEO and performance optimizations
+  async redirects() {
+    return [
+      // Add redirects for common URL variations
+      {
+        source: '/bouncy-castles',
+        destination: '/castles',
+        permanent: true,
+      },
+      {
+        source: '/contact-us',
+        destination: '/contact',
+        permanent: true,
+      },
     ];
   },
 };

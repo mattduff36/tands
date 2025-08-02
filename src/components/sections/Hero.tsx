@@ -30,18 +30,26 @@ const Hero = () => {
 
   return (
     <section className="relative h-[80vh] w-full flex items-center justify-center text-white">
-      {images.map((src, index) => (
-        <Image
-          key={src}
-          src={src}
-          alt="Bouncy castle"
-          fill
-          className={`object-cover transition-opacity duration-1000 ${
-            index === currentImageIndex ? "opacity-100" : "opacity-0"
-          }`}
-          priority={index === 0}
-        />
-      ))}
+      {images.map((src, index) => {
+        const altTexts = [
+          "Colorful bouncy castle with children playing at T&S Bouncy Castle Hire party",
+          "Large inflatable bouncy castle setup in garden for birthday party in Edwinstowe",
+          "Safe and fun bouncy castle rental from T&S Bouncy Castle Hire Nottinghamshire"
+        ];
+        
+        return (
+          <Image
+            key={src}
+            src={src}
+            alt={altTexts[index] || "Professional bouncy castle hire in Edwinstowe"}
+            fill
+            className={`object-cover transition-opacity duration-1000 ${
+              index === currentImageIndex ? "opacity-100" : "opacity-0"
+            }`}
+            priority={index === 0}
+          />
+        );
+      })}
       <div className="absolute inset-0 bg-black/50" />
       <div className="absolute inset-0 bg-[#37B8D4]/50" />
       <div className="relative z-10 text-center p-4">

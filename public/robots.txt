@@ -1,0 +1,22 @@
+User-agent: *
+Allow: /
+
+# Important pages for crawling
+Allow: /castles
+Allow: /about
+Allow: /contact
+Allow: /booking
+Allow: /faq
+Allow: /health-and-safety
+
+# Block admin areas
+Disallow: /admin/
+Disallow: /api/
+
+# Block temporary or duplicate content
+Disallow: /hire-agreement
+Disallow: /_next/
+Disallow: /.next/
+
+# Sitemap location
+Sitemap: https://www.bouncy-castle-hire.com/sitemap.xml
