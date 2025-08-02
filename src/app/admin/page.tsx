@@ -195,7 +195,10 @@ export default function AdminDashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center">
+            <TrendingUp className="w-6 h-6 mr-2" />
+            Dashboard
+          </h1>
           <p className="mt-2 text-gray-600">
             Welcome back, {session?.user?.name || 'Admin'}
           </p>

@@ -29,7 +29,8 @@ import {
   RefreshCw,
   FileCheck,
   FileWarning,
-  Check
+  Check,
+  Users
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BookingDetailsModal } from '@/components/admin/BookingDetailsModal';
@@ -1367,7 +1368,10 @@ Status: ${booking.status}`;
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Bookings</h1>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center">
+            <Users className="w-6 h-6 mr-2" />
+            Bookings
+          </h1>
           <p className="mt-2 text-gray-600">
             Manage pending and confirmed bookings
           </p>
@@ -1563,7 +1567,10 @@ Status: ${booking.status}`;
       <div className="space-y-6">
         {/* Calendar Header */}
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Calendar</h1>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center">
+            <CalendarIcon className="w-6 h-6 mr-2" />
+            Calendar
+          </h1>
           <p className="mt-2 text-gray-600">
             Manage your bookings and schedule
           </p>
