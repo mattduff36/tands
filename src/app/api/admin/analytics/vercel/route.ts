@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-// Vercel API configuration
-const VERCEL_TEAM_ID = process.env.VERCEL_TEAM_ID;
-const VERCEL_ACCESS_TOKEN = process.env.VERCEL_ACCESS_TOKEN;
-const VERCEL_PROJECT_ID = process.env.VERCEL_PROJECT_ID;
+import { fetchGoogleAnalyticsData } from '@/lib/google-analytics';
 
 // Helper function to get date range for Vercel API
 function getFromDate(timeRange: string): string {
@@ -185,12 +181,18 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const timeRange = searchParams.get('timeRange') || '30d';
     
-    // Vercel Web Analytics doesn't provide a public API
-    // Using demo data that represents what your real analytics might look like
-    const analyticsData = generateDemoAnalyticsData();
-    const dataSource = 'demo';
+    let analyticsData;
+    let dataSource = 'google-analytics';
     
-    console.info('📊 Displaying demo analytics data. Vercel Web Analytics can only be viewed at https://vercel.com/dashboard');
+    try {
+      // Try to fetch real data from Google Analytics 4
+      analyticsData = await fetchGoogleAnalyticsData(timeRange);
+      console.info('✅ Successfully loaded Google Analytics 4 data');
+    } catch (apiError) {
+      console.warn('Failed to fetch Google Analytics data, using demo data:', apiError);
+      analyticsData = generateDemoAnalyticsData();
+      dataSource = 'demo';
+    }
     
     return NextResponse.json({
       success: true,

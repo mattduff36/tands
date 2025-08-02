@@ -64,6 +64,7 @@ export default function VercelAnalytics({ timeRange = '30d' }: VercelAnalyticsPr
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dataSource, setDataSource] = useState<string>('demo');
 
   const fetchAnalytics = async () => {
     setIsLoading(true);
@@ -80,11 +81,12 @@ export default function VercelAnalytics({ timeRange = '30d' }: VercelAnalyticsPr
       
       if (result.success) {
         setAnalyticsData(result.data);
+        setDataSource(result.dataSource || 'demo');
         // Show data source status
-        if (result.dataSource === 'demo') {
-          console.info('📊 Displaying demo analytics data. Vercel Web Analytics API is not publicly available - view real data at https://vercel.com/dashboard');
-        } else if (result.dataSource === 'live') {
-          console.log('✅ Successfully loaded live analytics data');
+        if (result.dataSource === 'google-analytics') {
+          console.info('✅ Successfully loaded Google Analytics 4 data');
+        } else if (result.dataSource === 'demo') {
+          console.info('📊 Displaying demo analytics data. Configure Google Analytics 4 to see real data.');
         }
       } else {
         throw new Error(result.message || 'Failed to fetch analytics data');
@@ -163,16 +165,23 @@ export default function VercelAnalytics({ timeRange = '30d' }: VercelAnalyticsPr
 
   return (
     <div className="space-y-6">
-      {/* Demo Data Notice */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+      {/* Analytics Data Notice - Dynamic based on data source */}
+      <div className={`${dataSource === 'google-analytics' ? 'bg-green-50 border-green-200' : 'bg-blue-50 border-blue-200'} border rounded-lg p-4`}>
         <div className="flex items-center">
           <div className="flex-shrink-0">
-            <BarChart3 className="h-5 w-5 text-blue-400" />
+            <BarChart3 className={`h-5 w-5 ${dataSource === 'google-analytics' ? 'text-green-400' : 'text-blue-400'}`} />
           </div>
           <div className="ml-3">
-            <h3 className="text-sm font-medium text-blue-800">Demo Analytics Data</h3>
-            <div className="mt-2 text-sm text-blue-700">
-              <p>This shows sample analytics data. Vercel Web Analytics doesn't provide a public API - view your real analytics at <a href="https://vercel.com/dashboard" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-900">vercel.com/dashboard</a></p>
+            <h3 className={`text-sm font-medium ${dataSource === 'google-analytics' ? 'text-green-800' : 'text-blue-800'}`}>
+              {dataSource === 'google-analytics' ? 'Live Google Analytics 4 Data' : 'Demo Analytics Data'}
+            </h3>
+            <div className={`mt-2 text-sm ${dataSource === 'google-analytics' ? 'text-green-700' : 'text-blue-700'}`}>
+              <p>
+                {dataSource === 'google-analytics' 
+                  ? 'Showing real analytics data from your Google Analytics 4 property.'
+                  : 'Showing sample data. Configure Google Analytics 4 API credentials to see real visitor analytics.'
+                }
+              </p>
             </div>
           </div>
         </div>
