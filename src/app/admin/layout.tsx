@@ -85,7 +85,6 @@ function AdminNavigation() {
     { name: 'Bookings', href: '/admin/bookings', icon: Users },
     { name: 'Fleet', href: '/admin/fleet', icon: Castle },
     { name: 'Reports', href: '/admin/reports', icon: BarChart3 },
-    { name: 'Settings', href: '/admin/settings', icon: Settings },
   ];
 
   const handleSignOut = () => {
@@ -124,6 +123,13 @@ function AdminNavigation() {
               <span className="text-sm text-gray-700">
                 {session?.user?.name || session?.user?.email}
               </span>
+              <Link
+                href="/admin/settings"
+                className="p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 rounded-md transition-colors duration-200"
+                title="Settings"
+              >
+                <Settings className="w-5 h-5" />
+              </Link>
               <Button
                 onClick={handleSignOut}
                 variant="outline"
@@ -192,6 +198,16 @@ function AdminNavigation() {
               </div>
             </div>
             <div className="mt-3 space-y-1">
+              <Link
+                href="/admin/settings"
+                className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <div className="flex items-center">
+                  <Settings className="w-4 h-4 mr-3" />
+                  Settings
+                </div>
+              </Link>
               <button
                 onClick={handleSignOut}
                 className="block w-full text-left px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
