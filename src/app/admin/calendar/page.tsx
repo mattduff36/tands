@@ -546,11 +546,60 @@ export default function AdminCalendar() {
         return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'complete':
         return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'unavailable':
+        return 'bg-red-100 text-red-800 border-red-200';
       case 'expired':
         return 'bg-gray-600 text-gray-100 border-gray-500';
       default:
         return 'bg-blue-100 text-blue-800 border-blue-200';
     }
+  };
+
+  // Helper function to determine event status 
+  const getEventStatus = (event: CalendarEvent) => {
+    // Check if event is a maintenance event (🔧 symbol)
+    if (event.summary?.includes('🔧')) {
+      return 'unavailable';
+    }
+    
+    // Return the original status or default to confirmed
+    return event.status || 'confirmed';
+  };
+
+  // Format date range for maintenance events  
+  const formatMaintenanceDateRange = (event: CalendarEvent) => {
+    const start = event.start?.dateTime || event.start?.date;
+    const end = event.end?.dateTime || event.end?.date;
+    
+    if (!start) return '';
+    
+    const startDate = new Date(start);
+    const startFormatted = startDate.toLocaleDateString('en-GB', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short'
+    });
+    
+    if (!end) return startFormatted;
+    
+    const endDate = new Date(end);
+    // For all-day events, subtract one day from end date as Google Calendar adds 1 day
+    if (event.start?.date && event.end?.date) {
+      endDate.setDate(endDate.getDate() - 1);
+    }
+    
+    const endFormatted = endDate.toLocaleDateString('en-GB', {
+      weekday: 'short', 
+      day: 'numeric',
+      month: 'short'
+    });
+    
+    // If same date, just show single date
+    if (startDate.toDateString() === endDate.toDateString()) {
+      return startFormatted;
+    }
+    
+    return `${startFormatted} - ${endFormatted}`;
   };
 
   const formatEventTime = (event: CalendarEvent) => {
@@ -887,12 +936,17 @@ export default function AdminCalendar() {
                       <div key={event.id} className="border rounded-lg p-3 hover:bg-gray-50">
                         <div className="flex items-start justify-between mb-2">
                           <h4 className="font-medium text-sm line-clamp-2">{event.summary}</h4>
-                          <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getStatusColor(event.status || 'confirmed')}`}>
-                            {event.status || 'confirmed'}
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getStatusColor(getEventStatus(event))}`}>
+                            {getEventStatus(event)}
                           </span>
                         </div>
                         <div className="text-xs text-gray-600 space-y-1">
-                          <p>{formatEventDate(event)} • {formatEventTime(event)}</p>
+                          <p>
+                            {event.summary?.includes('🔧') 
+                              ? formatMaintenanceDateRange(event)
+                              : `${formatEventDate(event)} • ${formatEventTime(event)}`
+                            }
+                          </p>
                           {event.location && <p>📍 {event.location}</p>}
                           {event.attendees && event.attendees.length > 0 && (
                             <p>👤 {event.attendees[0].displayName || event.attendees[0].email}</p>

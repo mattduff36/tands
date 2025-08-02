@@ -1093,6 +1093,8 @@ Status: ${booking.status}`;
       case 'completed':
       case 'complete': // Handle legacy 'complete' status
         return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'unavailable':
+        return 'bg-red-100 text-red-800 border-red-200';
       case 'expired':
         return 'bg-gray-600 text-gray-100 border-gray-500';
       default:
@@ -1102,6 +1104,11 @@ Status: ${booking.status}`;
 
   // Helper function to determine event status based on end date and visual indicators
   const getEventStatus = (event: CalendarEvent) => {
+    // Check if event is a maintenance event (🔧 symbol)
+    if (event.summary?.includes('🔧')) {
+      return 'unavailable';
+    }
+    
     // Check if event is already marked as completed (gray color or ✅ symbol)
     if (event.colorId === '11' || event.summary?.includes('✅')) {
       return 'completed';
@@ -1155,6 +1162,42 @@ Status: ${booking.status}`;
       day: 'numeric',
       month: 'short'
     });
+  };
+
+  // Format date range for maintenance events  
+  const formatMaintenanceDateRange = (event: CalendarEvent) => {
+    const start = event.start?.dateTime || event.start?.date;
+    const end = event.end?.dateTime || event.end?.date;
+    
+    if (!start) return '';
+    
+    const startDate = new Date(start);
+    const startFormatted = startDate.toLocaleDateString('en-GB', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short'
+    });
+    
+    if (!end) return startFormatted;
+    
+    const endDate = new Date(end);
+    // For all-day events, subtract one day from end date as Google Calendar adds 1 day
+    if (event.start?.date && event.end?.date) {
+      endDate.setDate(endDate.getDate() - 1);
+    }
+    
+    const endFormatted = endDate.toLocaleDateString('en-GB', {
+      weekday: 'short', 
+      day: 'numeric',
+      month: 'short'
+    });
+    
+    // If same date, just show single date
+    if (startDate.toDateString() === endDate.toDateString()) {
+      return startFormatted;
+    }
+    
+    return `${startFormatted} - ${endFormatted}`;
   };
 
   const previousMonth = () => {
@@ -1693,6 +1736,19 @@ Status: ${booking.status}`;
                           </div>
                           <div className="text-xs text-gray-600 space-y-1">
                             {(() => {
+                              // Check if this is a maintenance event
+                              if (event.summary?.includes('🔧')) {
+                                const castleName = event.summary?.split(' - ')[1] || 'Unknown Castle';
+                                
+                                return (
+                                  <>
+                                    <p><strong>Castle:</strong> {castleName}</p>
+                                    <p><strong>Date:</strong> {formatMaintenanceDateRange(event)}</p>
+                                  </>
+                                );
+                              }
+                              
+                              // Regular booking event logic
                               const description = event.description || '';
                               const castleName = event.summary?.split(' - ')[1] || 'Unknown Castle';
                               const total = description.match(/Total: £(\d+)/)?.[1] || '0';
