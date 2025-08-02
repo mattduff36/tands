@@ -90,7 +90,7 @@ export async function POST(
       paymentMethod: booking.paymentMethod as 'cash' | 'card',
       // Include agreement status
       agreementSigned: booking.agreementSigned || false,
-      agreementSignedAt: booking.agreementSignedAt,
+      agreementSignedAt: booking.agreementSignedAt?.toISOString(),
       status: 'confirmed', // This booking is being confirmed
       bouncyCastleType: booking.castleName
     });

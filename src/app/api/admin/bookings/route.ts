@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
       eventDuration: booking.eventDuration,
       // Agreement fields for admin interface
       agreementSigned: booking.agreementSigned,
-      agreementSignedAt: booking.agreementSignedAt,
+      agreementSignedAt: booking.agreementSignedAt?.toISOString(),
       agreementSignedBy: booking.agreementSignedBy,
       agreementSignedMethod: booking.agreementSignedMethod,
       source: 'database'

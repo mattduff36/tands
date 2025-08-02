@@ -387,6 +387,7 @@ export async function createConfirmedBooking(booking: {
   status: string;
   calendarEventId: string;
   notes?: string;
+  paymentMethod?: string;
 }): Promise<any> {
   const maxRetries = 3;
   
