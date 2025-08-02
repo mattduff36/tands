@@ -44,19 +44,19 @@ Your website now has **Google Analytics 4** fully integrated:
 
 ### Step 4: Add Environment Variables
 
-Create/update `.env.local` with:
+Your `.env.local` should have:
 
 ```bash
-# Google Analytics 4 Configuration
-GA4_PROPERTY_ID=your_property_id_here
-GA4_CLIENT_EMAIL=your-service-account@project.iam.gserviceaccount.com
-GA4_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYOUR_PRIVATE_KEY_HERE\n-----END PRIVATE KEY-----"
+# Google Analytics 4 Configuration (you already have this)
+GA4_PROPERTY_ID=G-TKVJT9MKYB
+GOOGLE_SERVICE_ACCOUNT_EMAIL=your-service-account@project.iam.gserviceaccount.com
+GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYOUR_PRIVATE_KEY_HERE\n-----END PRIVATE KEY-----"
 ```
 
-**Find Your Property ID:**
-1. Go to Google Analytics → Admin
-2. Property Settings → Property Details
-3. Copy the PROPERTY ID (numbers only, not G-TKVJT9MKYB)
+**Important Note on Property ID:**
+- You currently have: `GA4_PROPERTY_ID=G-TKVJT9MKYB` (measurement ID)
+- The API needs the **numeric Property ID** (like `12345678`)
+- If you get errors, find the numeric ID at: Google Analytics → Admin → Property Settings → Property Details
 
 ### Step 5: Test the Integration
 
@@ -80,10 +80,10 @@ Once configured, your admin panel will show:
 ## 🔍 Troubleshooting
 
 ### Still Seeing Demo Data?
-- ✅ Check `.env.local` file exists and has correct values
-- ✅ Restart development server after adding environment variables
+- ✅ Check `.env.local` has: `GA4_PROPERTY_ID`, `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY`
+- ✅ **Property ID must be numeric** (e.g., `12345678`, not `G-TKVJT9MKYB`)
+- ✅ Restart development server after adding environment variables  
 - ✅ Verify service account has "Viewer" access in GA4
-- ✅ Property ID should be numbers only (not G-TKVJT9MKYB)
 
 ### Error Messages?
 - Check browser console for specific GA4 API errors

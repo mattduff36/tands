@@ -2,14 +2,14 @@ import { BetaAnalyticsDataClient } from '@google-analytics/data';
 
 // Google Analytics 4 configuration
 const GA4_PROPERTY_ID = process.env.GA4_PROPERTY_ID;
-const GA4_CLIENT_EMAIL = process.env.GA4_CLIENT_EMAIL;
-const GA4_PRIVATE_KEY = process.env.GA4_PRIVATE_KEY?.replace(/\\n/g, '\n');
+const GOOGLE_SERVICE_ACCOUNT_EMAIL = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+const GOOGLE_PRIVATE_KEY = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
 
 // Initialize the Analytics Data API client
 const analyticsDataClient = new BetaAnalyticsDataClient({
   credentials: {
-    client_email: GA4_CLIENT_EMAIL,
-    private_key: GA4_PRIVATE_KEY,
+    client_email: GOOGLE_SERVICE_ACCOUNT_EMAIL,
+    private_key: GOOGLE_PRIVATE_KEY,
   },
 });
 
@@ -242,8 +242,13 @@ async function fetchPerformance(startDate: string, endDate: string) {
 
 // Main function to fetch all analytics data
 export async function fetchGoogleAnalyticsData(timeRange: string = '30d'): Promise<AnalyticsData> {
-  if (!GA4_PROPERTY_ID || !GA4_CLIENT_EMAIL || !GA4_PRIVATE_KEY) {
-    throw new Error('Google Analytics 4 credentials not configured');
+  if (!GA4_PROPERTY_ID || !GOOGLE_SERVICE_ACCOUNT_EMAIL || !GOOGLE_PRIVATE_KEY) {
+    throw new Error('Google Analytics 4 credentials not configured. Required: GA4_PROPERTY_ID, GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY');
+  }
+  
+  // Check if user provided measurement ID instead of property ID
+  if (GA4_PROPERTY_ID.startsWith('G-')) {
+    throw new Error(`GA4_PROPERTY_ID should be numeric (e.g. "12345678"), not measurement ID "${GA4_PROPERTY_ID}". Find the numeric Property ID in Google Analytics → Admin → Property Settings → Property Details`);
   }
   
   const { startDate, endDate } = getDateRange(timeRange);
