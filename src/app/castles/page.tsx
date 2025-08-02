@@ -1,6 +1,8 @@
 import { Metadata } from 'next';
 import CastleCard from "@/components/sections/CastleCard";
 import { BreadcrumbStructuredData } from '@/components/seo/StructuredData';
+import { getCastles } from '@/lib/database/castles';
+import { castles as staticCastles } from '@/lib/castle-data';
 
 export const metadata: Metadata = {
   title: "Our Bouncy Castle Fleet | T&S Bouncy Castle Hire Edwinstowe",
@@ -21,24 +23,20 @@ export const metadata: Metadata = {
   },
 };
 
-async function getCastles() {
-  // In a real app, this would fetch from your database
-  // For now, we'll return the data directly to make it SSR
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-  
+async function getCastlesData() {
   try {
-    const res = await fetch(`${baseUrl}/api/castles`, {
-      next: { revalidate: 3600 } // Revalidate every hour
-    });
-    
-    if (!res.ok) {
-      throw new Error('Failed to fetch castles');
+    // Try database first, fallback to static data if DB is unavailable
+    let castles;
+    try {
+      castles = await getCastles();
+    } catch (dbError) {
+      console.warn('Database unavailable, using static castle data:', dbError);
+      castles = staticCastles;
     }
-    
-    return res.json();
+    return castles;
   } catch (error) {
     console.error('Error fetching castles:', error);
-    return [];
+    return staticCastles; // Fallback to static data
   }
 }
 
@@ -53,7 +51,7 @@ interface Castle {
 }
 
 const CastlesPage = async () => {
-  const castles = await getCastles();
+  const castles = await getCastlesData();
   
   const breadcrumbItems = [
     { name: 'Home', url: 'https://www.bouncy-castle-hire.com' },
