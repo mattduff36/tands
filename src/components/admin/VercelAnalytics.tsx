@@ -81,10 +81,10 @@ export default function VercelAnalytics({ timeRange = '30d' }: VercelAnalyticsPr
       if (result.success) {
         setAnalyticsData(result.data);
         // Show data source status
-        if (result.dataSource === 'fallback') {
-          console.warn('⚠️  Using fallback analytics data. Check your Vercel API configuration in .env.local');
+        if (result.dataSource === 'demo') {
+          console.info('📊 Displaying demo analytics data. Vercel Web Analytics API is not publicly available - view real data at https://vercel.com/dashboard');
         } else if (result.dataSource === 'live') {
-          console.log('✅ Successfully loaded live Vercel analytics data');
+          console.log('✅ Successfully loaded live analytics data');
         }
       } else {
         throw new Error(result.message || 'Failed to fetch analytics data');
@@ -163,6 +163,21 @@ export default function VercelAnalytics({ timeRange = '30d' }: VercelAnalyticsPr
 
   return (
     <div className="space-y-6">
+      {/* Demo Data Notice */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-center">
+          <div className="flex-shrink-0">
+            <BarChart3 className="h-5 w-5 text-blue-400" />
+          </div>
+          <div className="ml-3">
+            <h3 className="text-sm font-medium text-blue-800">Demo Analytics Data</h3>
+            <div className="mt-2 text-sm text-blue-700">
+              <p>This shows sample analytics data. Vercel Web Analytics doesn't provide a public API - view your real analytics at <a href="https://vercel.com/dashboard" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-900">vercel.com/dashboard</a></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Key Web Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>

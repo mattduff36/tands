@@ -21,31 +21,11 @@ function getFromDate(timeRange: string): string {
   return fromDate.toISOString();
 }
 
-// Fetch analytics data from Vercel API
+// NOTE: Vercel does not provide a public API to fetch Web Analytics data
+// This function demonstrates what the integration would look like if it existed
 async function fetchVercelAnalytics(timeRange: string) {
-  if (!VERCEL_ACCESS_TOKEN || !VERCEL_TEAM_ID || !VERCEL_PROJECT_ID) {
-    throw new Error('Missing Vercel API configuration. Please check your environment variables.');
-  }
-
-  const from = getFromDate(timeRange);
-  const to = new Date().toISOString();
-  
-  // Fetch Web Analytics events
-  const response = await fetch(
-    `https://api.vercel.com/v1/analytics/events?teamId=${VERCEL_TEAM_ID}&projectId=${VERCEL_PROJECT_ID}&from=${from}&to=${to}`,
-    {
-      headers: {
-        'Authorization': `Bearer ${VERCEL_ACCESS_TOKEN}`,
-        'Content-Type': 'application/json'
-      }
-    }
-  );
-  
-  if (!response.ok) {
-    throw new Error(`Vercel API error: ${response.status} ${response.statusText}`);
-  }
-  
-  return response.json();
+  // Vercel Web Analytics is dashboard-only - no public API exists
+  throw new Error('Vercel Web Analytics API is not publicly available. Data can only be viewed in the Vercel dashboard at https://vercel.com/dashboard');
 }
 
 // Transform Vercel API data to our format
@@ -144,16 +124,59 @@ function transformVercelData(vercelData: any, timeRange: string) {
   };
 }
 
-// Fallback mock data for when API fails or no data available
-const generateFallbackData = () => {
+// Demo/Mock data for analytics display since Vercel doesn't provide public API access
+const generateDemoAnalyticsData = () => {
+  const now = new Date();
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  
   return {
-    pageViews: { total: 0, trend: 0, data: [] },
-    uniqueVisitors: { total: 0, trend: 0, data: [] },
-    topPages: [],
-    devices: { mobile: { count: 0, percentage: 0 }, desktop: { count: 0, percentage: 0 }, tablet: { count: 0, percentage: 0 } },
-    countries: [],
-    referrers: [],
-    performance: { avgPageLoadTime: 0, bounceRate: 0, avgSessionDuration: 0 }
+    pageViews: {
+      total: 1247,
+      trend: 15.3,
+      data: Array.from({ length: 30 }, (_, i) => ({
+        date: new Date(thirtyDaysAgo.getTime() + i * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        views: Math.floor(Math.random() * 80) + 20
+      }))
+    },
+    uniqueVisitors: {
+      total: 892,
+      trend: 12.8,
+      data: Array.from({ length: 30 }, (_, i) => ({
+        date: new Date(thirtyDaysAgo.getTime() + i * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        visitors: Math.floor(Math.random() * 50) + 15
+      }))
+    },
+    topPages: [
+      { path: '/', views: 487, percentage: 39.1 },
+      { path: '/castles', views: 324, percentage: 26.0 },
+      { path: '/booking', views: 186, percentage: 14.9 },
+      { path: '/about', views: 142, percentage: 11.4 },
+      { path: '/contact', views: 108, percentage: 8.7 }
+    ],
+    devices: {
+      mobile: { count: 748, percentage: 60.0 },
+      desktop: { count: 374, percentage: 30.0 },
+      tablet: { count: 125, percentage: 10.0 }
+    },
+    countries: [
+      { country: 'United Kingdom', code: 'GB', views: 1059, percentage: 85.0 },
+      { country: 'United States', code: 'US', views: 87, percentage: 7.0 },
+      { country: 'Canada', code: 'CA', views: 50, percentage: 4.0 },
+      { country: 'Australia', code: 'AU', views: 37, percentage: 3.0 },
+      { country: 'Ireland', code: 'IE', views: 14, percentage: 1.0 }
+    ],
+    referrers: [
+      { source: 'Direct', views: 623, percentage: 50.0 },
+      { source: 'Google', views: 374, percentage: 30.0 },
+      { source: 'Facebook', views: 125, percentage: 10.0 },
+      { source: 'Local Directory', views: 87, percentage: 7.0 },
+      { source: 'Other', views: 38, percentage: 3.0 }
+    ],
+    performance: {
+      avgPageLoadTime: 1.2,
+      bounceRate: 28.5,
+      avgSessionDuration: 156.3
+    }
   };
 };
 
@@ -162,18 +185,12 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const timeRange = searchParams.get('timeRange') || '30d';
     
-    let analyticsData;
-    let dataSource = 'live';
+    // Vercel Web Analytics doesn't provide a public API
+    // Using demo data that represents what your real analytics might look like
+    const analyticsData = generateDemoAnalyticsData();
+    const dataSource = 'demo';
     
-    try {
-      // Try to fetch real data from Vercel API
-      const vercelData = await fetchVercelAnalytics(timeRange);
-      analyticsData = transformVercelData(vercelData, timeRange);
-    } catch (apiError) {
-      console.warn('Failed to fetch Vercel analytics, using fallback data:', apiError);
-      analyticsData = generateFallbackData();
-      dataSource = 'fallback';
-    }
+    console.info('📊 Displaying demo analytics data. Vercel Web Analytics can only be viewed at https://vercel.com/dashboard');
     
     return NextResponse.json({
       success: true,
