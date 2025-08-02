@@ -121,7 +121,7 @@ const PrivacyPage = () => {
                   <li><strong>Essential Cookies:</strong> Required for website functionality and booking forms</li>
                   <li><strong>Analytics Cookies:</strong> Help us understand how visitors use our website</li>
                   <li><strong>Preference Cookies:</strong> Remember your settings and preferences</li>
-                  <li><strong>Third-party Services:</strong> We use Vercel Analytics for website performance monitoring</li>
+                  <li><strong>Third-party Services:</strong> We use Google Analytics for website performance monitoring and Vercel for hosting analytics</li>
                 </ul>
                 <p className="mt-4 text-sm">
                   You can control cookie settings through your browser preferences. Disabling cookies may affect website functionality.
