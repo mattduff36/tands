@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import VercelAnalytics from '@/components/admin/VercelAnalytics';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -449,19 +450,19 @@ export default function AdminReports() {
             </Card>
           </div>
 
-          {/* Empty State for Additional Data */}
+          {/* Vercel Web Analytics */}
           <Card>
             <CardHeader>
-              <CardTitle>Additional Analytics</CardTitle>
+              <CardTitle className="flex items-center">
+                <BarChart3 className="w-5 h-5 mr-2" />
+                Web Analytics
+                <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                  Powered by Vercel
+                </span>
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8">
-                <BarChart3 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">More Analytics Coming Soon</h3>
-                <p className="text-gray-600">
-                  Popular castles, location analytics, and detailed trends will be available as we collect more data.
-                </p>
-              </div>
+              <VercelAnalytics timeRange={timeRange} />
             </CardContent>
           </Card>
         </>
