@@ -81,13 +81,17 @@ export async function POST(
         phone: booking.customerPhone
       },
       location: booking.customerAddress,
-      notes: `Booking Ref: ${booking.bookingRef}\nTotal: £${booking.totalPrice}\nDeposit: £${booking.deposit}\nPayment: ${booking.paymentMethod}\nAgreement signed: ${agreementSignedAt}\n${booking.notes || ''}`,
+      notes: `Booking Ref: ${booking.bookingRef}\nTotal: £${booking.totalPrice}\nDeposit: £${booking.deposit}\nPayment: ${booking.paymentMethod}\n${booking.notes || ''}`,
       duration: {
         start: eventStartDateTime.toISOString(),
         end: eventEndDateTime.toISOString()
       },
       cost: booking.totalPrice,
       paymentMethod: booking.paymentMethod as 'cash' | 'card',
+      // Include agreement status - this is from customer signing the agreement
+      agreementSigned: true, // Customer just signed the agreement
+      agreementSignedAt: agreementSignedAt,
+      status: 'confirmed', // This booking is being confirmed via customer agreement signing
       bouncyCastleType: booking.castleName
     });
 

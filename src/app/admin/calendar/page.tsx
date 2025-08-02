@@ -65,7 +65,7 @@ export default function AdminCalendar() {
     multipleDate: false,
     startDate: '',
     endDate: '',
-    overnight: false,
+    eventDuration: 8, // Default to 8 hours
     additionalCosts: false,
     additionalCostsDescription: '',
     additionalCostsAmount: 0
@@ -307,7 +307,7 @@ export default function AdminCalendar() {
       }
       
       const totalBasePrice = basePrice * numberOfDays;
-      const overnightCharge = bookingForm.overnight ? 20 : 0;
+      const overnightCharge = bookingForm.eventDuration === 24 ? 20 : 0;
       const additionalCosts = bookingForm.additionalCosts ? (isNaN(bookingForm.additionalCostsAmount) ? 0 : bookingForm.additionalCostsAmount) : 0;
       const totalCost = totalBasePrice + overnightCharge + additionalCosts;
 
@@ -318,13 +318,16 @@ export default function AdminCalendar() {
           phone: bookingForm.customerPhone
         },
         location: bookingForm.address,
-        notes: `Castle: ${selectedCastle?.name}${bookingForm.overnight ? ' (Overnight)' : ''}${bookingForm.additionalCosts ? `\nAdditional Costs: ${bookingForm.additionalCostsDescription} - £${bookingForm.additionalCostsAmount}` : ''}`,
+        notes: `Castle: ${selectedCastle?.name}${bookingForm.eventDuration === 24 ? ' (Overnight)' : ''}${bookingForm.additionalCosts ? `\nAdditional Costs: ${bookingForm.additionalCostsDescription} - £${bookingForm.additionalCostsAmount}` : ''}`,
         duration: {
           start: startDateTime,
           end: endDateTime
         },
         cost: totalCost,
-        bouncyCastleType: selectedCastle?.name
+        bouncyCastleType: selectedCastle?.name,
+        // Include duration for consistent display
+        eventDuration: bookingForm.eventDuration,
+        status: 'confirmed'
       };
 
       // Check for conflicts before submitting
@@ -397,7 +400,7 @@ export default function AdminCalendar() {
         multipleDate: false,
         startDate: '',
         endDate: '',
-        overnight: false,
+        eventDuration: 8, // Default to 8 hours
         additionalCosts: false,
         additionalCostsDescription: '',
         additionalCostsAmount: 0
@@ -441,7 +444,7 @@ export default function AdminCalendar() {
     }
     
     const totalBasePrice = basePrice * numberOfDays;
-    const overnightCharge = bookingForm.overnight ? 20 : 0;
+    const overnightCharge = bookingForm.eventDuration === 24 ? 20 : 0;
     const additionalCosts = bookingForm.additionalCosts ? (isNaN(bookingForm.additionalCostsAmount) ? 0 : bookingForm.additionalCostsAmount) : 0;
     
     const total = totalBasePrice + overnightCharge + additionalCosts;
@@ -463,15 +466,19 @@ export default function AdminCalendar() {
     const eventEnd = new Date(event.end?.dateTime || event.end?.date || '');
     
     // Extract castle info from event notes/description
-    const castleMatch = event.description?.match(/Castle Type: (.+?)(?:\s|$)/);
-    const isOvernight = event.description?.includes('(Overnight)') || false;
+    const castleMatch = event.description?.match(/Castle Type: (.+?)(?:\s|$)|Castle: (.+?)(?:\n|$)/);
+    // Try to extract duration from description first, then fallback to (Overnight) check
+    const durationMatch = event.description?.match(/Duration: (\d+) hours/);
+    const eventDuration = durationMatch ? parseInt(durationMatch[1]) : 
+                         (event.description?.includes('(Overnight)') || event.description?.includes('24 hours') ? 24 : 8);
     
     // Extract phone number from description
     const phoneMatch = event.description?.match(/Phone: (.+?)(?:\s|$)/);
     const phone = phoneMatch?.[1] || '';
     
-    // Find castle by name
-    const castle = castles.find(c => c.name === castleMatch?.[1]);
+    // Find castle by name (check both capture groups from the regex)
+    const castleName = castleMatch?.[1] || castleMatch?.[2] || '';
+    const castle = castles.find(c => c.name === castleName);
     
     // Check if it's multi-day
     const isMultiDay = eventStart.toDateString() !== eventEnd.toDateString();
@@ -486,7 +493,7 @@ export default function AdminCalendar() {
       multipleDate: isMultiDay,
       startDate: isMultiDay ? eventStart.toISOString().split('T')[0] : '',
       endDate: isMultiDay ? eventEnd.toISOString().split('T')[0] : '',
-      overnight: isOvernight,
+      eventDuration: eventDuration,
       additionalCosts: false,
       additionalCostsDescription: '',
       additionalCostsAmount: 0
@@ -690,7 +697,7 @@ export default function AdminCalendar() {
                multipleDate: false,
                startDate: '',
                endDate: '',
-               overnight: false,
+               eventDuration: 8, // Default to 8 hours
                additionalCosts: false,
                additionalCostsDescription: '',
                additionalCostsAmount: 0

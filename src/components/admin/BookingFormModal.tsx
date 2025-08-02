@@ -26,7 +26,7 @@ export interface BookingFormData {
   multipleDate: boolean;
   startDate: string;
   endDate: string;
-  overnight: boolean;
+  eventDuration: number; // 8 or 24 hours (replaces overnight boolean)
   additionalCosts: boolean;
   additionalCostsDescription: string;
   additionalCostsAmount: number;
@@ -219,18 +219,23 @@ export function BookingFormModal({
               )}
             </div>
 
-            {/* Overnight Option */}
+            {/* Duration Selection */}
             <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="overnight"
-                  checked={bookingForm.overnight}
-                  onCheckedChange={(checked) => onFormChange('overnight', !!checked)}
-                />
-                <Label htmlFor="overnight" className="text-sm font-medium">
-                  Keeping overnight (+£20)
-                </Label>
-              </div>
+              <Label className="text-sm font-medium">
+                Event Duration
+              </Label>
+              <Select 
+                value={bookingForm.eventDuration.toString()} 
+                onValueChange={(value) => onFormChange('eventDuration', parseInt(value))}
+              >
+                <SelectTrigger className="bg-white">
+                  <SelectValue placeholder="Select duration" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="8">8 hours (Standard)</SelectItem>
+                  <SelectItem value="24">24 hours (Overnight +£20)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Additional Costs Option */}
@@ -318,7 +323,7 @@ export function BookingFormModal({
                       </>
                     );
                   })()}
-                  {bookingForm.overnight && (
+                  {bookingForm.eventDuration === 24 && (
                     <div className="flex justify-between">
                       <span>Overnight:</span>
                       <span>£20</span>

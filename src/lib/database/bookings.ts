@@ -413,7 +413,7 @@ export async function createConfirmedBooking(booking: {
       1, // Default castle_id for confirmed bookings
       booking.castleType,
       new Date(booking.startDate).toISOString().split('T')[0], // Extract date part
-      'card', // Default payment method for confirmed bookings
+      booking.paymentMethod || 'cash', // Use actual payment method selected by customer
       booking.totalCost,
       Math.floor(booking.totalCost * 0.3), // 30% deposit
       booking.status,
@@ -901,16 +901,102 @@ export async function deleteBooking(id: number): Promise<void> {
     // First get the booking details to check if it has a calendar event
     const booking = await getBookingById(id);
     
-    if (booking?.calendarEventId) {
-      try {
-        // Delete the calendar event first
-        const calendarService = new GoogleCalendarService();
-        await calendarService.deleteBookingEvent(booking.calendarEventId);
-        console.log(`✅ Deleted calendar event ${booking.calendarEventId} for booking ${id}`);
-      } catch (calendarError) {
-        // Log the error but continue with database deletion
-        // This prevents database deletion from failing if calendar deletion fails
-        console.error(`⚠️ Failed to delete calendar event ${booking.calendarEventId} for booking ${id}:`, calendarError);
+    if (!booking) {
+      throw new Error(`Booking with ID ${id} not found`);
+    }
+
+    // Handle calendar event deletion based on booking status
+    if (booking.status === 'confirmed' || booking.status === 'completed') {
+      // These booking types should have calendar events
+      if (booking.calendarEventId) {
+        try {
+          const calendarService = new GoogleCalendarService();
+          await calendarService.deleteBookingEvent(booking.calendarEventId);
+          console.log(`✅ Deleted calendar event ${booking.calendarEventId} for ${booking.status} booking ${id}`);
+        } catch (calendarError) {
+          console.error(`⚠️ Failed to delete calendar event ${booking.calendarEventId} for ${booking.status} booking ${id}:`, calendarError);
+        }
+      } else {
+        // This is concerning - confirmed/completed bookings should have calendar events
+        console.warn(`⚠️ ${booking.status} booking ${id} (${booking.bookingRef}) missing calendarEventId - searching for orphaned calendar events`);
+        
+        try {
+          const calendarService = new GoogleCalendarService();
+          
+          console.log(`🔍 Searching for orphaned calendar events for ${booking.status} booking ${id}`);
+          
+          // Use booking date if startDate/endDate not available, with wider search range
+          const bookingDate = booking.startDate || booking.date;
+          if (bookingDate) {
+            const searchStart = new Date(bookingDate);
+            searchStart.setDate(searchStart.getDate() - 7); // 1 week before for safety
+            
+            const searchEnd = new Date(booking.endDate || bookingDate);
+            searchEnd.setDate(searchEnd.getDate() + 7); // 1 week after for safety
+            
+            console.log(`🔍 Searching calendar events from ${searchStart.toISOString()} to ${searchEnd.toISOString()}`);
+            
+            const events = await calendarService.getEventsInRange(searchStart, searchEnd);
+            console.log(`📅 Found ${events.length} total calendar events in date range`);
+            
+            // Look for events that might match this booking using multiple criteria
+            const matchingEvents = events.filter(event => {
+              const summary = event.summary?.toLowerCase() || '';
+              const description = event.description?.toLowerCase() || '';
+              
+              // Search criteria (multiple ways to match)
+              const bookingRefMatch = booking.bookingRef && (
+                summary.includes(booking.bookingRef.toLowerCase()) || 
+                description.includes(booking.bookingRef.toLowerCase())
+              );
+              
+              const customerNameMatch = booking.customerName && (
+                summary.includes(booking.customerName.toLowerCase()) ||
+                description.includes(booking.customerName.toLowerCase())
+              );
+              
+              const phoneMatch = booking.customerPhone && description.includes(booking.customerPhone);
+              const emailMatch = booking.customerEmail && description.includes(booking.customerEmail.toLowerCase());
+              
+              return bookingRefMatch || customerNameMatch || phoneMatch || emailMatch;
+            });
+            
+            if (matchingEvents.length > 0) {
+              console.log(`📅 Found ${matchingEvents.length} matching calendar events for ${booking.status} booking ${id}:`);
+              
+              for (const event of matchingEvents) {
+                console.log(`  - Event: ${event.summary} (ID: ${event.id})`);
+                try {
+                  await calendarService.deleteBookingEvent(event.id!);
+                  console.log(`✅ Deleted matching calendar event ${event.id} for ${booking.status} booking ${id}`);
+                } catch (deleteError) {
+                  console.error(`⚠️ Failed to delete matching calendar event ${event.id}:`, deleteError);
+                }
+              }
+            } else {
+              console.log(`ℹ️ No matching calendar events found for ${booking.status} booking ${id}`);
+              console.log(`   Booking ref: ${booking.bookingRef}, Customer: ${booking.customerName}`);
+            }
+          } else {
+            console.log(`⚠️ No booking date available for calendar event search (booking ${id})`);
+          }
+        } catch (searchError) {
+          console.error(`⚠️ Failed to search for orphaned calendar events for ${booking.status} booking ${id}:`, searchError);
+        }
+      }
+    } else if (booking.status === 'pending') {
+      // Pending bookings don't have calendar events by design
+      console.log(`ℹ️ Deleting pending booking ${id} - no calendar event expected`);
+    } else {
+      // Handle other statuses (expired, etc.)
+      if (booking.calendarEventId) {
+        try {
+          const calendarService = new GoogleCalendarService();
+          await calendarService.deleteBookingEvent(booking.calendarEventId);
+          console.log(`✅ Deleted calendar event ${booking.calendarEventId} for ${booking.status} booking ${id}`);
+        } catch (calendarError) {
+          console.error(`⚠️ Failed to delete calendar event ${booking.calendarEventId} for ${booking.status} booking ${id}:`, calendarError);
+        }
       }
     }
     

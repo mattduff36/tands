@@ -154,7 +154,10 @@ export async function POST(request: NextRequest) {
       },
       cost: body.cost,
       paymentMethod: body.paymentMethod,
-      bouncyCastleType: body.bouncyCastleType
+      bouncyCastleType: body.bouncyCastleType,
+      // Include duration and status information for consistent display
+      eventDuration: body.eventDuration || 8, // Default to 8 hours if not specified
+      status: 'confirmed' // Calendar events are typically confirmed
     };
 
     console.log('Creating calendar booking event', { bookingData });

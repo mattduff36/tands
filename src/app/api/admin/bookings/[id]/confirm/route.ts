@@ -88,6 +88,10 @@ export async function POST(
       },
       cost: booking.totalPrice,
       paymentMethod: booking.paymentMethod as 'cash' | 'card',
+      // Include agreement status
+      agreementSigned: booking.agreementSigned || false,
+      agreementSignedAt: booking.agreementSignedAt,
+      status: 'confirmed', // This booking is being confirmed
       bouncyCastleType: booking.castleName
     });
 

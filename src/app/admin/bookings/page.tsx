@@ -4,19 +4,19 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
+
 import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
+  SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
-  Search, 
   Filter, 
-  Eye, 
+  Eye,
   CheckCircle,
   Clock,
   AlertCircle,
@@ -29,7 +29,7 @@ import {
   RefreshCw,
   FileCheck,
   FileWarning,
-  ChevronDown
+  Check
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BookingDetailsModal } from '@/components/admin/BookingDetailsModal';
@@ -107,7 +107,7 @@ export default function AdminBookings() {
     completed: true,
     expired: false
   });
-  const [searchTerm, setSearchTerm] = useState('');
+
   const [timeRange, setTimeRange] = useState('all');
 
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -126,7 +126,7 @@ export default function AdminBookings() {
     multipleDate: false,
     startDate: '',
     endDate: '',
-    overnight: false,
+    eventDuration: 8, // Default to 8 hours
     additionalCosts: false,
     additionalCostsDescription: '',
     additionalCostsAmount: 0,
@@ -291,14 +291,7 @@ export default function AdminBookings() {
         // Apply status filter based on selected statuses
         if (!statusFilters[booking.status as keyof typeof statusFilters]) return false;
         
-        const matchesSearch = searchTerm === '' || 
-          booking.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          booking.customerEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          booking.customerPhone.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          booking.customerAddress.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          booking.bookingRef.toLowerCase().includes(searchTerm.toLowerCase());
-        
-        return matchesSearch;
+        return true;
       })
       .map(booking => ({
         ...booking,
@@ -311,7 +304,7 @@ export default function AdminBookings() {
     console.log('Database bookings filtered:', databaseBookings.length);
 
     return databaseBookings;
-  }, [bookings, statusFilters, searchTerm]);
+  }, [bookings, statusFilters]);
 
   const filteredBookings = createFilteredBookingsList();
 
@@ -486,10 +479,7 @@ export default function AdminBookings() {
 
   // Helper to convert Booking to CalendarEvent
   function bookingToCalendarEvent(booking: Booking): CalendarEvent {
-    // Determine agreement status text
-    const agreementStatus = booking.agreementSigned 
-      ? 'Agreement Signed' 
-      : (booking.status === 'confirmed' ? 'Awaiting Signature' : '');
+    // Agreement status not shown in calendar events
     
     const description = `Booking Ref: ${booking.bookingRef}
 Customer: ${booking.customerName}
@@ -499,7 +489,7 @@ Castle: ${booking.castleName}
 Duration: ${booking.eventDuration || 8} hours
 Special Requests: ${booking.notes || '[none]'}
 Total: £${booking.totalPrice}
-Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` : ''}`;
+Status: ${booking.status}`;
 
     return {
       id: `db_${booking.id}`, // Prefix to identify database bookings
@@ -588,7 +578,7 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
       multipleDate: false,
       startDate: '',
       endDate: '',
-      overnight: booking.notes?.includes('(Overnight)') || false,
+      eventDuration: booking.notes?.includes('(Overnight)') ? 24 : 8,
       additionalCosts: false,
       additionalCostsDescription: '',
       additionalCostsAmount: 0
@@ -683,7 +673,7 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
       multipleDate: false,
       startDate: '',
       endDate: '',
-      overnight: booking.notes?.includes('(Overnight)') || false,
+      eventDuration: booking.notes?.includes('(Overnight)') ? 24 : 8,
       additionalCosts: false,
       additionalCostsDescription: '',
       additionalCostsAmount: 0
@@ -704,13 +694,13 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
   };
 
   // Calculate total cost
-  const calculateTotalCost = (basePrice: number, daysDiff: number, isOvernight: boolean) => {
+  const calculateTotalCost = (basePrice: number, daysDiff: number, is24Hours: boolean) => {
     // Ensure all inputs are valid numbers
     const validBasePrice = isNaN(basePrice) ? 0 : basePrice;
     const validDaysDiff = isNaN(daysDiff) ? 1 : Math.max(1, daysDiff);
     
     const totalBasePrice = validBasePrice * validDaysDiff;
-    const overnightCharge = isOvernight ? 20 : 0;
+    const overnightCharge = is24Hours ? 20 : 0;
     const additionalCosts = bookingForm.additionalCosts ? (isNaN(bookingForm.additionalCostsAmount) ? 0 : bookingForm.additionalCostsAmount) : 0;
 
     const total = totalBasePrice + overnightCharge + additionalCosts;
@@ -739,7 +729,7 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
       }
     }
     
-    return calculateTotalCost(basePrice, numberOfDays, bookingForm.overnight);
+    return calculateTotalCost(basePrice, numberOfDays, bookingForm.eventDuration === 24);
   };
 
   // Reset booking form to initial state
@@ -754,7 +744,7 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
       multipleDate: false,
       startDate: '',
       endDate: '',
-      overnight: false,
+      eventDuration: 8, // Default to 8 hours
       additionalCosts: false,
       additionalCostsDescription: '',
       additionalCostsAmount: 0
@@ -772,7 +762,7 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
       setIsSubmitting(true);
       try {
         // Calculate total cost
-        const totalCost = calculateTotalCost(castles.find(c => c.id.toString() === bookingForm.castle)?.price || 0, 1, bookingForm.overnight);
+        const totalCost = calculateTotalCost(castles.find(c => c.id.toString() === bookingForm.castle)?.price || 0, 1, bookingForm.eventDuration === 24);
         
         // Get selected castle details
         const selectedCastle = castles.find(c => c.id.toString() === bookingForm.castle);
@@ -803,7 +793,7 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
               date: bookingDate,
               totalPrice: totalCost,
               deposit: Math.floor(totalCost * 0.3), // 30% deposit
-              notes: bookingForm.overnight ? '(Overnight)' : ''
+              notes: bookingForm.eventDuration === 24 ? '(Overnight)' : ''
             };
 
             const response = await fetch(`/api/admin/bookings/${bookingId}`, {
@@ -835,7 +825,7 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
                 phone: bookingForm.customerPhone
               },
               location: bookingForm.address,
-              notes: `Castle: ${selectedCastle.name}${bookingForm.overnight ? ' (Overnight)' : ''}`,
+              notes: `Castle: ${selectedCastle.name}${bookingForm.eventDuration === 24 ? ' (Overnight)' : ''}`,
               duration: {
                 start: `${bookingDate}T10:00:00`,
                 end: `${bookingDate}T18:00:00`
@@ -919,7 +909,7 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
       }
 
       const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-      const totalCost = calculateTotalCost(selectedCastle.price, daysDiff, bookingForm.overnight);
+      const totalCost = calculateTotalCost(selectedCastle.price, daysDiff, bookingForm.eventDuration === 24);
 
       // Handle confirmed booking creation
       if (bookingForm.saveAsConfirmed) {
@@ -985,7 +975,7 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
               multipleDate: false,
               startDate: '',
               endDate: '',
-              overnight: false,
+              eventDuration: 8, // Default to 8 hours
               additionalCosts: false,
               additionalCostsDescription: '',
               additionalCostsAmount: 0,
@@ -1012,13 +1002,16 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
           phone: bookingForm.customerPhone
         },
         location: bookingForm.address,
-        notes: `Castle: ${selectedCastle.name}${bookingForm.overnight ? ' (Overnight)' : ''}`,
+        notes: `Castle: ${selectedCastle.name}${bookingForm.eventDuration === 24 ? ' (Overnight)' : ''}`,
         duration: {
           start: startDate.toISOString(),
           end: endDate.toISOString()
         },
         cost: totalCost,
-        bouncyCastleType: selectedCastle.name
+        bouncyCastleType: selectedCastle.name,
+        // Include duration and status for consistent display
+        eventDuration: bookingForm.eventDuration,
+        status: 'confirmed'
       };
 
       console.log('Sending booking data to API:', JSON.stringify(bookingData, null, 2));
@@ -1260,8 +1253,11 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
     const eventEnd = new Date(event.end?.dateTime || event.end?.date || '');
     
     // Extract castle info from event notes/description
-    const castleMatch = event.description?.match(/Castle Type: (.+?)(?:\s|$)/);
-    const isOvernight = event.description?.includes('(Overnight)') || false;
+    const castleMatch = event.description?.match(/Castle Type: (.+?)(?:\s|$)|Castle: (.+?)(?:\n|$)/);
+    // Try to extract duration from description first, then fallback to (Overnight) check
+    const durationMatch = event.description?.match(/Duration: (\d+) hours/);
+    const eventDuration = durationMatch ? parseInt(durationMatch[1]) : 
+                         (event.description?.includes('(Overnight)') || event.description?.includes('24 hours') ? 24 : 8);
     
     // Extract phone number from description
     const phoneMatch = event.description?.match(/Phone: (.+?)(?:\s|$)/);
@@ -1271,8 +1267,9 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
     const emailMatch = event.description?.match(/Email: (.+?)(?:\s|$)/);
     const email = emailMatch?.[1] || '';
     
-    // Find castle by name
-    const castle = castles.find(c => c.name === castleMatch?.[1]);
+    // Find castle by name (check both capture groups from the regex)
+    const castleName = castleMatch?.[1] || castleMatch?.[2] || '';
+    const castle = castles.find(c => c.name === castleName);
     
     // Check if it's multi-day
     const isMultiDay = eventStart.toDateString() !== eventEnd.toDateString();
@@ -1287,7 +1284,7 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
       multipleDate: isMultiDay,
       startDate: isMultiDay ? (eventStart.toISOString().split('T')[0] || '') : '',
       endDate: isMultiDay ? (eventEnd.toISOString().split('T')[0] || '') : '',
-      overnight: isOvernight,
+      eventDuration: eventDuration,
       additionalCosts: false,
       additionalCostsDescription: '',
       additionalCostsAmount: 0
@@ -1332,18 +1329,20 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
             Manage pending and confirmed bookings
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2 sm:space-x-2 sm:gap-0">
+        <div className="flex flex-row gap-2 w-full sm:w-auto">
           <Button
             onClick={refreshCalendar}
             variant="outline"
             size="sm"
             disabled={isRefreshing}
+            className="flex-1 sm:flex-none"
           >
             <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
           <Button 
             size="sm"
+            className="flex-1 sm:flex-none"
             onClick={() => {
             setIsEditing(false);
             setSelectedEvent(null);
@@ -1357,7 +1356,7 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
               multipleDate: false,
               startDate: '',
               endDate: '',
-              overnight: false,
+              eventDuration: 8, // Default to 8 hours
               additionalCosts: false,
               additionalCostsDescription: '',
               additionalCostsAmount: 0
@@ -1373,36 +1372,40 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
       {/* Bookings List */}
       <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex-1 sm:w-64">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search bookings..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="relative">
-                <select
-                  value={timeRange}
-                  onChange={(e) => handleTimeRangeChange(e.target.value)}
-                  className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="all">All Time</option>
-                  <option value="week">Past Week</option>
-                  <option value="month">Past Month</option>
-                  <option value="quarter">Past Quarter</option>
-                  <option value="year">Past Year</option>
-                </select>
-                <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-              </div>
+          <div className="flex flex-row items-center justify-end gap-4">
+            <div className="flex flex-row gap-4 w-full sm:w-auto">
+              <Select>
+                <SelectTrigger className="flex-1 sm:flex-none sm:w-48">
+                  <div className="flex items-center gap-2">
+                    <CalendarIcon className="w-4 h-4" />
+                    <SelectValue placeholder="Filter by Date" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <div className="p-2 space-y-2">
+                    <div className="text-sm font-medium text-gray-700 mb-2">Select Date Range:</div>
+                    {[
+                      { key: 'all', label: 'All Time' },
+                      { key: 'week', label: 'Past Week' },
+                      { key: 'month', label: 'Past Month' },
+                      { key: 'quarter', label: 'Past Quarter' },
+                      { key: 'year', label: 'Past Year' }
+                    ].map(({ key, label }) => (
+                      <div 
+                        key={key}
+                        className="cursor-pointer hover:bg-gray-50 px-2 py-1.5 text-sm rounded flex items-center justify-between" 
+                        onClick={() => handleTimeRangeChange(key)}
+                      >
+                        <span>{label}</span>
+                        {timeRange === key && <Check className="w-4 h-4 text-green-600" />}
+                      </div>
+                    ))}
+                  </div>
+                </SelectContent>
+              </Select>
               <div className="relative">
                 <Select>
-                  <SelectTrigger className="w-full sm:w-48">
+                  <SelectTrigger className="flex-1 sm:flex-none sm:w-48">
                     <div className="flex items-center gap-2">
                       <Filter className="w-4 h-4" />
                       <SelectValue placeholder="Filter by Status" />
@@ -1455,17 +1458,21 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
               <AlertCircle className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">No bookings found</h3>
               <p className="mt-1 text-sm text-gray-500">
-                {searchTerm || !Object.values(statusFilters).every(Boolean) 
-                  ? 'Try adjusting your search or filter criteria.' 
+                {!Object.values(statusFilters).every(Boolean) 
+                  ? 'Try adjusting your filter criteria.' 
                   : 'Customer bookings will appear here once submitted.'}
               </p>
             </div>
           ) : (
-            <div className="max-h-96 overflow-y-auto space-y-4">
+            <div className="max-h-[600px] overflow-y-auto space-y-4">
               {filteredBookings.slice(0, 6).map((booking) => (
                 <div
                   key={booking.id}
-                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border rounded-lg hover:bg-gray-50 gap-3"
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border rounded-lg hover:bg-gray-50 cursor-pointer gap-3 transition-colors"
+                  onClick={() => {
+                    // Since filteredBookings only contains database bookings, always convert to calendar event format
+                    handleViewDetails(bookingToCalendarEvent(booking));
+                  }}
                 >
                   <div className="flex-1">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-2">
@@ -1492,20 +1499,6 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
                         <strong>Booking Ref:</strong> {booking.bookingRef}
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2 sm:ml-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        // Since filteredBookings only contains database bookings, always convert to calendar event format
-                        handleViewDetails(bookingToCalendarEvent(booking));
-                      }}
-                      className="w-full sm:w-auto"
-                    >
-                      <Eye className="h-4 w-4 mr-1" />
-                      View
-                    </Button>
                   </div>
                 </div>
               ))}
@@ -1682,7 +1675,11 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
                       })
                       .slice(0, 10)
                       .map((event) => (
-                        <div key={event.id} className="border rounded-lg p-3 hover:bg-gray-50">
+                        <div 
+                          key={event.id} 
+                          className="border rounded-lg p-3 hover:bg-gray-50 cursor-pointer transition-colors"
+                          onClick={() => handleViewDetails(event)}
+                        >
                           <div className="flex items-start justify-between mb-2">
                             <h4 className="font-medium text-sm line-clamp-2">
                               {event.summary?.includes('🏰') 
@@ -1699,9 +1696,38 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
                               const description = event.description || '';
                               const castleName = event.summary?.split(' - ')[1] || 'Unknown Castle';
                               const total = description.match(/Total: £(\d+)/)?.[1] || '0';
-                              const duration = description.match(/Duration: (\d+) hours/)?.[1] || 
-                                             (description.includes('24 hours') || description.includes('Overnight') ? '24' : '8');
                               const bookingRef = description.match(/Booking Ref: (TS\d{3})/)?.[1] || 'N/A';
+                              
+                              // Enhanced duration detection with price validation (same logic as modal)
+                              const durationMatch = description.match(/Duration: (\d+) hours/);
+                              const explicitDuration = durationMatch ? parseInt(durationMatch[1]) : null;
+                              
+                              // Check for overnight indicators
+                              const hasOvernightIndicator = description.includes('24 hours') || 
+                                                          description.includes('Overnight') || 
+                                                          description.includes('(Overnight)');
+                              
+                              // Price-based validation 
+                              const totalCost = parseInt(total);
+                              const possibleBasePrice = totalCost - 20;
+                              const isPriceConsistentWithOvernight = totalCost > 100 && 
+                                (possibleBasePrice % 10 === 0 || possibleBasePrice % 20 === 0) && 
+                                possibleBasePrice >= 60;
+                              
+                              // Determine duration with validation
+                              let duration;
+                              if (hasOvernightIndicator || isPriceConsistentWithOvernight) {
+                                duration = '24';
+                              } else if (explicitDuration && (explicitDuration === 8 || explicitDuration === 24)) {
+                                // Override explicit duration if price contradicts
+                                if (explicitDuration === 8 && isPriceConsistentWithOvernight) {
+                                  duration = '24'; // Trust the price
+                                } else {
+                                  duration = explicitDuration.toString();
+                                }
+                              } else {
+                                duration = '8'; // Default fallback
+                              }
                               
                               return (
                                 <>
@@ -1713,17 +1739,6 @@ Status: ${booking.status}${agreementStatus ? `\nAgreement: ${agreementStatus}` :
                                 </>
                               );
                             })()}
-                          </div>
-                          <div className="mt-3">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="w-full"
-                              onClick={() => handleViewDetails(event)}
-                            >
-                              <Eye className="w-3 h-3 mr-1" />
-                              View Details
-                            </Button>
                           </div>
                         </div>
                       ))}

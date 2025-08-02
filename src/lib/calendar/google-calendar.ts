@@ -36,6 +36,10 @@ export interface BookingEventData {
   cost?: number;
   paymentMethod?: 'cash' | 'card';
   bouncyCastleType?: string;
+  // Agreement status fields
+  agreementSigned?: boolean;
+  agreementSignedAt?: string;
+  status?: string; // booking status (confirmed, pending, etc.)
 }
 
 export interface CalendarSettings {
@@ -539,10 +543,12 @@ export class GoogleCalendarService {
   // Helper Methods
 
   private buildCalendarEvent(bookingData: BookingEventData): calendar_v3.Schema$Event {
-    const { customerName, contactDetails, location, notes, duration, cost, paymentMethod, bouncyCastleType } = bookingData;
+    const { customerName, contactDetails, location, notes, duration, cost, paymentMethod, bouncyCastleType, agreementSigned, status } = bookingData;
     
     // Generate a booking reference for this event (temporary for calendar-only events)
     const bookingRef = `CAL-${Date.now().toString().slice(-8)}`;
+    
+    // Agreement status not shown in calendar events
     
     let description = `🏰 Bouncy Castle Booking\n\n`;
     description += `Customer: ${customerName}\n`;
@@ -553,6 +559,7 @@ export class GoogleCalendarService {
     if (cost) description += `Cost: £${cost}\n`;
     if (paymentMethod) description += `Payment: ${paymentMethod === 'card' ? 'Card (on delivery)' : 'Cash'}\n`;
     description += `Booking Ref: ${bookingRef}\n`; // Add the booking reference
+    if (status) description += `Status: ${status}\n`;
     if (notes) description += `\nNotes: ${notes}\n`;
 
     return {

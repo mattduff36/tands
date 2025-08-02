@@ -119,7 +119,10 @@ export async function PUT(
       },
       cost: body.cost,
       paymentMethod: body.paymentMethod,
-      bouncyCastleType: body.bouncyCastleType
+      bouncyCastleType: body.bouncyCastleType,
+      // Include duration and status information for consistent display
+      eventDuration: body.eventDuration || 8, // Default to 8 hours if not specified
+      status: body.status || 'confirmed' // Default to confirmed
     };
 
     const calendarService = getCalendarService();
