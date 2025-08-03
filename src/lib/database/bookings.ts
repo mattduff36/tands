@@ -1072,6 +1072,18 @@ export async function updateBooking(id: number, updates: Partial<Omit<PendingBoo
       setClause.push(`notes = $${paramCount++}`);
       values.push(updates.notes);
     }
+    if (updates.eventDuration !== undefined) {
+      setClause.push(`event_duration = $${paramCount++}`);
+      values.push(updates.eventDuration);
+    }
+    if (updates.startDate !== undefined) {
+      setClause.push(`start_date = $${paramCount++}`);
+      values.push(updates.startDate);
+    }
+    if (updates.endDate !== undefined) {
+      setClause.push(`end_date = $${paramCount++}`);
+      values.push(updates.endDate);
+    }
 
     if (setClause.length === 0) return;
 
