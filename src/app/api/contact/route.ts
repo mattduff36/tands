@@ -3,9 +3,11 @@ import nodemailer from 'nodemailer';
 import { contactSchema, validateAndSanitize } from '@/lib/validation/schemas';
 import { createSanitizedErrorResponse, logSafeError } from '@/lib/utils/error-sanitizer';
 
-const smtpUser = process.env.SMTP_USER;
-const smtpPass = process.env.SMTP_PASS;
+const smtpUser = process.env.EMAIL_SMTP_USER;
+const smtpPass = process.env.EMAIL_SMTP_PASS;
 const contactEmail = process.env.CONTACT_EMAIL;
+const fromName = process.env.EMAIL_FROM_NAME;
+const fromAddress = process.env.EMAIL_FROM_ADDRESS;
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,14 +30,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Server email configuration error.' }, { status: 500 });
     }
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: process.env.EMAIL_SMTP_HOST || 'smtp.gmail.com',
+      port: parseInt(process.env.EMAIL_SMTP_PORT || '587'),
+      secure: process.env.EMAIL_SMTP_SECURE === 'true',
       auth: {
         user: smtpUser,
         pass: smtpPass,
       },
     });
     const mailOptions = {
-      from: smtpUser,
+      from: fromAddress ? `"${fromName}" <${fromAddress}>` : smtpUser,
       to: contactEmail,
       subject: subject || `Contact Form Submission from ${name}`,
       text: `Name: ${name}\nEmail: ${email}${phone ? `\nPhone: ${phone}` : ''}\nSubject: ${subject || 'General Inquiry'}\nMessage: ${message}`,
