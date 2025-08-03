@@ -42,7 +42,7 @@ function formatHireDuration(eventDuration?: number): string {
   }
   
   if (eventDuration === 24) {
-    return '24 Hours (Over Night)';
+    return '24 Hours (Overnight)';
   } else if (eventDuration === 8) {
     return '8 Hours (10:00 - 18:00)';
   } else {
