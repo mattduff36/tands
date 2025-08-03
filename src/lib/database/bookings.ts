@@ -786,6 +786,9 @@ export async function getBookingById(id: number): Promise<PendingBooking | null>
       notes: row.notes,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      startDate: row.start_date,
+      endDate: row.end_date,
+      eventDuration: row.event_duration,
       // Email automation tracking
       emailSent: row.email_sent || false,
       emailSentAt: row.email_sent_at || null,
