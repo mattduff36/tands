@@ -280,7 +280,7 @@ export default function VercelAnalytics({ timeRange = '30d' }: VercelAnalyticsPr
                   </div>
                   <div className="ml-4 text-right">
                     <p className="text-sm font-medium text-gray-900">{page.views.toLocaleString()}</p>
-                    <p className="text-xs text-gray-500">{page.percentage}%</p>
+                    <p className="text-xs text-gray-500">{page.percentage.toFixed(2)}%</p>
                   </div>
                 </div>
               ))}
@@ -316,7 +316,7 @@ export default function VercelAnalytics({ timeRange = '30d' }: VercelAnalyticsPr
                         style={{ width: `${data.percentage}%` }}
                       />
                     </div>
-                    <span className="text-xs text-gray-500">{data.percentage}%</span>
+                    <span className="text-xs text-gray-500">{data.percentage.toFixed(2)}%</span>
                   </div>
                 </div>
               ))}
@@ -350,7 +350,7 @@ export default function VercelAnalytics({ timeRange = '30d' }: VercelAnalyticsPr
                   </div>
                   <div className="ml-4 text-right">
                     <p className="text-sm font-medium text-gray-900">{country.views.toLocaleString()}</p>
-                    <p className="text-xs text-gray-500">{country.percentage}%</p>
+                    <p className="text-xs text-gray-500">{country.percentage.toFixed(2)}%</p>
                   </div>
                 </div>
               ))}
@@ -379,7 +379,7 @@ export default function VercelAnalytics({ timeRange = '30d' }: VercelAnalyticsPr
                 </div>
                 <p className="text-sm font-medium text-gray-900">{referrer.source}</p>
                 <p className="text-lg font-bold text-gray-900">{referrer.views.toLocaleString()}</p>
-                <p className="text-xs text-gray-500">{referrer.percentage}%</p>
+                <p className="text-xs text-gray-500">{referrer.percentage.toFixed(2)}%</p>
               </div>
             ))}
           </div>
