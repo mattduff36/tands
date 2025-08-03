@@ -35,6 +35,21 @@ export interface BookingEmailData {
   agreementUrl?: string;
 }
 
+// Format hire duration for display in emails
+function formatHireDuration(eventDuration?: number): string {
+  if (!eventDuration) {
+    return 'Standard hire duration';
+  }
+  
+  if (eventDuration === 24) {
+    return '24 Hours (Over Night)';
+  } else if (eventDuration === 8) {
+    return '8 Hours (10:00 - 18:00)';
+  } else {
+    return `${eventDuration} Hours`;
+  }
+}
+
 // Get email configuration from environment variables
 function getEmailConfig(): EmailConfig {
   return {
@@ -130,13 +145,7 @@ export async function sendAgreementEmail(bookingData: BookingEmailData): Promise
                 month: 'long', 
                 day: 'numeric' 
               })}</p>
-              <p><strong>Hire Duration:</strong> ${bookingData.eventDuration ? `${bookingData.eventDuration} hours` : `${new Date(bookingData.startDate).toLocaleTimeString('en-GB', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-              })} - ${new Date(bookingData.endDate).toLocaleTimeString('en-GB', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-              })}`}</p>
+              <p><strong>Hire Duration:</strong> ${formatHireDuration(bookingData.eventDuration)}</p>
               <p><strong>Special Requests:</strong> ${bookingData.notes || '[none]'}</p>
               <p><strong>Total Cost:</strong> £${bookingData.totalCost.toFixed(2)}</p>
             </div>
@@ -179,7 +188,7 @@ Booking Details:
 - Bouncy Castle: ${bookingData.castleName}${bookingData.eventAddress ? `
 - Event Address: ${bookingData.eventAddress}` : ''}
 - Event Date: ${new Date(bookingData.date).toLocaleDateString('en-GB')}
-- Hire Duration: ${bookingData.eventDuration ? `${bookingData.eventDuration} hours` : 'As scheduled'}
+- Hire Duration: ${formatHireDuration(bookingData.eventDuration)}
 - Special Requests: ${bookingData.notes || '[none]'}
 - Total Cost: £${bookingData.totalCost.toFixed(2)}
 
@@ -261,7 +270,7 @@ export async function sendBookingReceivedEmail(bookingData: BookingEmailData): P
                 month: 'long', 
                 day: 'numeric' 
               })}</p>
-              <p><strong>Hire Duration:</strong> ${bookingData.eventDuration ? `${bookingData.eventDuration} hours` : 'As scheduled'}</p>
+              <p><strong>Hire Duration:</strong> ${formatHireDuration(bookingData.eventDuration)}</p>
               <p><strong>Special Requests:</strong> ${bookingData.notes || '[none]'}</p>
               <p><strong>Total Cost:</strong> £${bookingData.totalCost.toFixed(2)}</p>
             </div>
@@ -306,7 +315,7 @@ Your Booking Request:
 - Bouncy Castle: ${bookingData.castleName}${bookingData.eventAddress ? `
 - Event Address: ${bookingData.eventAddress}` : ''}
 - Event Date: ${new Date(bookingData.date).toLocaleDateString('en-GB')}
-- Hire Duration: ${bookingData.eventDuration ? `${bookingData.eventDuration} hours` : 'As scheduled'}
+- Hire Duration: ${formatHireDuration(bookingData.eventDuration)}
 - Special Requests: ${bookingData.notes || '[none]'}
 - Total Cost: £${bookingData.totalCost.toFixed(2)}
 
@@ -384,13 +393,7 @@ export async function sendConfirmationEmail(bookingData: BookingEmailData): Prom
                 month: 'long', 
                 day: 'numeric' 
               })}</p>
-              <p><strong>Hire Duration:</strong> ${bookingData.eventDuration ? `${bookingData.eventDuration} hours` : `${new Date(bookingData.startDate).toLocaleTimeString('en-GB', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-              })} - ${new Date(bookingData.endDate).toLocaleTimeString('en-GB', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-              })}`}</p>
+              <p><strong>Hire Duration:</strong> ${formatHireDuration(bookingData.eventDuration)}</p>
               <p><strong>Special Requests:</strong> ${bookingData.notes || '[none]'}</p>
               <p><strong>Total Cost:</strong> £${bookingData.totalCost.toFixed(2)}</p>
               <p><strong>Deposit Paid:</strong> £${bookingData.deposit.toFixed(2)}</p>
@@ -436,7 +439,7 @@ Booking Details:
 - Bouncy Castle: ${bookingData.castleName}${bookingData.eventAddress ? `
 - Event Address: ${bookingData.eventAddress}` : ''}
 - Event Date: ${new Date(bookingData.date).toLocaleDateString('en-GB')}
-- Hire Duration: ${bookingData.eventDuration ? `${bookingData.eventDuration} hours` : 'As scheduled'}
+- Hire Duration: ${formatHireDuration(bookingData.eventDuration)}
 - Special Requests: ${bookingData.notes || '[none]'}
 - Total Cost: £${bookingData.totalCost.toFixed(2)}
 - Deposit Paid: £${bookingData.deposit.toFixed(2)}
