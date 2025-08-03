@@ -1,9 +1,74 @@
 'use client';
 
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Settings, Clock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Settings, Download, Database, FileText, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function AdminSettings() {
+  const [bookingRef, setBookingRef] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportBookingData = async () => {
+    if (!bookingRef.trim()) {
+      toast.error('Please enter a booking reference');
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const response = await fetch('/api/admin/bookings/export', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          bookingRef: bookingRef.trim().toUpperCase()
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to export booking data');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Create and trigger download
+        const dataStr = JSON.stringify(result.data, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `booking-${bookingRef.trim().toUpperCase()}-export-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        toast.success(`Booking data exported successfully for ${bookingRef.trim().toUpperCase()}`);
+        setBookingRef(''); // Clear the input
+      } else {
+        throw new Error('Export failed');
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to export booking data');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleExportBookingData();
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -19,27 +84,93 @@ export default function AdminSettings() {
         </div>
       </div>
 
-      {/* Coming Soon Card */}
+      {/* Booking Data Export */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center justify-center">
-            <Clock className="w-6 h-6 mr-2" />
-            Settings Coming Soon
+          <CardTitle className="flex items-center">
+            <Database className="w-5 h-5 mr-2" />
+            Booking Data Export
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-start">
+              <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" />
+              <div>
+                <h4 className="text-sm font-medium text-blue-900 mb-1">Legal Data Export</h4>
+                <p className="text-sm text-blue-700">
+                  Export all stored data for a specific booking including agreement signatures, audit trails, 
+                  and customer information. Use this for legal compliance, dispute resolution, or administrative purposes.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="bookingRef">Booking Reference</Label>
+              <div className="flex space-x-2 mt-1">
+                <Input
+                  id="bookingRef"
+                  type="text"
+                  placeholder="e.g., TS001, TS002..."
+                  value={bookingRef}
+                  onChange={(e) => setBookingRef(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  className="flex-1"
+                  disabled={isExporting}
+                />
+                <Button 
+                  onClick={handleExportBookingData}
+                  disabled={isExporting || !bookingRef.trim()}
+                  className="px-6"
+                >
+                  {isExporting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                      Exporting...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4 mr-2" />
+                      Export Data
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            <div className="text-sm text-gray-600 space-y-2">
+              <h5 className="font-medium text-gray-900">Export includes:</h5>
+              <ul className="list-disc list-inside space-y-1 ml-4">
+                <li>Complete booking details and customer information</li>
+                <li>Agreement signing data with IP address and timestamps</li>
+                <li>Full audit trail of all booking modifications</li>
+                <li>Email tracking and interaction history</li>
+                <li>Legal compliance metadata for court evidence</li>
+                <li>Digital signature verification data</li>
+              </ul>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Future Settings Sections */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <FileText className="w-5 h-5 mr-2" />
+            Additional Settings
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-12">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Settings className="w-8 h-8 text-gray-400" />
+          <div className="text-center py-8">
+            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <Settings className="w-6 h-6 text-gray-400" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              Settings Page Under Development
-            </h3>
-            <p className="text-gray-600 mb-4">
-              We're working on bringing you comprehensive admin settings and configuration options.
-            </p>
-            <p className="text-sm text-gray-500">
-              In the meantime, all fleet and maintenance management features are available in the Fleet tab.
+            <h4 className="text-lg font-medium text-gray-900 mb-2">More Settings Coming Soon</h4>
+            <p className="text-gray-600 text-sm">
+              Additional configuration options will be added here as the system grows.
             </p>
           </div>
         </CardContent>
