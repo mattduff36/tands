@@ -5,12 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Settings, Download, Database, FileText, AlertCircle } from 'lucide-react';
+import { Settings, Download, Database, FileText, AlertCircle, FileOutput } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AdminSettings() {
   const [bookingRef, setBookingRef] = useState('');
   const [isExporting, setIsExporting] = useState(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   const handleExportBookingData = async () => {
     if (!bookingRef.trim()) {
@@ -60,6 +61,50 @@ export default function AdminSettings() {
       toast.error(error instanceof Error ? error.message : 'Failed to export booking data');
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handleGeneratePDFReport = async () => {
+    if (!bookingRef.trim()) {
+      toast.error('Please enter a booking reference');
+      return;
+    }
+
+    setIsGeneratingReport(true);
+    try {
+      const response = await fetch('/api/admin/bookings/report', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          bookingRef: bookingRef.trim().toUpperCase()
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to generate PDF report');
+      }
+
+      // Get the PDF blob and trigger download
+      const pdfBlob = await response.blob();
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `booking-${bookingRef.trim().toUpperCase()}-report-${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success(`PDF report generated successfully for ${bookingRef.trim().toUpperCase()}`);
+      setBookingRef(''); // Clear the input
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to generate PDF report');
+    } finally {
+      setIsGeneratingReport(false);
     }
   };
 
@@ -118,38 +163,71 @@ export default function AdminSettings() {
                   onChange={(e) => setBookingRef(e.target.value)}
                   onKeyPress={handleKeyPress}
                   className="flex-1"
-                  disabled={isExporting}
+                  disabled={isExporting || isGeneratingReport}
                 />
                 <Button 
                   onClick={handleExportBookingData}
-                  disabled={isExporting || !bookingRef.trim()}
-                  className="px-6"
+                  disabled={isExporting || isGeneratingReport || !bookingRef.trim()}
+                  variant="outline"
+                  className="px-4"
                 >
                   {isExporting ? (
                     <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                      <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mr-2" />
                       Exporting...
                     </>
                   ) : (
                     <>
                       <Download className="w-4 h-4 mr-2" />
-                      Export Data
+                      Export JSON
+                    </>
+                  )}
+                </Button>
+                <Button 
+                  onClick={handleGeneratePDFReport}
+                  disabled={isExporting || isGeneratingReport || !bookingRef.trim()}
+                  className="px-4"
+                >
+                  {isGeneratingReport ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <FileOutput className="w-4 h-4 mr-2" />
+                      Generate PDF
                     </>
                   )}
                 </Button>
               </div>
             </div>
 
-            <div className="text-sm text-gray-600 space-y-2">
-              <h5 className="font-medium text-gray-900">Export includes:</h5>
-              <ul className="list-disc list-inside space-y-1 ml-4">
-                <li>Complete booking details and customer information</li>
-                <li>Agreement signing data with IP address and timestamps</li>
-                <li>Full audit trail of all booking modifications</li>
-                <li>Email tracking and interaction history</li>
-                <li>Legal compliance metadata for court evidence</li>
-                <li>Digital signature verification data</li>
-              </ul>
+            <div className="text-sm text-gray-600 space-y-3">
+              <div>
+                <h5 className="font-medium text-gray-900 mb-2">Export Options:</h5>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className="bg-gray-50 border border-gray-200 rounded p-3">
+                    <div className="font-medium text-gray-900 mb-1">📄 JSON Export</div>
+                    <div className="text-xs text-gray-600">Raw data format for technical analysis and integration</div>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                    <div className="font-medium text-gray-900 mb-1">📊 PDF Report</div>
+                    <div className="text-xs text-gray-600">Professional, human-readable report for review and documentation</div>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <h5 className="font-medium text-gray-900">Both formats include:</h5>
+                <ul className="list-disc list-inside space-y-1 ml-4">
+                  <li>Complete booking details and customer information</li>
+                  <li>Agreement signing data with IP address and timestamps</li>
+                  <li>Full audit trail of all booking modifications</li>
+                  <li>Email tracking and interaction history</li>
+                  <li>Legal compliance metadata for court evidence</li>
+                  <li>Digital signature verification data</li>
+                </ul>
+              </div>
             </div>
           </div>
         </CardContent>
