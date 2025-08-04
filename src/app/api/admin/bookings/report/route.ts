@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/database/connection';
-import puppeteer from 'puppeteer';
 import { format } from 'date-fns';
+import React from 'react';
+import { Document, Page, Text, View, StyleSheet, pdf, Font } from '@react-pdf/renderer';
 
 export async function POST(request: NextRequest) {
   try {
@@ -98,112 +99,14 @@ export async function POST(request: NextRequest) {
         auditTrail = booking.audit_trail || [];
       }
 
-      // Generate PDF - Configure for serverless environments
-      const isDev = process.env.NODE_ENV === 'development';
-      const isVercel = process.env.VERCEL === '1';
+      // Generate PDF using React PDF (serverless-friendly)
+      console.log('Generating PDF using React PDF...');
       
-      console.log('PDF Generation Debug:', {
-        isDev,
-        isVercel,
-        nodeEnv: process.env.NODE_ENV,
-        platform: process.platform
-      });
+      const BookingReportDocument = createBookingReportDocument(booking, auditTrail);
       
-      let browserConfig: any = {
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote',
-          '--single-process',
-          '--disable-gpu'
-        ]
-      };
-
-      // Add Vercel-specific configuration
-      if (isVercel) {
-        console.log('Configuring for Vercel environment');
-        browserConfig.args.push(
-          '--disable-background-timer-throttling',
-          '--disable-backgrounding-occluded-windows',
-          '--disable-renderer-backgrounding'
-        );
-        // Try to use the system Chrome if available
-        try {
-          const chromium = require('@sparticuz/chromium');
-          browserConfig.executablePath = await chromium.executablePath();
-          browserConfig.args.push(...chromium.args);
-          console.log('Using @sparticuz/chromium executable:', browserConfig.executablePath);
-        } catch (e) {
-          console.error('Failed to load @sparticuz/chromium:', e);
-          console.log('Falling back to default Puppeteer');
-        }
-      }
-      
-      console.log('Browser config:', JSON.stringify(browserConfig, null, 2));
-      
-      let browser;
-      let pdfBuffer;
-      
-      try {
-        console.log('Launching browser...');
-        browser = await puppeteer.launch(browserConfig);
-        console.log('Browser launched successfully');
-        
-        const page = await browser.newPage();
-        console.log('New page created');
-        
-        // Set page timeout for serverless environments
-        page.setDefaultTimeout(30000);
-        
-        // Create HTML content for the report
-        console.log('Generating HTML content...');
-        const htmlContent = generateBookingReportHTML(booking, auditTrail);
-        console.log('HTML content generated, length:', htmlContent.length);
-        
-        console.log('Setting page content...');
-        await page.setContent(htmlContent, { 
-          waitUntil: 'networkidle0',
-          timeout: 15000
-        });
-        console.log('Page content set successfully');
-        
-        console.log('Generating PDF...');
-        pdfBuffer = await page.pdf({
-          format: 'A4',
-          printBackground: true,
-          margin: {
-            top: '10mm',
-            right: '10mm',
-            bottom: '10mm',
-            left: '10mm'
-          },
-          scale: 0.8,
-          timeout: 30000
-        });
-        console.log('PDF generated successfully, size:', pdfBuffer.length);
-        
-      } catch (pdfError) {
-        console.error('PDF generation error details:', {
-          message: pdfError instanceof Error ? pdfError.message : String(pdfError),
-          stack: pdfError instanceof Error ? pdfError.stack : undefined,
-          name: pdfError instanceof Error ? pdfError.name : undefined
-        });
-        throw new Error(`Failed to generate PDF: ${pdfError instanceof Error ? pdfError.message : 'Unknown error'}`);
-      } finally {
-        if (browser) {
-          console.log('Closing browser...');
-          try {
-            await browser.close();
-            console.log('Browser closed successfully');
-          } catch (closeError) {
-            console.error('Error closing browser:', closeError);
-          }
-        }
-      }
+      console.log('Creating PDF from React components...');
+      const pdfBuffer = await pdf(BookingReportDocument).toBuffer();
+      console.log('PDF generated successfully, size:', pdfBuffer.length);
 
       // Return PDF as response
       return new NextResponse(pdfBuffer, {
@@ -226,424 +129,372 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function generateBookingReportHTML(booking: any, auditTrail: any[]): string {
-  const formatDate = (date: string | null) => {
-    if (!date) return 'Not available';
-    try {
-      return format(new Date(date), 'dd/MM/yyyy HH:mm');
-    } catch {
-      return date;
-    }
-  };
+// React PDF styles
+const styles = StyleSheet.create({
+  page: {
+    flexDirection: 'column',
+    backgroundColor: '#ffffff',
+    padding: 30,
+    fontFamily: 'Times-Roman',
+    fontSize: 10,
+    lineHeight: 1.3,
+  },
+  header: {
+    textAlign: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: '#000000',
+    paddingBottom: 10,
+    marginBottom: 15,
+  },
+  companyName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 3,
+  },
+  companyTagline: {
+    fontSize: 9,
+    fontStyle: 'italic',
+    marginBottom: 8,
+  },
+  reportTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 3,
+  },
+  reportDate: {
+    fontSize: 8,
+    color: '#666666',
+  },
+  section: {
+    marginTop: 12,
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    borderBottomWidth: 1,
+    borderBottomColor: '#000000',
+    paddingBottom: 2,
+    marginBottom: 8,
+  },
+  row: {
+    flexDirection: 'row',
+    marginBottom: 6,
+  },
+  leftColumn: {
+    width: '50%',
+    paddingRight: 10,
+  },
+  rightColumn: {
+    width: '50%',
+  },
+  infoRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#cccccc',
+    borderBottomStyle: 'dotted',
+    paddingVertical: 2,
+    marginBottom: 2,
+  },
+  infoLabel: {
+    fontWeight: 'bold',
+    width: '40%',
+    fontSize: 9,
+  },
+  infoValue: {
+    width: '60%',
+    fontSize: 9,
+  },
+  statusBadge: {
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    fontSize: 8,
+    padding: 2,
+    borderWidth: 1,
+    borderColor: '#000000',
+  },
+  highlightValue: {
+    fontWeight: 'bold',
+    textDecoration: 'underline',
+  },
+  financialHighlight: {
+    fontWeight: 'bold',
+    fontSize: 10,
+  },
+  signatureSection: {
+    borderWidth: 1,
+    borderColor: '#000000',
+    padding: 8,
+    marginVertical: 8,
+    backgroundColor: '#f9f9f9',
+  },
+  signatureVerified: {
+    fontWeight: 'bold',
+    fontSize: 9,
+    marginBottom: 5,
+  },
+  auditTable: {
+    marginTop: 8,
+  },
+  auditRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#000000',
+    paddingVertical: 3,
+  },
+  auditHeader: {
+    flexDirection: 'row',
+    backgroundColor: '#f0f0f0',
+    fontWeight: 'bold',
+    fontSize: 8,
+    paddingVertical: 3,
+    borderBottomWidth: 1,
+    borderBottomColor: '#000000',
+  },
+  auditCell: {
+    fontSize: 8,
+    paddingHorizontal: 6,
+    textAlign: 'left',
+  },
+  footer: {
+    marginTop: 20,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#000000',
+    fontSize: 8,
+    color: '#666666',
+    textAlign: 'center',
+  },
+});
 
-  const formatDateOnly = (date: string | null) => {
-    if (!date) return 'Not available';
-    try {
-      return format(new Date(date), 'dd/MM/yyyy');
-    } catch {
-      return date;
-    }
-  };
+// Utility functions
+const formatDate = (date: string | null) => {
+  if (!date) return 'Not available';
+  try {
+    return format(new Date(date), 'dd/MM/yyyy HH:mm');
+  } catch {
+    return date;
+  }
+};
 
-  const formatCurrency = (amount: number | null) => {
-    if (!amount) return '£0.00';
-    return `£${amount.toFixed(2)}`;
-  };
+const formatDateOnly = (date: string | null) => {
+  if (!date) return 'Not available';
+  try {
+    return format(new Date(date), 'dd/MM/yyyy');
+  } catch {
+    return date;
+  }
+};
 
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <title>Booking Report - ${booking.booking_ref}</title>
-      <style>
-        body {
-          font-family: 'Times New Roman', Times, serif;
-          line-height: 1.3;
-          color: #000;
-          max-width: 210mm;
-          margin: 0 auto;
-          padding: 15mm;
-          font-size: 10pt;
-          background-color: white;
-        }
-        .document {
-          background-color: white;
-          margin: 0;
-          padding: 0;
-        }
-        .header {
-          text-align: center;
-          border-bottom: 2px solid #000;
-          padding-bottom: 10px;
-          margin-bottom: 15px;
-        }
-        .company-name {
-          font-size: 16pt;
-          font-weight: bold;
-          margin-bottom: 3px;
-        }
-        .company-tagline {
-          font-size: 9pt;
-          margin-bottom: 8px;
-          font-style: italic;
-        }
-        .report-title {
-          font-size: 14pt;
-          font-weight: bold;
-          margin-bottom: 3px;
-        }
-        .report-date {
-          font-size: 8pt;
-          color: #666;
-        }
-        .content {
-          padding: 0;
-        }
-        .section {
-          margin: 12px 0;
-          page-break-inside: avoid;
-        }
-        .section-title {
-          font-size: 11pt;
-          font-weight: bold;
-          color: #000;
-          border-bottom: 1px solid #000;
-          margin-bottom: 8px;
-          padding-bottom: 2px;
-        }
-        .info-table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-bottom: 10px;
-          font-size: 9pt;
-        }
-        .info-table td {
-          padding: 2px 8px 2px 0;
-          vertical-align: top;
-          border-bottom: 1px dotted #ccc;
-        }
-        .info-label {
-          font-weight: bold;
-          width: 30%;
-          color: #000;
-        }
-        .info-value {
-          color: #000;
-          width: 70%;
-        }
-        .two-column {
-          display: table;
-          width: 100%;
-          table-layout: fixed;
-        }
-        .column {
-          display: table-cell;
-          width: 50%;
-          padding-right: 10px;
-          vertical-align: top;
-        }
-        .column:last-child {
-          padding-right: 0;
-        }
-        .full-width {
-          grid-column: 1 / -1;
-        }
-        .status-badge {
-          font-weight: bold;
-          text-transform: uppercase;
-          font-size: 8pt;
-          padding: 1px 4px;
-          border: 1px solid #000;
-        }
-        .status-confirmed { 
-          background-color: #fff;
-          color: #000; 
-        }
-        .status-pending { 
-          background-color: #fff;
-          color: #000; 
-        }
-        .status-cancelled { 
-          background-color: #fff;
-          color: #000; 
-        }
-        .audit-table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-top: 8px;
-          font-size: 8pt;
-          border: 1px solid #000;
-        }
-        .audit-table th,
-        .audit-table td {
-          border: 1px solid #000;
-          padding: 3px 6px;
-          text-align: left;
-        }
-        .audit-table th {
-          background-color: #f0f0f0;
-          font-weight: bold;
-          font-size: 8pt;
-        }
-        .signature-section {
-          border: 1px solid #000;
-          padding: 8px;
-          margin: 8px 0;
-          background-color: #f9f9f9;
-        }
-        .signature-verified {
-          font-weight: bold;
-          font-size: 9pt;
-          margin-bottom: 5px;
-        }
-        .highlight-value {
-          font-weight: bold;
-          text-decoration: underline;
-        }
-        .financial-highlight {
-          font-weight: bold;
-          font-size: 10pt;
-        }
-        .page-break {
-          page-break-before: always;
-        }
-        .footer {
-          margin-top: 20px;
-          padding-top: 10px;
-          border-top: 1px solid #000;
-          font-size: 8pt;
-          color: #666;
-          text-align: center;
-        }
-        .footer strong {
-          color: #000;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="document">
-        <div class="header">
-          <div class="company-name">T&S Bouncy Castle Hire</div>
-          <div class="company-tagline">Professional Bouncy Castle Rental Services</div>
-          <div class="report-title">Comprehensive Booking Report</div>
-          <div class="report-date">Generated on ${formatDate(new Date().toISOString())}</div>
-        </div>
-        
-        <div class="content">
+const formatCurrency = (amount: number | null) => {
+  if (!amount) return '£0.00';
+  return `£${amount.toFixed(2)}`;
+};
 
-      <div class="section">
-        <div class="section-title">Booking Overview</div>
-        <div class="two-column">
-          <div class="column">
-            <table class="info-table">
-              <tr>
-                <td class="info-label">Booking Reference:</td>
-                <td class="info-value highlight-value">${booking.booking_ref}</td>
-              </tr>
-              <tr>
-                <td class="info-label">Status:</td>
-                <td class="info-value"><span class="status-badge status-${booking.status.toLowerCase()}">${booking.status}</span></td>
-              </tr>
-            </table>
-          </div>
-          <div class="column">
-            <table class="info-table">
-              <tr>
-                <td class="info-label">Booking Created:</td>
-                <td class="info-value">${formatDate(booking.created_at)}</td>
-              </tr>
-              <tr>
-                <td class="info-label">Last Updated:</td>
-                <td class="info-value">${formatDate(booking.updated_at)}</td>
-              </tr>
-            </table>
-          </div>
-        </div>
-      </div>
+// React PDF Document Component
+function createBookingReportDocument(booking: any, auditTrail: any[]) {
+  return (
+    <Document>
+      <Page size="A4" style={styles.page}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.companyName}>T&S Bouncy Castle Hire</Text>
+          <Text style={styles.companyTagline}>Professional Bouncy Castle Rental Services</Text>
+          <Text style={styles.reportTitle}>Comprehensive Booking Report</Text>
+          <Text style={styles.reportDate}>Generated on {formatDate(new Date().toISOString())}</Text>
+        </View>
 
-      <div class="section">
-        <div class="section-title">Customer Information</div>
-        <div class="two-column">
-          <div class="column">
-            <table class="info-table">
-              <tr>
-                <td class="info-label">Name:</td>
-                <td class="info-value">${booking.customer_name || 'Not provided'}</td>
-              </tr>
-              <tr>
-                <td class="info-label">Email:</td>
-                <td class="info-value">${booking.customer_email || 'Not provided'}</td>
-              </tr>
-            </table>
-          </div>
-          <div class="column">
-            <table class="info-table">
-              <tr>
-                <td class="info-label">Phone:</td>
-                <td class="info-value">${booking.customer_phone || 'Not provided'}</td>
-              </tr>
-              <tr>
-                <td class="info-label">Address:</td>
-                <td class="info-value">${booking.customer_address || 'Not provided'}</td>
-              </tr>
-            </table>
-          </div>
-        </div>
-      </div>
+        {/* Booking Overview */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Booking Overview</Text>
+          <View style={styles.row}>
+            <View style={styles.leftColumn}>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Booking Reference:</Text>
+                <Text style={[styles.infoValue, styles.highlightValue]}>{booking.booking_ref}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Status:</Text>
+                <Text style={[styles.infoValue, styles.statusBadge]}>{booking.status}</Text>
+              </View>
+            </View>
+            <View style={styles.rightColumn}>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Booking Created:</Text>
+                <Text style={styles.infoValue}>{formatDate(booking.created_at)}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Last Updated:</Text>
+                <Text style={styles.infoValue}>{formatDate(booking.updated_at)}</Text>
+              </View>
+            </View>
+          </View>
+        </View>
 
-      <div class="section">
-        <div class="section-title">Event Details</div>
-        <div class="two-column">
-          <div class="column">
-            <table class="info-table">
-              <tr>
-                <td class="info-label">Castle:</td>
-                <td class="info-value">${booking.castle_name || 'Not specified'}</td>
-              </tr>
-              <tr>
-                <td class="info-label">Castle Type:</td>
-                <td class="info-value">${booking.castle_type || 'Not specified'}</td>
-              </tr>
-            </table>
-          </div>
-          <div class="column">
-            <table class="info-table">
-              <tr>
-                <td class="info-label">Event Date:</td>
-                <td class="info-value">${formatDateOnly(booking.date || booking.start_date)}</td>
-              </tr>
-              <tr>
-                <td class="info-label">Duration:</td>
-                <td class="info-value">${booking.event_duration || 'Not specified'}</td>
-              </tr>
-            </table>
-          </div>
-        </div>
-        ${booking.notes ? `
-        <table class="info-table">
-          <tr>
-            <td class="info-label">Notes:</td>
-            <td class="info-value">${booking.notes}</td>
-          </tr>
-        </table>
-        ` : ''}
-      </div>
+        {/* Customer Information */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Customer Information</Text>
+          <View style={styles.row}>
+            <View style={styles.leftColumn}>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Name:</Text>
+                <Text style={styles.infoValue}>{booking.customer_name || 'Not provided'}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Email:</Text>
+                <Text style={styles.infoValue}>{booking.customer_email || 'Not provided'}</Text>
+              </View>
+            </View>
+            <View style={styles.rightColumn}>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Phone:</Text>
+                <Text style={styles.infoValue}>{booking.customer_phone || 'Not provided'}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Address:</Text>
+                <Text style={styles.infoValue}>{booking.customer_address || 'Not provided'}</Text>
+              </View>
+            </View>
+          </View>
+        </View>
 
-      <div class="section">
-        <div class="section-title">Financial Information</div>
-        <div class="two-column">
-          <div class="column">
-            <table class="info-table">
-              <tr>
-                <td class="info-label">Total Price:</td>
-                <td class="info-value financial-highlight">${formatCurrency(booking.total_price || booking.total_cost)}</td>
-              </tr>
-              <tr>
-                <td class="info-label">Deposit:</td>
-                <td class="info-value">${formatCurrency(booking.deposit)}</td>
-              </tr>
-            </table>
-          </div>
-          <div class="column">
-            <table class="info-table">
-              <tr>
-                <td class="info-label">Payment Method:</td>
-                <td class="info-value">${booking.payment_method || 'Not specified'}</td>
-              </tr>
-            </table>
-          </div>
-        </div>
-      </div>
+        {/* Event Details */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Event Details</Text>
+          <View style={styles.row}>
+            <View style={styles.leftColumn}>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Castle:</Text>
+                <Text style={styles.infoValue}>{booking.castle_name || 'Not specified'}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Castle Type:</Text>
+                <Text style={styles.infoValue}>{booking.castle_type || 'Not specified'}</Text>
+              </View>
+            </View>
+            <View style={styles.rightColumn}>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Event Date:</Text>
+                <Text style={styles.infoValue}>{formatDateOnly(booking.date || booking.start_date)}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Duration:</Text>
+                <Text style={styles.infoValue}>{booking.event_duration || 'Not specified'}</Text>
+              </View>
+            </View>
+          </View>
+          {booking.notes && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Notes:</Text>
+              <Text style={styles.infoValue}>{booking.notes}</Text>
+            </View>
+          )}
+        </View>
 
-      ${booking.agreement_signed ? `
-      <div class="section">
-        <div class="section-title">Agreement & Legal Information</div>
-        <div class="signature-section">
-          <div class="signature-verified">✓ AGREEMENT DIGITALLY SIGNED</div>
-          <div class="two-column">
-            <div class="column">
-              <table class="info-table">
-                <tr>
-                  <td class="info-label">Signed By:</td>
-                  <td class="info-value">${booking.agreement_signed_by || 'Not recorded'}</td>
-                </tr>
-                <tr>
-                  <td class="info-label">Signed At:</td>
-                  <td class="info-value">${formatDate(booking.agreement_signed_at)}</td>
-                </tr>
-                <tr>
-                  <td class="info-label">Method:</td>
-                  <td class="info-value">${booking.agreement_signed_method || 'Digital signature'}</td>
-                </tr>
-              </table>
-            </div>
-            <div class="column">
-              <table class="info-table">
-                <tr>
-                  <td class="info-label">IP Address:</td>
-                  <td class="info-value">${booking.agreement_ip_address || 'Not recorded'}</td>
-                </tr>
-                ${booking.agreement_user_agent ? `
-                <tr>
-                  <td class="info-label">User Agent:</td>
-                  <td class="info-value" style="font-size: 7pt;">${booking.agreement_user_agent}</td>
-                </tr>
-                ` : ''}
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-      ` : `
-      <div class="section">
-        <div class="section-title">Agreement Status</div>
-        <table class="info-table">
-          <tr>
-            <td class="info-label">Agreement Status:</td>
-            <td class="info-value" style="font-weight: bold;">⏳ Pending Signature</td>
-          </tr>
-        </table>
-      </div>
-      `}
+        {/* Financial Information */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Financial Information</Text>
+          <View style={styles.row}>
+            <View style={styles.leftColumn}>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Total Price:</Text>
+                <Text style={[styles.infoValue, styles.financialHighlight]}>
+                  {formatCurrency(booking.total_price || booking.total_cost)}
+                </Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Deposit:</Text>
+                <Text style={styles.infoValue}>{formatCurrency(booking.deposit)}</Text>
+              </View>
+            </View>
+            <View style={styles.rightColumn}>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Payment Method:</Text>
+                <Text style={styles.infoValue}>{booking.payment_method || 'Not specified'}</Text>
+              </View>
+            </View>
+          </View>
+        </View>
 
-      ${auditTrail.length > 0 ? `
-      <div class="section">
-        <div class="section-title">Audit Trail</div>
-        <table class="audit-table">
-          <thead>
-            <tr>
-              <th>Date/Time</th>
-              <th>Action</th>
-              <th>Actor</th>
-              <th>Method</th>
-              <th>Details</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${auditTrail.map(entry => `
-            <tr>
-              <td>${formatDate(entry.timestamp)}</td>
-              <td>${entry.action || 'N/A'}</td>
-              <td>${entry.actor || 'System'}</td>
-              <td>${entry.method || 'N/A'}</td>
-              <td>${entry.details || 'N/A'}</td>
-            </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>
-      ` : ''}
+        {/* Agreement Information */}
+        {booking.agreement_signed ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Agreement & Legal Information</Text>
+            <View style={styles.signatureSection}>
+              <Text style={styles.signatureVerified}>✓ AGREEMENT DIGITALLY SIGNED</Text>
+              <View style={styles.row}>
+                <View style={styles.leftColumn}>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Signed By:</Text>
+                    <Text style={styles.infoValue}>{booking.agreement_signed_by || 'Not recorded'}</Text>
+                  </View>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Signed At:</Text>
+                    <Text style={styles.infoValue}>{formatDate(booking.agreement_signed_at)}</Text>
+                  </View>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Method:</Text>
+                    <Text style={styles.infoValue}>{booking.agreement_signed_method || 'Digital signature'}</Text>
+                  </View>
+                </View>
+                <View style={styles.rightColumn}>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>IP Address:</Text>
+                    <Text style={styles.infoValue}>{booking.agreement_ip_address || 'Not recorded'}</Text>
+                  </View>
+                  {booking.agreement_user_agent && (
+                    <View style={styles.infoRow}>
+                      <Text style={styles.infoLabel}>User Agent:</Text>
+                      <Text style={[styles.infoValue, { fontSize: 7 }]}>{booking.agreement_user_agent}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Agreement Status</Text>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Agreement Status:</Text>
+              <Text style={[styles.infoValue, { fontWeight: 'bold' }]}>⏳ Pending Signature</Text>
+            </View>
+          </View>
+        )}
 
-        <div class="footer">
-          <p><strong>T&S Bouncy Castle Hire</strong> - Booking Management System</p>
-          <p>This report contains all available data for booking <span class="highlight-value">${booking.booking_ref}</span></p>
-          <p>Document includes digital signature verification and audit trails for legal compliance</p>
-        </div>
-        
-        </div> <!-- End content -->
-      </div> <!-- End document -->
-    </body>
-    </html>
-  `;
+        {/* Audit Trail */}
+        {auditTrail.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Audit Trail</Text>
+            <View style={styles.auditTable}>
+              <View style={styles.auditHeader}>
+                <Text style={[styles.auditCell, { width: '25%' }]}>Date/Time</Text>
+                <Text style={[styles.auditCell, { width: '20%' }]}>Action</Text>
+                <Text style={[styles.auditCell, { width: '15%' }]}>Actor</Text>
+                <Text style={[styles.auditCell, { width: '15%' }]}>Method</Text>
+                <Text style={[styles.auditCell, { width: '25%' }]}>Details</Text>
+              </View>
+              {auditTrail.slice(0, 10).map((entry, index) => (
+                <View key={index} style={styles.auditRow}>
+                  <Text style={[styles.auditCell, { width: '25%' }]}>{formatDate(entry.timestamp)}</Text>
+                  <Text style={[styles.auditCell, { width: '20%' }]}>{entry.action || 'N/A'}</Text>
+                  <Text style={[styles.auditCell, { width: '15%' }]}>{entry.actor || 'System'}</Text>
+                  <Text style={[styles.auditCell, { width: '15%' }]}>{entry.method || 'N/A'}</Text>
+                  <Text style={[styles.auditCell, { width: '25%' }]}>{entry.details || 'N/A'}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text>T&S Bouncy Castle Hire - Booking Management System</Text>
+          <Text>This report contains all available data for booking {booking.booking_ref}</Text>
+          <Text>Document includes digital signature verification and audit trails for legal compliance</Text>
+        </View>
+      </Page>
+    </Document>  
+  );
 }
+
