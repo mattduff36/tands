@@ -102,6 +102,13 @@ export async function POST(request: NextRequest) {
       const isDev = process.env.NODE_ENV === 'development';
       const isVercel = process.env.VERCEL === '1';
       
+      console.log('PDF Generation Debug:', {
+        isDev,
+        isVercel,
+        nodeEnv: process.env.NODE_ENV,
+        platform: process.platform
+      });
+      
       let browserConfig: any = {
         headless: true,
         args: [
@@ -118,6 +125,7 @@ export async function POST(request: NextRequest) {
 
       // Add Vercel-specific configuration
       if (isVercel) {
+        console.log('Configuring for Vercel environment');
         browserConfig.args.push(
           '--disable-background-timer-throttling',
           '--disable-backgrounding-occluded-windows',
@@ -128,30 +136,42 @@ export async function POST(request: NextRequest) {
           const chromium = require('@sparticuz/chromium');
           browserConfig.executablePath = await chromium.executablePath();
           browserConfig.args.push(...chromium.args);
+          console.log('Using @sparticuz/chromium executable:', browserConfig.executablePath);
         } catch (e) {
-          console.log('Chromium package not available, using default');
+          console.error('Failed to load @sparticuz/chromium:', e);
+          console.log('Falling back to default Puppeteer');
         }
       }
+      
+      console.log('Browser config:', JSON.stringify(browserConfig, null, 2));
       
       let browser;
       let pdfBuffer;
       
       try {
+        console.log('Launching browser...');
         browser = await puppeteer.launch(browserConfig);
+        console.log('Browser launched successfully');
         
         const page = await browser.newPage();
+        console.log('New page created');
         
         // Set page timeout for serverless environments
         page.setDefaultTimeout(30000);
         
         // Create HTML content for the report
+        console.log('Generating HTML content...');
         const htmlContent = generateBookingReportHTML(booking, auditTrail);
+        console.log('HTML content generated, length:', htmlContent.length);
         
+        console.log('Setting page content...');
         await page.setContent(htmlContent, { 
           waitUntil: 'networkidle0',
           timeout: 15000
         });
+        console.log('Page content set successfully');
         
+        console.log('Generating PDF...');
         pdfBuffer = await page.pdf({
           format: 'A4',
           printBackground: true,
@@ -164,13 +184,24 @@ export async function POST(request: NextRequest) {
           scale: 0.8,
           timeout: 30000
         });
+        console.log('PDF generated successfully, size:', pdfBuffer.length);
         
       } catch (pdfError) {
-        console.error('PDF generation error:', pdfError);
+        console.error('PDF generation error details:', {
+          message: pdfError instanceof Error ? pdfError.message : String(pdfError),
+          stack: pdfError instanceof Error ? pdfError.stack : undefined,
+          name: pdfError instanceof Error ? pdfError.name : undefined
+        });
         throw new Error(`Failed to generate PDF: ${pdfError instanceof Error ? pdfError.message : 'Unknown error'}`);
       } finally {
         if (browser) {
-          await browser.close();
+          console.log('Closing browser...');
+          try {
+            await browser.close();
+            console.log('Browser closed successfully');
+          } catch (closeError) {
+            console.error('Error closing browser:', closeError);
+          }
         }
       }
 
