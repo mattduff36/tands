@@ -13,6 +13,9 @@ Allow: /health-and-safety
 Disallow: /admin/
 Disallow: /api/
 
+# Block test/development pages
+Disallow: /test-payment
+
 # Block temporary or duplicate content
 Disallow: /hire-agreement
 Disallow: /_next/

@@ -247,7 +247,7 @@ export function BookingFormModal({
                   onCheckedChange={(checked) => onFormChange('additionalCosts', !!checked)}
                 />
                 <Label htmlFor="additionalCosts" className="text-sm font-medium">
-                  Additional costs?
+                  Additional costs / Discounts
                 </Label>
               </div>
               
@@ -262,7 +262,7 @@ export function BookingFormModal({
                       type="text"
                       value={bookingForm.additionalCostsDescription}
                       onChange={(e) => onFormChange('additionalCostsDescription', e.target.value)}
-                      placeholder="e.g., Extra setup, delivery fee, etc."
+                      placeholder="e.g., Extra setup, delivery fee, discount, etc."
                       required
                     />
                   </div>
@@ -273,11 +273,10 @@ export function BookingFormModal({
                     <Input
                       id="additionalCostsAmount"
                       type="number"
-                      min="0"
                       step="0.01"
                       value={bookingForm.additionalCostsAmount}
                       onChange={(e) => onFormChange('additionalCostsAmount', parseFloat(e.target.value) || 0)}
-                      placeholder="0.00"
+                      placeholder="0.00 (use negative for discounts)"
                       required
                     />
                   </div>

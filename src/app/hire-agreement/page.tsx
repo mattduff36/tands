@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { StripePaymentForm } from "@/components/payment/StripePaymentForm";
 
 interface BookingDetails {
   bookingRef: string;
@@ -30,6 +31,8 @@ function HireAgreementContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [hasAgreed, setHasAgreed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [paymentCompleted, setPaymentCompleted] = useState(false);
+  const [paymentIntentId, setPaymentIntentId] = useState<string>('');
 
   useEffect(() => {
     if (bookingRef) {
@@ -71,9 +74,20 @@ function HireAgreementContent() {
     }
   };
 
+  const handlePaymentSuccess = (paymentIntentId: string) => {
+    setPaymentCompleted(true);
+    setPaymentIntentId(paymentIntentId);
+    toast.success("Payment successful! You can now complete the hire agreement.");
+  };
+
+  const handlePaymentError = (error: string) => {
+    toast.error(`Payment failed: ${error}`);
+    setPaymentCompleted(false);
+  };
+
   const handleSubmitAgreement = async () => {
-    if (!hasAgreed || !bookingDetails) {
-      toast.error("Please agree to the terms and conditions");
+    if (!hasAgreed || !bookingDetails || !paymentCompleted) {
+      toast.error("Please complete payment and agree to the terms and conditions");
       return;
     }
 
@@ -87,6 +101,8 @@ function HireAgreementContent() {
         body: JSON.stringify({
           agreementSigned: true,
           agreementSignedAt: new Date().toISOString(),
+          paymentIntentId,
+          paymentCompleted: true,
         }),
       });
 
@@ -94,7 +110,7 @@ function HireAgreementContent() {
         toast.success("Hire agreement signed successfully!");
         // Redirect to success page
         const responseData = await response.json();
-        window.location.href = `/hire-agreement/success?bookingRef=${bookingDetails.bookingRef}&agreementSignedAt=${responseData.agreementSignedAt}`;
+        window.location.href = `/hire-agreement/success?bookingRef=${bookingDetails.bookingRef}&agreementSignedAt=${responseData.agreementSignedAt}&paymentCompleted=true`;
       } else {
         throw new Error('Failed to submit agreement');
       }
@@ -312,18 +328,71 @@ function HireAgreementContent() {
           </CardContent>
         </Card>
 
-        {/* Submit Button */}
-        {hasAgreed && (
+        {/* Payment Section - Shows after checkbox is checked */}
+        {hasAgreed && !paymentCompleted && (
+          <div className="mb-8">
+            <div className="text-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                Secure Your Booking
+              </h2>
+              <p className="text-gray-600">
+                Complete your deposit payment to finalize the hire agreement
+              </p>
+            </div>
+            
+            <StripePaymentForm
+              bookingRef={bookingDetails.bookingRef}
+              customerName={bookingDetails.customerName}
+              customerEmail={bookingDetails.customerEmail}
+              depositAmount={bookingDetails.deposit}
+              onPaymentSuccess={handlePaymentSuccess}
+              onPaymentError={handlePaymentError}
+            />
+          </div>
+        )}
+
+        {/* Payment Success Confirmation */}
+        {paymentCompleted && (
+          <Card className="mb-8 bg-green-50 border-green-200">
+            <CardContent className="pt-6">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-green-800">Payment Successful!</h3>
+                  <p className="text-sm text-green-700">
+                    Your deposit of £{bookingDetails.deposit} has been processed. You can now complete the hire agreement.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Submit Button - Only shows after payment is completed */}
+        {hasAgreed && paymentCompleted && (
           <div className="text-center">
             <Button
               onClick={handleSubmitAgreement}
               disabled={isSubmitting}
               className="bg-red-600 hover:bg-red-700 px-8 py-3 text-lg"
             >
-              {isSubmitting ? "Submitting..." : "Submit Agreement"}
+              {isSubmitting ? "Submitting..." : "Complete Hire Agreement"}
             </Button>
             <p className="text-sm text-gray-600 mt-2">
-              By clicking submit, you electronically sign this hire agreement
+              By clicking complete, you electronically sign this hire agreement
+            </p>
+          </div>
+        )}
+
+        {/* Instructions when only checkbox is checked */}
+        {hasAgreed && !paymentCompleted && (
+          <div className="text-center">
+            <p className="text-sm text-gray-600 bg-blue-50 border border-blue-200 rounded-lg p-4">
+              💡 <strong>Next Step:</strong> Complete the secure deposit payment above to finalize your hire agreement
             </p>
           </div>
         )}
