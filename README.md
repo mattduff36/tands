@@ -4,6 +4,15 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 This project is a booking management system for T&S Bouncy Castle Hire, featuring online booking, calendar management, hire agreements, and admin dashboard functionality.
 
+### Key Features
+
+- 📅 Online booking system with availability checking
+- 📋 Digital hire agreements with e-signature capability
+- 🏰 Castle fleet management
+- 📊 Admin dashboard with analytics
+- 📧 Automated email workflows
+- 💳 Multiple payment methods (cash, bank transfer)
+
 ## Getting Started
 
 First, run the development server:

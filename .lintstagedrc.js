@@ -1,11 +1,10 @@
 module.exports = {
-  // Light formatting only - no heavy linting or testing
-  '*.{js,jsx,ts,tsx}': [
-    'prettier --write',
-  ],
-  
+  // Light formatting and TypeScript checking
+  "*.{js,jsx,ts,tsx}": ["prettier --write"],
+
   // Run Prettier on other files
-  '*.{json,md,yml,yaml}': [
-    'prettier --write',
-  ],
+  "*.{json,md,yml,yaml}": ["prettier --write"],
+
+  // TypeScript checking on TS/TSX files - catches build errors early
+  "*.{ts,tsx}": [() => "tsc --noEmit"],
 };
