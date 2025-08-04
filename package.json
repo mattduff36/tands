@@ -14,12 +14,9 @@
     "test:watch": "vitest --watch",
     "analyze": "ANALYZE=true npm run build",
     "db:seed": "node scripts/seed-database.js",
-    "prepare": "husky"
-  },
-  "lint-staged": {
-    "*.{js,jsx,ts,tsx}": [
-      "eslint --fix"
-    ]
+    "prepare": "husky",
+    "quick-push": "git quick-push",
+    "checked-push": "git checked-push"
   },
   "dependencies": {
     "@google-analytics/data": "^5.2.0",
