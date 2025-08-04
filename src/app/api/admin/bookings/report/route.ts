@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/database/connection';
 import { format } from 'date-fns';
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet, pdf, Font } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet, pdf } from '@react-pdf/renderer';
 
 export async function POST(request: NextRequest) {
   try {
@@ -291,210 +291,200 @@ const formatCurrency = (amount: number | null) => {
   return `£${amount.toFixed(2)}`;
 };
 
-// React PDF Document Component
+// React PDF Document Component (using React.createElement for .ts compatibility)
 function createBookingReportDocument(booking: any, auditTrail: any[]) {
-  return (
-    <Document>
-      <Page size="A4" style={styles.page}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.companyName}>T&S Bouncy Castle Hire</Text>
-          <Text style={styles.companyTagline}>Professional Bouncy Castle Rental Services</Text>
-          <Text style={styles.reportTitle}>Comprehensive Booking Report</Text>
-          <Text style={styles.reportDate}>Generated on {formatDate(new Date().toISOString())}</Text>
-        </View>
+  return React.createElement(Document, {},
+    React.createElement(Page, { size: "A4", style: styles.page },
+      // Header
+      React.createElement(View, { style: styles.header },
+        React.createElement(Text, { style: styles.companyName }, "T&S Bouncy Castle Hire"),
+        React.createElement(Text, { style: styles.companyTagline }, "Professional Bouncy Castle Rental Services"),
+        React.createElement(Text, { style: styles.reportTitle }, "Comprehensive Booking Report"),
+        React.createElement(Text, { style: styles.reportDate }, `Generated on ${formatDate(new Date().toISOString())}`)
+      ),
 
-        {/* Booking Overview */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Booking Overview</Text>
-          <View style={styles.row}>
-            <View style={styles.leftColumn}>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Booking Reference:</Text>
-                <Text style={[styles.infoValue, styles.highlightValue]}>{booking.booking_ref}</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Status:</Text>
-                <Text style={[styles.infoValue, styles.statusBadge]}>{booking.status}</Text>
-              </View>
-            </View>
-            <View style={styles.rightColumn}>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Booking Created:</Text>
-                <Text style={styles.infoValue}>{formatDate(booking.created_at)}</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Last Updated:</Text>
-                <Text style={styles.infoValue}>{formatDate(booking.updated_at)}</Text>
-              </View>
-            </View>
-          </View>
-        </View>
+      // Booking Overview
+      React.createElement(View, { style: styles.section },
+        React.createElement(Text, { style: styles.sectionTitle }, "Booking Overview"),
+        React.createElement(View, { style: styles.row },
+          React.createElement(View, { style: styles.leftColumn },
+            React.createElement(View, { style: styles.infoRow },
+              React.createElement(Text, { style: styles.infoLabel }, "Booking Reference:"),
+              React.createElement(Text, { style: [styles.infoValue, styles.highlightValue] }, booking.booking_ref)
+            ),
+            React.createElement(View, { style: styles.infoRow },
+              React.createElement(Text, { style: styles.infoLabel }, "Status:"),
+              React.createElement(Text, { style: [styles.infoValue, styles.statusBadge] }, booking.status)
+            )
+          ),
+          React.createElement(View, { style: styles.rightColumn },
+            React.createElement(View, { style: styles.infoRow },
+              React.createElement(Text, { style: styles.infoLabel }, "Booking Created:"),
+              React.createElement(Text, { style: styles.infoValue }, formatDate(booking.created_at))
+            ),
+            React.createElement(View, { style: styles.infoRow },
+              React.createElement(Text, { style: styles.infoLabel }, "Last Updated:"),
+              React.createElement(Text, { style: styles.infoValue }, formatDate(booking.updated_at))
+            )
+          )
+        )
+      ),
 
-        {/* Customer Information */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Customer Information</Text>
-          <View style={styles.row}>
-            <View style={styles.leftColumn}>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Name:</Text>
-                <Text style={styles.infoValue}>{booking.customer_name || 'Not provided'}</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Email:</Text>
-                <Text style={styles.infoValue}>{booking.customer_email || 'Not provided'}</Text>
-              </View>
-            </View>
-            <View style={styles.rightColumn}>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Phone:</Text>
-                <Text style={styles.infoValue}>{booking.customer_phone || 'Not provided'}</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Address:</Text>
-                <Text style={styles.infoValue}>{booking.customer_address || 'Not provided'}</Text>
-              </View>
-            </View>
-          </View>
-        </View>
+      // Customer Information
+      React.createElement(View, { style: styles.section },
+        React.createElement(Text, { style: styles.sectionTitle }, "Customer Information"),
+        React.createElement(View, { style: styles.row },
+          React.createElement(View, { style: styles.leftColumn },
+            React.createElement(View, { style: styles.infoRow },
+              React.createElement(Text, { style: styles.infoLabel }, "Name:"),
+              React.createElement(Text, { style: styles.infoValue }, booking.customer_name || 'Not provided')
+            ),
+            React.createElement(View, { style: styles.infoRow },
+              React.createElement(Text, { style: styles.infoLabel }, "Email:"),
+              React.createElement(Text, { style: styles.infoValue }, booking.customer_email || 'Not provided')
+            )
+          ),
+          React.createElement(View, { style: styles.rightColumn },
+            React.createElement(View, { style: styles.infoRow },
+              React.createElement(Text, { style: styles.infoLabel }, "Phone:"),
+              React.createElement(Text, { style: styles.infoValue }, booking.customer_phone || 'Not provided')
+            ),
+            React.createElement(View, { style: styles.infoRow },
+              React.createElement(Text, { style: styles.infoLabel }, "Address:"),
+              React.createElement(Text, { style: styles.infoValue }, booking.customer_address || 'Not provided')
+            )
+          )
+        )
+      ),
 
-        {/* Event Details */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Event Details</Text>
-          <View style={styles.row}>
-            <View style={styles.leftColumn}>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Castle:</Text>
-                <Text style={styles.infoValue}>{booking.castle_name || 'Not specified'}</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Castle Type:</Text>
-                <Text style={styles.infoValue}>{booking.castle_type || 'Not specified'}</Text>
-              </View>
-            </View>
-            <View style={styles.rightColumn}>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Event Date:</Text>
-                <Text style={styles.infoValue}>{formatDateOnly(booking.date || booking.start_date)}</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Duration:</Text>
-                <Text style={styles.infoValue}>{booking.event_duration || 'Not specified'}</Text>
-              </View>
-            </View>
-          </View>
-          {booking.notes && (
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Notes:</Text>
-              <Text style={styles.infoValue}>{booking.notes}</Text>
-            </View>
-          )}
-        </View>
+      // Event Details
+      React.createElement(View, { style: styles.section },
+        React.createElement(Text, { style: styles.sectionTitle }, "Event Details"),
+        React.createElement(View, { style: styles.row },
+          React.createElement(View, { style: styles.leftColumn },
+            React.createElement(View, { style: styles.infoRow },
+              React.createElement(Text, { style: styles.infoLabel }, "Castle:"),
+              React.createElement(Text, { style: styles.infoValue }, booking.castle_name || 'Not specified')
+            ),
+            React.createElement(View, { style: styles.infoRow },
+              React.createElement(Text, { style: styles.infoLabel }, "Castle Type:"),
+              React.createElement(Text, { style: styles.infoValue }, booking.castle_type || 'Not specified')
+            )
+          ),
+          React.createElement(View, { style: styles.rightColumn },
+            React.createElement(View, { style: styles.infoRow },
+              React.createElement(Text, { style: styles.infoLabel }, "Event Date:"),
+              React.createElement(Text, { style: styles.infoValue }, formatDateOnly(booking.date || booking.start_date))
+            ),
+            React.createElement(View, { style: styles.infoRow },
+              React.createElement(Text, { style: styles.infoLabel }, "Duration:"),
+              React.createElement(Text, { style: styles.infoValue }, booking.event_duration || 'Not specified')
+            )
+          )
+        ),
+        booking.notes ? React.createElement(View, { style: styles.infoRow },
+          React.createElement(Text, { style: styles.infoLabel }, "Notes:"),
+          React.createElement(Text, { style: styles.infoValue }, booking.notes)
+        ) : null
+      ),
 
-        {/* Financial Information */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Financial Information</Text>
-          <View style={styles.row}>
-            <View style={styles.leftColumn}>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Total Price:</Text>
-                <Text style={[styles.infoValue, styles.financialHighlight]}>
-                  {formatCurrency(booking.total_price || booking.total_cost)}
-                </Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Deposit:</Text>
-                <Text style={styles.infoValue}>{formatCurrency(booking.deposit)}</Text>
-              </View>
-            </View>
-            <View style={styles.rightColumn}>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Payment Method:</Text>
-                <Text style={styles.infoValue}>{booking.payment_method || 'Not specified'}</Text>
-              </View>
-            </View>
-          </View>
-        </View>
+      // Financial Information
+      React.createElement(View, { style: styles.section },
+        React.createElement(Text, { style: styles.sectionTitle }, "Financial Information"),
+        React.createElement(View, { style: styles.row },
+          React.createElement(View, { style: styles.leftColumn },
+            React.createElement(View, { style: styles.infoRow },
+              React.createElement(Text, { style: styles.infoLabel }, "Total Price:"),
+              React.createElement(Text, { style: [styles.infoValue, styles.financialHighlight] },
+                formatCurrency(booking.total_price || booking.total_cost)
+              )
+            ),
+            React.createElement(View, { style: styles.infoRow },
+              React.createElement(Text, { style: styles.infoLabel }, "Deposit:"),
+              React.createElement(Text, { style: styles.infoValue }, formatCurrency(booking.deposit))
+            )
+          ),
+          React.createElement(View, { style: styles.rightColumn },
+            React.createElement(View, { style: styles.infoRow },
+              React.createElement(Text, { style: styles.infoLabel }, "Payment Method:"),
+              React.createElement(Text, { style: styles.infoValue }, booking.payment_method || 'Not specified')
+            )
+          )
+        )
+      ),
 
-        {/* Agreement Information */}
-        {booking.agreement_signed ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Agreement & Legal Information</Text>
-            <View style={styles.signatureSection}>
-              <Text style={styles.signatureVerified}>✓ AGREEMENT DIGITALLY SIGNED</Text>
-              <View style={styles.row}>
-                <View style={styles.leftColumn}>
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Signed By:</Text>
-                    <Text style={styles.infoValue}>{booking.agreement_signed_by || 'Not recorded'}</Text>
-                  </View>
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Signed At:</Text>
-                    <Text style={styles.infoValue}>{formatDate(booking.agreement_signed_at)}</Text>
-                  </View>
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Method:</Text>
-                    <Text style={styles.infoValue}>{booking.agreement_signed_method || 'Digital signature'}</Text>
-                  </View>
-                </View>
-                <View style={styles.rightColumn}>
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>IP Address:</Text>
-                    <Text style={styles.infoValue}>{booking.agreement_ip_address || 'Not recorded'}</Text>
-                  </View>
-                  {booking.agreement_user_agent && (
-                    <View style={styles.infoRow}>
-                      <Text style={styles.infoLabel}>User Agent:</Text>
-                      <Text style={[styles.infoValue, { fontSize: 7 }]}>{booking.agreement_user_agent}</Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-            </View>
-          </View>
-        ) : (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Agreement Status</Text>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Agreement Status:</Text>
-              <Text style={[styles.infoValue, { fontWeight: 'bold' }]}>⏳ Pending Signature</Text>
-            </View>
-          </View>
-        )}
+      // Agreement Information
+      booking.agreement_signed ? 
+        React.createElement(View, { style: styles.section },
+          React.createElement(Text, { style: styles.sectionTitle }, "Agreement & Legal Information"),
+          React.createElement(View, { style: styles.signatureSection },
+            React.createElement(Text, { style: styles.signatureVerified }, "✓ AGREEMENT DIGITALLY SIGNED"),
+            React.createElement(View, { style: styles.row },
+              React.createElement(View, { style: styles.leftColumn },
+                React.createElement(View, { style: styles.infoRow },
+                  React.createElement(Text, { style: styles.infoLabel }, "Signed By:"),
+                  React.createElement(Text, { style: styles.infoValue }, booking.agreement_signed_by || 'Not recorded')
+                ),
+                React.createElement(View, { style: styles.infoRow },
+                  React.createElement(Text, { style: styles.infoLabel }, "Signed At:"),
+                  React.createElement(Text, { style: styles.infoValue }, formatDate(booking.agreement_signed_at))
+                ),
+                React.createElement(View, { style: styles.infoRow },
+                  React.createElement(Text, { style: styles.infoLabel }, "Method:"),
+                  React.createElement(Text, { style: styles.infoValue }, booking.agreement_signed_method || 'Digital signature')
+                )
+              ),
+              React.createElement(View, { style: styles.rightColumn },
+                React.createElement(View, { style: styles.infoRow },
+                  React.createElement(Text, { style: styles.infoLabel }, "IP Address:"),
+                  React.createElement(Text, { style: styles.infoValue }, booking.agreement_ip_address || 'Not recorded')
+                ),
+                booking.agreement_user_agent ? React.createElement(View, { style: styles.infoRow },
+                  React.createElement(Text, { style: styles.infoLabel }, "User Agent:"),
+                  React.createElement(Text, { style: [styles.infoValue, { fontSize: 7 }] }, booking.agreement_user_agent)
+                ) : null
+              )
+            )
+          )
+        ) :
+        React.createElement(View, { style: styles.section },
+          React.createElement(Text, { style: styles.sectionTitle }, "Agreement Status"),
+          React.createElement(View, { style: styles.infoRow },
+            React.createElement(Text, { style: styles.infoLabel }, "Agreement Status:"),
+            React.createElement(Text, { style: [styles.infoValue, { fontWeight: 'bold' }] }, "⏳ Pending Signature")
+          )
+        ),
 
-        {/* Audit Trail */}
-        {auditTrail.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Audit Trail</Text>
-            <View style={styles.auditTable}>
-              <View style={styles.auditHeader}>
-                <Text style={[styles.auditCell, { width: '25%' }]}>Date/Time</Text>
-                <Text style={[styles.auditCell, { width: '20%' }]}>Action</Text>
-                <Text style={[styles.auditCell, { width: '15%' }]}>Actor</Text>
-                <Text style={[styles.auditCell, { width: '15%' }]}>Method</Text>
-                <Text style={[styles.auditCell, { width: '25%' }]}>Details</Text>
-              </View>
-              {auditTrail.slice(0, 10).map((entry, index) => (
-                <View key={index} style={styles.auditRow}>
-                  <Text style={[styles.auditCell, { width: '25%' }]}>{formatDate(entry.timestamp)}</Text>
-                  <Text style={[styles.auditCell, { width: '20%' }]}>{entry.action || 'N/A'}</Text>
-                  <Text style={[styles.auditCell, { width: '15%' }]}>{entry.actor || 'System'}</Text>
-                  <Text style={[styles.auditCell, { width: '15%' }]}>{entry.method || 'N/A'}</Text>
-                  <Text style={[styles.auditCell, { width: '25%' }]}>{entry.details || 'N/A'}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
+      // Audit Trail
+      auditTrail.length > 0 ? React.createElement(View, { style: styles.section },
+        React.createElement(Text, { style: styles.sectionTitle }, "Audit Trail"),
+        React.createElement(View, { style: styles.auditTable },
+          React.createElement(View, { style: styles.auditHeader },
+            React.createElement(Text, { style: [styles.auditCell, { width: '25%' }] }, "Date/Time"),
+            React.createElement(Text, { style: [styles.auditCell, { width: '20%' }] }, "Action"),
+            React.createElement(Text, { style: [styles.auditCell, { width: '15%' }] }, "Actor"),
+            React.createElement(Text, { style: [styles.auditCell, { width: '15%' }] }, "Method"),
+            React.createElement(Text, { style: [styles.auditCell, { width: '25%' }] }, "Details")
+          ),
+          ...auditTrail.slice(0, 10).map((entry, index) =>
+            React.createElement(View, { key: index, style: styles.auditRow },
+              React.createElement(Text, { style: [styles.auditCell, { width: '25%' }] }, formatDate(entry.timestamp)),
+              React.createElement(Text, { style: [styles.auditCell, { width: '20%' }] }, entry.action || 'N/A'),
+              React.createElement(Text, { style: [styles.auditCell, { width: '15%' }] }, entry.actor || 'System'),
+              React.createElement(Text, { style: [styles.auditCell, { width: '15%' }] }, entry.method || 'N/A'),
+              React.createElement(Text, { style: [styles.auditCell, { width: '25%' }] }, entry.details || 'N/A')
+            )
+          )
+        )
+      ) : null,
 
-        {/* Footer */}
-        <View style={styles.footer}>
-          <Text>T&S Bouncy Castle Hire - Booking Management System</Text>
-          <Text>This report contains all available data for booking {booking.booking_ref}</Text>
-          <Text>Document includes digital signature verification and audit trails for legal compliance</Text>
-        </View>
-      </Page>
-    </Document>  
+      // Footer
+      React.createElement(View, { style: styles.footer },
+        React.createElement(Text, {}, "T&S Bouncy Castle Hire - Booking Management System"),
+        React.createElement(Text, {}, `This report contains all available data for booking ${booking.booking_ref}`),
+        React.createElement(Text, {}, "Document includes digital signature verification and audit trails for legal compliance")
+      )
+    )
   );
 }
 
