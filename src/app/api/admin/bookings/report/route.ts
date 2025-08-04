@@ -105,7 +105,9 @@ export async function POST(request: NextRequest) {
       const BookingReportDocument = createBookingReportDocument(booking, auditTrail);
       
       console.log('Creating PDF from React components...');
-      const pdfBuffer = await pdf(BookingReportDocument).toBuffer();
+      const pdfBlob = await pdf(BookingReportDocument).toBlob();
+      const pdfArrayBuffer = await pdfBlob.arrayBuffer();
+      const pdfBuffer = Buffer.from(pdfArrayBuffer);
       console.log('PDF generated successfully, size:', pdfBuffer.length);
 
       // Return PDF as response
