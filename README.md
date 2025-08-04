@@ -1,5 +1,9 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## T&S Bouncy Castle Hire
+
+This project is a booking management system for T&S Bouncy Castle Hire, featuring online booking, calendar management, hire agreements, and admin dashboard functionality.
+
 ## Getting Started
 
 First, run the development server:
