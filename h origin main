@@ -1,5 +1,0 @@
-[33m4a965ce[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m fix: add mobile padding to admin page section titles
-[33m1b1a3a5[m perf: add database indexes for frequently queried fields
-[33m96507ce[m perf: optimize database queries by replacing SELECT * with specific columns
-[33m9a09abd[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Fix local Booking interface: Add missing agreement properties
-[33mebacd31[m Fix TypeScript error: Add missing agreement properties to Booking interface

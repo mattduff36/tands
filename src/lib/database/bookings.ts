@@ -416,7 +416,7 @@ export async function createConfirmedBooking(booking: {
       new Date(booking.startDate).toISOString().split('T')[0], // Extract date part
       booking.paymentMethod || 'cash', // Use actual payment method selected by customer
       booking.totalCost,
-      Math.floor(booking.totalCost * 0.3), // 30% deposit
+      Math.floor(booking.totalCost * 0.25), // 25% deposit
       booking.status,
       booking.notes || null,
       booking.castleType,

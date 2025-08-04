@@ -39,6 +39,7 @@ export const bookingSchema = z.object({
   specialRequests: z.string().max(500).trim().optional(),
   isOvernight: z.boolean().default(false),
   totalPrice: z.number().min(0).max(10000),
+  paymentMethod: z.enum(['cash', 'card', 'bank_transfer', 'online', 'other']).optional(),
 });
 
 export const updateBookingSchema = z.object({

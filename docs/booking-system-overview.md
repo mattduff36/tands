@@ -146,7 +146,7 @@ interface CalendarEvent {
 
 **Database Action:**
 - Generates unique booking reference (TS001, TS002, etc.)
-- Calculates total price and deposit (30% of total)
+- Calculates total price and deposit (25% of total)
 - Creates booking with status = 'pending'
 - Stores in `bookings` table
 

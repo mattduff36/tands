@@ -109,6 +109,7 @@ export function BookingForm() {
         specialRequests: specialRequests || undefined,
         isOvernight: eventDuration === 24,
         totalPrice: selectedCastle ? Math.floor(selectedCastle.price) + (eventDuration === 24 ? 20 : 0) : 0,
+        paymentMethod: paymentMethod,
       };
 
       const response = await fetch('/api/booking', {
@@ -333,7 +334,7 @@ export function BookingForm() {
               const basePrice = Math.floor(selectedCastle.price);
               const overnightSurcharge = eventDuration === 24 ? 20 : 0; // £20 surcharge for 24-hour bookings
               const totalPrice = basePrice + overnightSurcharge;
-              const deposit = Math.floor(totalPrice * 0.3);
+              const deposit = Math.floor(totalPrice * 0.25);
               
               return (
                 <div className="space-y-1 text-sm">

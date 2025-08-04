@@ -50,9 +50,9 @@ export async function POST(request: NextRequest) {
         castleId: validatedData.castleId,
         castleName: castle.name,
         date: new Date(validatedData.eventDate).toISOString().split('T')[0],
-        paymentMethod: 'pending',
+        paymentMethod: validatedData.paymentMethod || 'cash',
         totalPrice: validatedData.totalPrice,
-        deposit: Math.floor(validatedData.totalPrice * 0.3), // 30% deposit
+        deposit: Math.floor(validatedData.totalPrice * 0.25), // 25% deposit
         notes: validatedData.specialRequests,
         startDate: validatedData.eventStartTime ? new Date(validatedData.eventStartTime) : undefined,
         endDate: validatedData.eventEndTime ? new Date(validatedData.eventEndTime) : undefined,
@@ -71,9 +71,9 @@ export async function POST(request: NextRequest) {
         castleId: validatedData.castleId,
         castleName: castle.name,
         date: new Date(validatedData.eventDate).toISOString().split('T')[0],
-        paymentMethod: 'pending',
+        paymentMethod: validatedData.paymentMethod || 'cash',
         totalPrice: validatedData.totalPrice,
-        deposit: Math.floor(validatedData.totalPrice * 0.3),
+        deposit: Math.floor(validatedData.totalPrice * 0.25),
         notes: validatedData.specialRequests,
         startDate: validatedData.eventStartTime ? new Date(validatedData.eventStartTime) : undefined,
         endDate: validatedData.eventEndTime ? new Date(validatedData.eventEndTime) : undefined,

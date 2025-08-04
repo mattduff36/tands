@@ -163,7 +163,7 @@ function HireAgreementContent() {
                   <p><strong>Castle:</strong> {bookingDetails.castleName}</p>
                   <p><strong>Date:</strong> {format(new Date(bookingDetails.date), "EEEE, MMMM do, yyyy")}</p>
                                 <p><strong>Total Cost:</strong> £{bookingDetails.totalPrice}</p>
-              <p><strong>Payment Method:</strong> {bookingDetails.paymentMethod === 'cash' ? 'Cash on Delivery' : bookingDetails.paymentMethod === 'card' ? 'Card on Delivery' : 'Bank Transfer'}</p>
+              <p><strong>Payment Method:</strong> {bookingDetails.paymentMethod === 'cash' ? 'Cash on Delivery' : bookingDetails.paymentMethod === 'card' ? 'Card on Delivery' : bookingDetails.paymentMethod === 'bank_transfer' ? 'Bank Transfer' : 'Cash on Delivery'}</p>
                 </div>
               </div>
             </div>
@@ -270,7 +270,7 @@ function HireAgreementContent() {
                   <div>
                     <p><strong>Bouncy Castle Hired:</strong> {bookingDetails.castleName}</p>
                     <p><strong>Hire Date:</strong> {format(new Date(bookingDetails.date), "EEEE, MMMM do, yyyy")}</p>
-                    <p><strong>Payment Method:</strong> {bookingDetails.paymentMethod === 'cash' ? 'Cash on Delivery' : bookingDetails.paymentMethod === 'card' ? 'Card on Delivery' : 'Bank Transfer'}</p>
+                    <p><strong>Payment Method:</strong> {bookingDetails.paymentMethod === 'cash' ? 'Cash on Delivery' : bookingDetails.paymentMethod === 'card' ? 'Card on Delivery' : bookingDetails.paymentMethod === 'bank_transfer' ? 'Bank Transfer' : 'Cash on Delivery'}</p>
                     <p><strong>Amount Due:</strong> £{bookingDetails.totalPrice}</p>
                   </div>
                 </div>

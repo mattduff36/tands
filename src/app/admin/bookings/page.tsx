@@ -793,7 +793,7 @@ Status: ${booking.status}`;
               castleName: selectedCastle.name,
               date: bookingDate,
               totalPrice: totalCost,
-              deposit: Math.floor(totalCost * 0.3), // 30% deposit
+              deposit: Math.floor(totalCost * 0.25), // 25% deposit
               eventDuration: bookingForm.eventDuration,
               notes: bookingForm.eventDuration === 24 ? '(Overnight)' : ''
             };
