@@ -1,15 +1,17 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { toast } from 'sonner';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import VercelAnalytics from '@/components/admin/VercelAnalytics';
-import { 
-  BarChart3, 
-  TrendingUp, 
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import VercelAnalytics from "@/components/admin/VercelAnalytics";
+import {
+  BarChart3,
+  TrendingUp,
   TrendingDown,
-  Download, 
+  Download,
   Calendar,
   Users,
   PoundSterling,
@@ -19,9 +21,9 @@ import {
   Building2,
   Trophy,
   Clock,
-  CheckCircle,
-  AlertTriangle
-} from 'lucide-react';
+  Database,
+  FileOutput,
+} from "lucide-react";
 
 interface BookingStats {
   total: number;
@@ -29,18 +31,11 @@ interface BookingStats {
   confirmed: number;
   complete: number;
   revenue: number;
-  popularCastles?: Array<{ castleId: string; castleName: string; bookingCount: number }>;
-}
-
-interface RecentChange {
-  id: number;
-  bookingRef: string;
-  customerName: string;
-  status: string;
-  totalPrice: number;
-  date: string;
-  updatedAt: string;
-  createdAt: string;
+  popularCastles?: Array<{
+    castleId: string;
+    castleName: string;
+    bookingCount: number;
+  }>;
 }
 
 interface ReportData {
@@ -52,119 +47,221 @@ interface ReportData {
 
 export default function AdminReports() {
   const [reportData, setReportData] = useState<ReportData | null>(null);
-  const [recentChanges, setRecentChanges] = useState<RecentChange[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [timeRange, setTimeRange] = useState('all');
+  const [timeRange, setTimeRange] = useState("all");
+  const [bookingRef, setBookingRef] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   // Calculate date range based on timeRange
   const getDateRange = () => {
     const now = new Date();
     const startDate = new Date();
-    
+
     switch (timeRange) {
-      case 'all':
+      case "all":
         // For all time, use a very old start date
         startDate.setFullYear(2020);
         break;
-      case 'week':
+      case "week":
         // For week, look back 7 days but also include future bookings
         startDate.setDate(now.getDate() - 7);
         break;
-      case 'month':
+      case "month":
         // For month, look back 30 days but also include future bookings
         startDate.setDate(now.getDate() - 30);
         break;
-      case 'quarter':
+      case "quarter":
         // For quarter, look back 90 days but also include future bookings
         startDate.setDate(now.getDate() - 90);
         break;
-      case 'year':
+      case "year":
         // For year, look back 365 days but also include future bookings
         startDate.setDate(now.getDate() - 365);
         break;
       default:
         startDate.setDate(now.getDate() - 30);
     }
-    
+
     // Set end date to a far future date to include all future bookings
     const endDate = new Date();
     endDate.setFullYear(now.getFullYear() + 2); // Include bookings up to 2 years in the future
-    
+
     return {
-      dateFrom: startDate.toISOString().split('T')[0],
-      dateTo: endDate.toISOString().split('T')[0]
+      dateFrom: startDate.toISOString().split("T")[0],
+      dateTo: endDate.toISOString().split("T")[0],
     };
   };
 
-    // Fetch report data from API
+  // Fetch report data from API
   const fetchReportData = async () => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const { dateFrom, dateTo } = getDateRange();
-      
-      const response = await fetch(`/api/admin/reports/stats?dateFrom=${dateFrom}&dateTo=${dateTo}`);
-      
+
+      const response = await fetch(
+        `/api/admin/reports/stats?dateFrom=${dateFrom}&dateTo=${dateTo}`,
+      );
+
       if (!response.ok) {
         throw new Error(`Failed to fetch data: ${response.statusText}`);
       }
-      
+
       const stats: BookingStats = await response.json();
-      
-              // Calculate derived metrics
-        const averageBookingValue = stats.total > 0 ? Math.round(stats.revenue / stats.total) : 0;
-      
+
+      // Calculate derived metrics
+      const averageBookingValue =
+        stats.total > 0 ? Math.round(stats.revenue / stats.total) : 0;
+
       // For now, we'll set growth to 0 since we don't have historical comparison data
       // This can be enhanced later when we have more historical data
       const revenueGrowth = 0;
       const bookingGrowth = 0;
-      
+
       setReportData({
         stats,
         averageBookingValue,
         revenueGrowth,
-        bookingGrowth
+        bookingGrowth,
       });
     } catch (err) {
-      console.error('Error fetching report data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch report data');
+      console.error("Error fetching report data:", err);
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch report data",
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Fetch recent changes
-  const fetchRecentChanges = async () => {
-    try {
-      const response = await fetch('/api/admin/reports/recent-changes');
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch recent changes: ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      setRecentChanges(data.recentChanges || []);
-    } catch (err) {
-      console.error('Error fetching recent changes:', err);
-      // Don't fail the entire page if recent changes fail
-    }
-  };
-
   useEffect(() => {
     fetchReportData();
-    fetchRecentChanges();
   }, [timeRange]);
 
   const handleExport = () => {
     // TODO: Implement export functionality
-    console.log('Export functionality to be implemented');
-    toast.info('Feature coming soon!');
+    console.log("Export functionality to be implemented");
+    toast.info("Feature coming soon!");
   };
 
   const handleTimeRangeChange = (newRange: string) => {
     setTimeRange(newRange);
+  };
+
+  const handleExportBookingData = async () => {
+    if (!bookingRef.trim()) {
+      toast.error("Please enter a booking reference");
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const response = await fetch("/api/admin/bookings/export", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          bookingRef: bookingRef.trim().toUpperCase(),
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to export booking data");
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Create and trigger download
+        const dataStr = JSON.stringify(result.data, null, 2);
+        const dataBlob = new Blob([dataStr], { type: "application/json" });
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `booking-${bookingRef.trim().toUpperCase()}-export-${new Date().toISOString().split("T")[0]}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        toast.success(
+          `Booking data exported successfully for ${bookingRef.trim().toUpperCase()}`,
+        );
+        setBookingRef(""); // Clear the input
+      } else {
+        throw new Error("Export failed");
+      }
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to export booking data",
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleGeneratePDFReport = async () => {
+    if (!bookingRef.trim()) {
+      toast.error("Please enter a booking reference");
+      return;
+    }
+
+    setIsGeneratingReport(true);
+    try {
+      const response = await fetch("/api/admin/bookings/report", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          bookingRef: bookingRef.trim().toUpperCase(),
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to generate PDF report");
+      }
+
+      // Get the PDF blob and trigger download
+      const pdfBlob = await response.blob();
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `booking-${bookingRef.trim().toUpperCase()}-report-${new Date().toISOString().split("T")[0]}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success(
+        `PDF report generated successfully for ${bookingRef.trim().toUpperCase()}`,
+      );
+      setBookingRef(""); // Clear the input
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to generate PDF report",
+      );
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleExportBookingData();
+    }
   };
 
   if (error) {
@@ -181,17 +278,17 @@ export default function AdminReports() {
             </p>
           </div>
         </div>
-        
+
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
                 <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Reports</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Error Loading Reports
+                </h3>
                 <p className="text-gray-600 mb-4">{error}</p>
-                <Button onClick={fetchReportData}>
-                  Try Again
-                </Button>
+                <Button onClick={fetchReportData}>Try Again</Button>
               </div>
             </div>
           </CardContent>
@@ -257,18 +354,27 @@ export default function AdminReports() {
               <CardContent className="p-6">
                 <div className="flex items-center">
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                    <p className="text-2xl font-bold text-gray-900">£{reportData.stats.revenue.toLocaleString()}</p>
+                    <p className="text-sm font-medium text-gray-600">
+                      Total Revenue
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      £{reportData.stats.revenue.toLocaleString()}
+                    </p>
                     <div className="flex items-center mt-2">
                       {reportData.revenueGrowth >= 0 ? (
                         <TrendingUp className="w-4 h-4 text-green-600 mr-1" />
                       ) : (
                         <TrendingDown className="w-4 h-4 text-red-600 mr-1" />
                       )}
-                      <span className={`text-sm font-medium ${reportData.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {reportData.revenueGrowth >= 0 ? '+' : ''}{reportData.revenueGrowth}%
+                      <span
+                        className={`text-sm font-medium ${reportData.revenueGrowth >= 0 ? "text-green-600" : "text-red-600"}`}
+                      >
+                        {reportData.revenueGrowth >= 0 ? "+" : ""}
+                        {reportData.revenueGrowth}%
                       </span>
-                      <span className="text-sm text-gray-500 ml-1">vs previous period</span>
+                      <span className="text-sm text-gray-500 ml-1">
+                        vs previous period
+                      </span>
                     </div>
                   </div>
                   <PoundSterling className="h-8 w-8 text-green-600" />
@@ -280,21 +386,30 @@ export default function AdminReports() {
               <CardContent className="p-6">
                 <div className="flex items-center">
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-600">Total Bookings</p>
-                    <p className="text-2xl font-bold text-gray-900">{reportData.stats.total}</p>
+                    <p className="text-sm font-medium text-gray-600">
+                      Total Bookings
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {reportData.stats.total}
+                    </p>
                     <div className="flex items-center mt-2">
                       {reportData.bookingGrowth >= 0 ? (
                         <TrendingUp className="w-4 h-4 text-green-600 mr-1" />
                       ) : (
                         <TrendingDown className="w-4 h-4 text-red-600 mr-1" />
                       )}
-                      <span className={`text-sm font-medium ${reportData.bookingGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {reportData.bookingGrowth >= 0 ? '+' : ''}{reportData.bookingGrowth}%
+                      <span
+                        className={`text-sm font-medium ${reportData.bookingGrowth >= 0 ? "text-green-600" : "text-red-600"}`}
+                      >
+                        {reportData.bookingGrowth >= 0 ? "+" : ""}
+                        {reportData.bookingGrowth}%
                       </span>
-                      <span className="text-sm text-gray-500 ml-1">vs previous period</span>
+                      <span className="text-sm text-gray-500 ml-1">
+                        vs previous period
+                      </span>
                     </div>
                   </div>
-                                     <Calendar className="h-8 w-8 text-blue-600" />
+                  <Calendar className="h-8 w-8 text-blue-600" />
                 </div>
               </CardContent>
             </Card>
@@ -303,34 +418,42 @@ export default function AdminReports() {
               <CardContent className="p-6">
                 <div className="flex items-center">
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-600">Avg. Booking Value</p>
-                    <p className="text-2xl font-bold text-gray-900">£{reportData.averageBookingValue}</p>
-                                       <div className="flex items-center mt-2">
-                     <span className="text-sm text-gray-500">Based on all active bookings</span>
-                   </div>
-                  </div>
-                                     <Calendar className="h-8 w-8 text-purple-600" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-600">Most Popular Castle</p>
+                    <p className="text-sm font-medium text-gray-600">
+                      Avg. Booking Value
+                    </p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {reportData.stats.popularCastles && reportData.stats.popularCastles.length > 0 
-                        ? reportData.stats.popularCastles[0].castleName
-                        : 'No Data'
-                      }
+                      £{reportData.averageBookingValue}
                     </p>
                     <div className="flex items-center mt-2">
                       <span className="text-sm text-gray-500">
-                        {reportData.stats.popularCastles && reportData.stats.popularCastles.length > 0 
+                        Based on all active bookings
+                      </span>
+                    </div>
+                  </div>
+                  <Calendar className="h-8 w-8 text-purple-600" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-600">
+                      Most Popular Castle
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {reportData.stats.popularCastles &&
+                      reportData.stats.popularCastles.length > 0
+                        ? reportData.stats.popularCastles[0].castleName
+                        : "No Data"}
+                    </p>
+                    <div className="flex items-center mt-2">
+                      <span className="text-sm text-gray-500">
+                        {reportData.stats.popularCastles &&
+                        reportData.stats.popularCastles.length > 0
                           ? `${reportData.stats.popularCastles[0].bookingCount} bookings`
-                          : 'No bookings found'
-                        }
+                          : "No bookings found"}
                       </span>
                     </div>
                   </div>
@@ -340,115 +463,132 @@ export default function AdminReports() {
             </Card>
           </div>
 
-          {/* Booking Status Breakdown */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <BarChart3 className="w-5 h-5 mr-2" />
-                  Booking Status Breakdown
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {[
-                    { label: 'Pending', count: reportData.stats.pending, color: 'bg-yellow-600', percentage: reportData.stats.total > 0 ? (reportData.stats.pending / reportData.stats.total) * 100 : 0 },
-                    { label: 'Confirmed', count: reportData.stats.confirmed, color: 'bg-green-600', percentage: reportData.stats.total > 0 ? (reportData.stats.confirmed / reportData.stats.total) * 100 : 0 },
-                    { label: 'Completed', count: reportData.stats.complete || 0, color: 'bg-blue-600', percentage: reportData.stats.total > 0 ? ((reportData.stats.complete || 0) / reportData.stats.total) * 100 : 0 }
-                  ].map((status) => {
-                    const safePercentage = isNaN(status.percentage) ? 0 : status.percentage;
-                    const safeCount = status.count || 0;
-                    
-                    return (
-                      <div key={status.label} className="flex items-center space-x-4">
-                        <div className="w-24 text-sm font-medium text-gray-600">{status.label}</div>
-                        <div className="flex-1">
-                          <div className="w-full bg-gray-200 rounded-full h-3">
-                            <div 
-                              className={`${status.color} h-3 rounded-full transition-all duration-500`}
-                              style={{ width: `${Math.max(0, Math.min(100, safePercentage))}%` }}
-                            />
-                          </div>
+          {/* Booking Data Export */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Database className="w-5 h-5 mr-2" />
+                Booking Data Export
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start">
+                  <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" />
+                  <div>
+                    <h4 className="text-sm font-medium text-blue-900 mb-1">
+                      Legal Data Export
+                    </h4>
+                    <p className="text-sm text-blue-700">
+                      Export all stored data for a specific booking including
+                      agreement signatures, audit trails, and customer
+                      information. Use this for legal compliance, dispute
+                      resolution, or administrative purposes.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="bookingRef">Booking Reference</Label>
+                  <div className="flex space-x-2 mt-1">
+                    <Input
+                      id="bookingRef"
+                      type="text"
+                      placeholder="e.g., TS001, TS002..."
+                      value={bookingRef}
+                      onChange={(e) => setBookingRef(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      className="flex-1"
+                      disabled={isExporting || isGeneratingReport}
+                    />
+                    <Button
+                      onClick={handleExportBookingData}
+                      disabled={
+                        isExporting || isGeneratingReport || !bookingRef.trim()
+                      }
+                      variant="outline"
+                      className="px-4"
+                    >
+                      {isExporting ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mr-2" />
+                          Exporting...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-4 h-4 mr-2" />
+                          Export JSON
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      onClick={handleGeneratePDFReport}
+                      disabled={
+                        isExporting || isGeneratingReport || !bookingRef.trim()
+                      }
+                      className="px-4"
+                    >
+                      {isGeneratingReport ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <FileOutput className="w-4 h-4 mr-2" />
+                          Generate PDF
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="text-sm text-gray-600 space-y-3">
+                  <div>
+                    <h5 className="font-medium text-gray-900 mb-2">
+                      Export Options:
+                    </h5>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div className="bg-gray-50 border border-gray-200 rounded p-3">
+                        <div className="font-medium text-gray-900 mb-1">
+                          📄 JSON Export
                         </div>
-                        <div className="w-20 text-sm font-medium text-right">
-                          {safeCount} ({Math.round(safePercentage)}%)
+                        <div className="text-xs text-gray-600">
+                          Raw data format for technical analysis and integration
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-
-                        <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Clock className="w-5 h-5 mr-2" />
-                  Recent Changes
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {recentChanges.length > 0 ? (
-                    recentChanges.map((change) => {
-                      const getStatusIcon = () => {
-                        switch (change.status) {
-                          case 'confirmed':
-                            return <CheckCircle className="w-4 h-4 text-green-600" />;
-                          case 'pending':
-                            return <Clock className="w-4 h-4 text-yellow-600" />;
-                          case 'completed':
-                            return <CheckCircle className="w-4 h-4 text-blue-600" />;
-                          default:
-                            return <AlertTriangle className="w-4 h-4 text-gray-600" />;
-                        }
-                      };
-
-                      const getStatusColor = () => {
-                        switch (change.status) {
-                          case 'confirmed':
-                            return 'text-green-600';
-                          case 'pending':
-                            return 'text-yellow-600';
-                          case 'completed':
-                            return 'text-blue-600';
-                          default:
-                            return 'text-gray-600';
-                        }
-                      };
-
-                      return (
-                        <div key={change.id} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              {getStatusIcon()}
-                              <span className={`text-sm font-medium ${getStatusColor()}`}>
-                                {change.status.charAt(0).toUpperCase() + change.status.slice(1)}
-                              </span>
-                            </div>
-                            <div className="text-sm font-medium text-gray-900">
-                              {change.customerName}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {change.bookingRef} • {new Date(change.date).toLocaleDateString()} • £{change.totalPrice}
-                            </div>
-                          </div>
-                          <div className="text-xs text-gray-400 text-right">
-                            {new Date(change.updatedAt).toLocaleDateString()}
-                          </div>
+                      <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                        <div className="font-medium text-gray-900 mb-1">
+                          📊 PDF Report
                         </div>
-                      );
-                    })
-                  ) : (
-                    <div className="text-center py-4">
-                      <Clock className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                      <p className="text-sm text-gray-500">No recent changes</p>
+                        <div className="text-xs text-gray-600">
+                          Professional, human-readable report for review and
+                          documentation
+                        </div>
+                      </div>
                     </div>
-                  )}
+                  </div>
+                  <div>
+                    <h5 className="font-medium text-gray-900">
+                      Both formats include:
+                    </h5>
+                    <ul className="list-disc list-inside space-y-1 ml-4">
+                      <li>Complete booking details and customer information</li>
+                      <li>
+                        Agreement signing data with IP address and timestamps
+                      </li>
+                      <li>Full audit trail of all booking modifications</li>
+                      <li>Email tracking and interaction history</li>
+                      <li>Legal compliance metadata for court evidence</li>
+                      <li>Digital signature verification data</li>
+                    </ul>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Vercel Web Analytics */}
           <Card>
@@ -469,9 +609,12 @@ export default function AdminReports() {
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
                 <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Data Available</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  No Data Available
+                </h3>
                 <p className="text-gray-600">
-                  No booking data found for the selected time period. Reports will appear once bookings are created.
+                  No booking data found for the selected time period. Reports
+                  will appear once bookings are created.
                 </p>
               </div>
             </div>
