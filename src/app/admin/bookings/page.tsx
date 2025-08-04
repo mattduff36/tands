@@ -125,13 +125,12 @@ export default function AdminBookings() {
     customerPhone: "",
     address: "",
     singleDate: "",
-    multipleDate: false,
-    startDate: "",
-    endDate: "",
+
     eventDuration: 8, // Default to 8 hours
     additionalCosts: false,
     additionalCostsDescription: "",
     additionalCostsAmount: 0,
+    noDepositRequired: false,
     saveAsConfirmed: false,
   });
 
@@ -649,13 +648,12 @@ Status: ${booking.status}`;
       customerPhone: booking.customerPhone,
       address: booking.customerAddress,
       singleDate: dateString,
-      multipleDate: false,
-      startDate: "",
-      endDate: "",
+
       eventDuration: booking.notes?.includes("(Overnight)") ? 24 : 8,
       additionalCosts: false,
       additionalCostsDescription: "",
       additionalCostsAmount: 0,
+      noDepositRequired: false,
     });
 
     setIsEditing(true);
@@ -754,13 +752,12 @@ Status: ${booking.status}`;
       customerPhone: booking.customerPhone,
       address: booking.customerAddress,
       singleDate: bookingDate.toISOString().split("T")[0] || "",
-      multipleDate: false,
-      startDate: "",
-      endDate: "",
+
       eventDuration: booking.notes?.includes("(Overnight)") ? 24 : 8,
       additionalCosts: false,
       additionalCostsDescription: "",
       additionalCostsAmount: 0,
+      noDepositRequired: false,
     });
 
     setIsEditing(true);
@@ -773,6 +770,7 @@ Status: ${booking.status}`;
     field: keyof BookingFormData,
     value: string | boolean | number,
   ) => {
+    console.log(`Form field changed: ${field} = ${value}`);
     setBookingForm((prev) => ({
       ...prev,
       [field]: value,
@@ -812,22 +810,8 @@ Status: ${booking.status}`;
 
     // Calculate number of days
     let numberOfDays = 1;
-    if (
-      bookingForm.multipleDate &&
-      bookingForm.startDate &&
-      bookingForm.endDate
-    ) {
-      const startDate = new Date(bookingForm.startDate);
-      const endDate = new Date(bookingForm.endDate);
-
-      // Check if dates are valid
-      if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
-        const timeDiff = endDate.getTime() - startDate.getTime();
-        numberOfDays = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
-        // Ensure numberOfDays is at least 1
-        numberOfDays = Math.max(1, numberOfDays);
-      }
-    }
+    // Always single day booking
+    numberOfDays = 1;
 
     return calculateTotalCost(
       basePrice,
@@ -845,13 +829,12 @@ Status: ${booking.status}`;
       customerPhone: "",
       address: "",
       singleDate: "",
-      multipleDate: false,
-      startDate: "",
-      endDate: "",
       eventDuration: 8, // Default to 8 hours
       additionalCosts: false,
       additionalCostsDescription: "",
       additionalCostsAmount: 0,
+      noDepositRequired: false,
+      saveAsConfirmed: false,
     });
   };
 
@@ -861,6 +844,10 @@ Status: ${booking.status}`;
     console.log("Timestamp:", new Date().toISOString());
     console.log("Is editing:", isEditing);
     console.log("Selected event:", selectedEvent);
+    console.log(
+      "Full booking form state:",
+      JSON.stringify(bookingForm, null, 2),
+    );
 
     if (isEditing) {
       setIsSubmitting(true);
@@ -883,9 +870,7 @@ Status: ${booking.status}`;
         }
 
         // Determine booking date
-        const bookingDate = bookingForm.multipleDate
-          ? bookingForm.startDate
-          : bookingForm.singleDate;
+        const bookingDate = bookingForm.singleDate;
         if (!bookingDate) {
           toast.error("Please select a date");
           return;
@@ -906,7 +891,9 @@ Status: ${booking.status}`;
               castleName: selectedCastle.name,
               date: bookingDate,
               totalPrice: totalCost,
-              deposit: Math.floor(totalCost * 0.25), // 25% deposit
+              deposit: bookingForm.noDepositRequired
+                ? 0
+                : Math.floor(totalCost * 0.25), // 25% deposit or £0 if no deposit required
               eventDuration: bookingForm.eventDuration,
               notes: bookingForm.eventDuration === 24 ? "(Overnight)" : "",
             };
@@ -998,36 +985,17 @@ Status: ${booking.status}`;
       }
 
       // Check date requirements based on booking type
-      if (bookingForm.multipleDate) {
-        if (!bookingForm.startDate || !bookingForm.endDate) {
-          toast.error(
-            "Please select both start and end dates for multiple day bookings",
-          );
-          return;
-        }
-      } else {
-        if (!bookingForm.singleDate) {
-          toast.error("Please select a date for single day bookings");
-          return;
-        }
+      // Check if date is selected
+      if (!bookingForm.singleDate) {
+        toast.error("Please select a date");
+        return;
       }
 
-      // Determine start and end dates
-      let startDate, endDate;
-      if (bookingForm.multipleDate) {
-        startDate = new Date(bookingForm.startDate);
-        endDate = new Date(bookingForm.endDate);
-      } else {
-        startDate = new Date(bookingForm.singleDate);
-        endDate = new Date(bookingForm.singleDate);
-      }
-
-      // For single day bookings, set proper start and end times
-      if (!bookingForm.multipleDate) {
-        // Set start time to 9:00 AM and end time to 5:00 PM for single day bookings
-        startDate.setHours(9, 0, 0, 0);
-        endDate.setHours(17, 0, 0, 0);
-      }
+      // Single day booking - set proper start and end times
+      const startDate = new Date(bookingForm.singleDate);
+      const endDate = new Date(bookingForm.singleDate);
+      startDate.setHours(9, 0, 0, 0); // 9:00 AM
+      endDate.setHours(17, 0, 0, 0); // 5:00 PM
 
       // Calculate total cost
       const selectedCastle = castles.find(
@@ -1047,187 +1015,114 @@ Status: ${booking.status}`;
         bookingForm.eventDuration === 24,
       );
 
-      // Handle confirmed booking creation
-      if (bookingForm.saveAsConfirmed) {
-        // Show confirmation popup for manual confirmation workflow
-        if (
-          !confirm(
-            "⚠️ Manual Confirmation Required\n\nThis booking will be marked as CONFIRMED and the customer will need to sign the hire agreement manually/physically.\n\nThe customer will NOT receive an automated email with the agreement link.\n\nAre you sure you want to proceed with manual confirmation?",
-          )
-        ) {
-          setIsSubmitting(false);
-          return;
+      // Admin booking creation - atomic operation (steps 1+2 combined)
+      try {
+        console.log("Creating admin booking atomically...");
+
+        // Prepare booking data for atomic creation and confirmation
+        const adminBookingData = {
+          castleId: selectedCastle.id,
+          customerName: bookingForm.customerName,
+          customerEmail: bookingForm.customerEmail,
+          customerPhone: bookingForm.customerPhone,
+          eventDate: startDate.toISOString(),
+          eventDuration: bookingForm.eventDuration,
+          eventStartTime: startDate.toISOString(),
+          eventEndTime: endDate.toISOString(),
+          eventAddress: bookingForm.address,
+          specialRequests: bookingForm.additionalCosts
+            ? bookingForm.additionalCostsDescription
+            : undefined,
+          totalPrice: totalCost,
+          paymentMethod: "cash",
+          deposit: bookingForm.noDepositRequired
+            ? 0
+            : Math.floor(totalCost * 0.25),
+        };
+
+        // Create and confirm booking atomically (never appears as pending)
+        const response = await fetch("/api/admin/bookings/create-and-confirm", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(adminBookingData),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to create admin booking");
         }
 
-        try {
-          console.log("Creating confirmed booking directly...");
+        const result = await response.json();
+        const bookingId = result.bookingId;
 
-          // Create confirmed booking in database
-          const databaseBookingData = {
-            customerName: bookingForm.customerName,
-            customerEmail: bookingForm.customerEmail,
-            customerPhone: bookingForm.customerPhone,
-            address: bookingForm.address,
-            castleType: selectedCastle.name,
-            startDate: startDate.toISOString(),
-            endDate: endDate.toISOString(),
-            totalCost: totalCost,
-            status: "confirmed",
-            calendarEventId: `manual-${Date.now()}`, // Temporary ID for manual confirmations
-            notes: bookingForm.additionalCosts
-              ? bookingForm.additionalCostsDescription
-              : "",
-          };
-
-          const dbResponse = await fetch(
-            "/api/admin/bookings/create-confirmed",
+        // If "Save as Confirmed" is checked, mark agreement as signed by admin
+        console.log(
+          "Checking saveAsConfirmed checkbox:",
+          bookingForm.saveAsConfirmed,
+        );
+        if (bookingForm.saveAsConfirmed) {
+          console.log("Step 3: Marking agreement as signed by admin...");
+          const updateResponse = await fetch(
+            `/api/admin/bookings/${bookingId}`,
             {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(databaseBookingData),
-            },
-          );
-
-          if (dbResponse.ok) {
-            const dbResult = await dbResponse.json();
-            toast.success(
-              "Confirmed booking created successfully! Customer will sign agreement manually.",
-            );
-
-            // Update booking tracking fields
-            await fetch(`/api/admin/bookings/${dbResult.booking.id}`, {
               method: "PUT",
               headers: {
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                manual_confirmation: true,
-                confirmed_by: "Admin (Manual)",
+                agreementSigned: true,
+                agreementSignedBy: "Signed by Admin",
+                agreementSignedMethod: "admin_override",
+                agreementSignedAt: new Date().toISOString(),
               }),
-            });
+            },
+          );
 
-            await fetchBookings(); // Refresh the list
-            setShowBookingModal(false);
-
-            // Reset form
-            setBookingForm({
-              castle: "",
-              customerName: "",
-              customerEmail: "",
-              customerPhone: "",
-              address: "",
-              singleDate: "",
-              multipleDate: false,
-              startDate: "",
-              endDate: "",
-              eventDuration: 8, // Default to 8 hours
-              additionalCosts: false,
-              additionalCostsDescription: "",
-              additionalCostsAmount: 0,
-              saveAsConfirmed: false,
-            });
+          if (updateResponse.ok) {
+            console.log("Agreement signing update successful");
           } else {
-            const error = await dbResponse.json();
-            toast.error(error.error || "Failed to create confirmed booking");
+            console.error(
+              "Agreement signing update failed:",
+              await updateResponse.text(),
+            );
           }
-        } catch (error) {
-          console.error("Error creating confirmed booking:", error);
-          toast.error("Error creating confirmed booking");
-        } finally {
-          setIsSubmitting(false);
-        }
-        return; // Exit early for confirmed booking flow
-      }
-
-      // Prepare booking data for calendar event
-      const bookingData = {
-        customerName: bookingForm.customerName,
-        contactDetails: {
-          email: bookingForm.customerEmail,
-          phone: bookingForm.customerPhone,
-        },
-        location: bookingForm.address,
-        notes: `Castle: ${selectedCastle.name}${bookingForm.eventDuration === 24 ? " (Overnight)" : ""}`,
-        duration: {
-          start: startDate.toISOString(),
-          end: endDate.toISOString(),
-        },
-        cost: totalCost,
-        bouncyCastleType: selectedCastle.name,
-        // Include duration and status for consistent display
-        eventDuration: bookingForm.eventDuration,
-        status: "confirmed",
-      };
-
-      console.log(
-        "Sending booking data to API:",
-        JSON.stringify(bookingData, null, 2),
-      );
-
-      try {
-        // Step 1: Create Google Calendar event
-        const response = await fetch("/api/admin/calendar/events", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(bookingData),
-        });
-
-        const result = await response.json();
-        console.log("API response:", result);
-
-        if (!response.ok) {
-          throw new Error(result.message || "Failed to create calendar event");
         }
 
-        const { eventId } = result;
-
-        const databaseBookingData = {
-          customerName: bookingForm.customerName,
-          customerEmail: bookingForm.customerEmail,
-          customerPhone: bookingForm.customerPhone,
-          address: bookingForm.address,
-          castleType: selectedCastle.name,
-          startDate: startDate.toISOString(),
-          endDate: endDate.toISOString(),
-          totalCost: totalCost,
-          status: "confirmed",
-          calendarEventId: eventId,
-          notes: bookingForm.additionalCostsDescription || "",
-        };
-
-        const dbResponse = await fetch("/api/admin/bookings/create-confirmed", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(databaseBookingData),
-        });
-
-        const dbResult = await dbResponse.json();
-
-        if (!dbResponse.ok) {
-          throw new Error(
-            dbResult.message || "Failed to create database booking",
+        // Success message based on options
+        if (bookingForm.saveAsConfirmed) {
+          toast.success("Booking created, confirmed, and signed by admin!");
+        } else {
+          toast.success(
+            "Booking created and confirmed! Status: 'awaiting signature'",
           );
         }
 
-        // Step 3: Refresh both calendar and database data
-        await fetchCalendarData();
-        await fetchBookings();
-
-        toast.success("Booking created successfully!");
+        await fetchBookings(); // Refresh the list
         setShowBookingModal(false);
-        resetBookingForm();
+
+        // Reset form
+        setBookingForm({
+          castle: "",
+          customerName: "",
+          customerEmail: "",
+          customerPhone: "",
+          address: "",
+          singleDate: "",
+          eventDuration: 8,
+          additionalCosts: false,
+          additionalCostsDescription: "",
+          additionalCostsAmount: 0,
+          noDepositRequired: false,
+          saveAsConfirmed: false,
+        });
       } catch (error) {
-        console.error("Error creating booking:", error);
-        const errorMessage =
-          error instanceof Error ? error.message : "Unknown error occurred";
-        toast.error(`Failed to create booking: ${errorMessage}`);
+        console.error("Error creating admin booking:", error);
+        toast.error("Error creating booking");
+      } finally {
+        setIsSubmitting(false);
       }
+      return; // Exit early for admin booking flow
     }
   };
 
@@ -1510,13 +1405,12 @@ Status: ${booking.status}`;
       singleDate: isMultiDay
         ? ""
         : eventStart.toISOString().split("T")[0] || "",
-      multipleDate: isMultiDay,
-      startDate: isMultiDay ? eventStart.toISOString().split("T")[0] || "" : "",
-      endDate: isMultiDay ? eventEnd.toISOString().split("T")[0] || "" : "",
+
       eventDuration: eventDuration,
       additionalCosts: false,
       additionalCostsDescription: "",
       additionalCostsAmount: 0,
+      noDepositRequired: false,
     });
 
     setSelectedEvent(event);
@@ -1578,7 +1472,23 @@ Status: ${booking.status}`;
             size="sm"
             className="flex-1 sm:flex-none"
             onClick={() => {
-              toast.info("Developing... use booking request form on main site");
+              setIsEditing(false);
+              setSelectedEvent(null);
+              setBookingForm({
+                castle: "",
+                customerName: "",
+                customerEmail: "",
+                customerPhone: "",
+                address: "",
+                singleDate: "",
+
+                eventDuration: 8, // Default to 8 hours
+                additionalCosts: false,
+                additionalCostsDescription: "",
+                additionalCostsAmount: 0,
+                noDepositRequired: false,
+              });
+              setShowBookingModal(true);
             }}
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -2097,7 +2007,13 @@ Status: ${booking.status}`;
               setIsEditing(false);
               setSelectedEvent(null);
             }}
-            onSubmit={handleBookingSubmit}
+            onSubmit={(e) => {
+              e.preventDefault();
+              console.log(
+                "🚀 Form onSubmit called - about to call handleBookingSubmit",
+              );
+              handleBookingSubmit();
+            }}
             onFormChange={handleFormChange}
             calculateTotalCost={calculateTotalCostForModal}
             showConfirmationToggle={!isEditing} // Show toggle for new bookings only

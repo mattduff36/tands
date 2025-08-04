@@ -3,10 +3,10 @@
  * Mock implementation for development - can be replaced with real database
  */
 
-import { getPool } from './connection';
-import { BookingStatus } from '@/lib/types/booking';
-import { measureDatabaseOperation } from '@/lib/utils/performance-monitor';
-import { GoogleCalendarService } from '@/lib/calendar/google-calendar';
+import { getPool } from "./connection";
+import { BookingStatus } from "@/lib/types/booking";
+import { measureDatabaseOperation } from "@/lib/utils/performance-monitor";
+import { GoogleCalendarService } from "@/lib/calendar/google-calendar";
 // import { log } from '@/lib/utils/logger'; // Temporarily disabled
 
 export interface PendingBooking {
@@ -39,7 +39,7 @@ export interface PendingBooking {
   agreementSignedAt?: Date;
   agreementSignedBy?: string;
   // Enhanced audit trail
-  agreementSignedMethod?: 'email' | 'manual' | 'physical' | 'admin_override';
+  agreementSignedMethod?: "email" | "manual" | "physical" | "admin_override";
   agreementIpAddress?: string;
   agreementUserAgent?: string;
   agreementPdfGenerated?: boolean;
@@ -146,13 +146,13 @@ export async function initializeBookingsTable(): Promise<void> {
       CREATE INDEX IF NOT EXISTS idx_bookings_customer_email 
       ON bookings (customer_email)
     `);
-    
-    console.log('Bookings table initialized successfully');
-    
+
+    console.log("Bookings table initialized successfully");
+
     // Update expired bookings to complete status
     await updateExpiredBookings();
   } catch (error) {
-    console.error('Error initializing bookings table:', error);
+    console.error("Error initializing bookings table:", error);
     throw error;
   } finally {
     client.release();
@@ -171,17 +171,20 @@ async function generateFriendlyBookingRef(retryCount = 0): Promise<string> {
       ORDER BY CAST(SUBSTRING(booking_ref FROM 3) AS INTEGER) DESC 
       LIMIT 1
     `);
-    
+
     let nextNumber = 1;
     if (result.rows.length > 0) {
       const lastRef = result.rows[0].booking_ref;
       const lastNumber = parseInt(lastRef.substring(2));
       nextNumber = lastNumber + 1;
     }
-    
+
     // Add automatic gap detection and fixing for conflicts
     if (retryCount > 0) {
-      console.warn('Booking reference conflict detected, retryCount:', retryCount);
+      console.warn(
+        "Booking reference conflict detected, retryCount:",
+        retryCount,
+      );
       // Find the first available gap in the sequence
       const allRefs = await client.query(`
         SELECT booking_ref 
@@ -189,17 +192,22 @@ async function generateFriendlyBookingRef(retryCount = 0): Promise<string> {
         WHERE booking_ref ~ '^TS\\d{3}$'
         ORDER BY CAST(SUBSTRING(booking_ref FROM 3) AS INTEGER) ASC
       `);
-      
-      const usedNumbers = new Set(allRefs.rows.map(row => parseInt(row.booking_ref.substring(2))));
+
+      const usedNumbers = new Set(
+        allRefs.rows.map((row) => parseInt(row.booking_ref.substring(2))),
+      );
       for (let i = 1; i <= 999; i++) {
         if (!usedNumbers.has(i)) {
           nextNumber = i;
-          console.log('Using gap in booking sequence:', `TS${i.toString().padStart(3, '0')}`);
+          console.log(
+            "Using gap in booking sequence:",
+            `TS${i.toString().padStart(3, "0")}`,
+          );
           break;
         }
       }
     }
-    
+
     // Ensure we don't exceed 999
     if (nextNumber > 999) {
       // If we've exceeded 999, find the first available number
@@ -209,36 +217,44 @@ async function generateFriendlyBookingRef(retryCount = 0): Promise<string> {
         WHERE booking_ref ~ '^TS\\d{3}$'
         ORDER BY CAST(SUBSTRING(booking_ref FROM 3) AS INTEGER) ASC
       `);
-      
-      const usedNumbers = new Set(allRefs.rows.map(row => parseInt(row.booking_ref.substring(2))));
+
+      const usedNumbers = new Set(
+        allRefs.rows.map((row) => parseInt(row.booking_ref.substring(2))),
+      );
       for (let i = 1; i <= 999; i++) {
         if (!usedNumbers.has(i)) {
           nextNumber = i;
           break;
         }
       }
-      
+
       // If all numbers are used, fall back to timestamp
       if (nextNumber > 999) {
         const date = new Date();
         const year = date.getFullYear().toString().slice(-2);
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
-        const day = date.getDate().toString().padStart(2, '0');
-        const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-        console.warn('All TS### numbers used, falling back to timestamp format');
+        const month = (date.getMonth() + 1).toString().padStart(2, "0");
+        const day = date.getDate().toString().padStart(2, "0");
+        const random = Math.floor(Math.random() * 1000)
+          .toString()
+          .padStart(3, "0");
+        console.warn(
+          "All TS### numbers used, falling back to timestamp format",
+        );
         return `TS${year}${month}${day}${random}`;
       }
     }
-    
-    return `TS${nextNumber.toString().padStart(3, '0')}`;
+
+    return `TS${nextNumber.toString().padStart(3, "0")}`;
   } catch (error) {
-    console.error('Error generating friendly booking ref:', error);
+    console.error("Error generating friendly booking ref:", error);
     // Fallback to timestamp-based ref if there's an error
     const date = new Date();
     const year = date.getFullYear().toString().slice(-2);
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const day = date.getDate().toString().padStart(2, "0");
+    const random = Math.floor(Math.random() * 1000)
+      .toString()
+      .padStart(3, "0");
     return `TS${year}${month}${day}${random}`;
   } finally {
     client.release();
@@ -252,126 +268,152 @@ async function fixBookingSequence(): Promise<void> {
   const client = await getPool().connect();
   try {
     // Get the current maximum ID
-    const maxIdResult = await client.query('SELECT COALESCE(MAX(id), 0) as max_id FROM bookings');
+    const maxIdResult = await client.query(
+      "SELECT COALESCE(MAX(id), 0) as max_id FROM bookings",
+    );
     const maxId = maxIdResult.rows[0].max_id;
-    
+
     // Reset the sequence to the next value after the maximum ID
     await client.query(`SELECT setval('bookings_id_seq', $1, true)`, [maxId]);
-    
-    console.log('Fixed bookings sequence, maxId:', maxId);
+
+    console.log("Fixed bookings sequence, maxId:", maxId);
   } catch (error) {
-    console.error('Error fixing booking sequence:', error);
+    console.error("Error fixing booking sequence:", error);
   } finally {
     client.release();
   }
 }
 
 // Create a new pending booking with automatic conflict resolution
-export async function createPendingBooking(booking: Omit<PendingBooking, 'id' | 'bookingRef' | 'status' | 'createdAt' | 'updatedAt'>): Promise<PendingBooking> {
+export async function createPendingBooking(
+  booking: Omit<
+    PendingBooking,
+    "id" | "bookingRef" | "status" | "createdAt" | "updatedAt"
+  >,
+): Promise<PendingBooking> {
   const maxRetries = 3;
-  
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-  const client = await getPool().connect();
-  try {
+    const client = await getPool().connect();
+    try {
       // First attempt: try to fix the sequence if there might be an issue
       if (attempt === 0) {
-    await fixBookingSequence();
+        await fixBookingSequence();
       }
-    
+
       const bookingRef = await generateFriendlyBookingRef(attempt);
-    
-    const result = await client.query(`
+
+      const result = await client.query(
+        `
       INSERT INTO bookings (
         booking_ref, customer_name, customer_email, customer_phone, 
         customer_address, castle_id, castle_name, date, payment_method, 
         total_price, deposit, notes, start_date, end_date, event_duration
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       RETURNING *
-    `, [
-      bookingRef,
-      booking.customerName,
-      booking.customerEmail,
-      booking.customerPhone,
-      booking.customerAddress,
-      booking.castleId,
-      booking.castleName,
-      booking.date,
-      booking.paymentMethod,
-      booking.totalPrice,
-      booking.deposit,
-      booking.notes || null,
-      booking.startDate || null,
-      booking.endDate || null,
-      booking.eventDuration || null
-    ]);
+    `,
+        [
+          bookingRef,
+          booking.customerName,
+          booking.customerEmail,
+          booking.customerPhone,
+          booking.customerAddress,
+          booking.castleId,
+          booking.castleName,
+          booking.date,
+          booking.paymentMethod,
+          booking.totalPrice,
+          booking.deposit,
+          booking.notes || null,
+          booking.startDate || null,
+          booking.endDate || null,
+          booking.eventDuration || null,
+        ],
+      );
 
       // Success! Return the booking
-    return {
-      id: result.rows[0].id,
-      bookingRef: result.rows[0].booking_ref,
-      customerName: result.rows[0].customer_name,
-      customerEmail: result.rows[0].customer_email,
-      customerPhone: result.rows[0].customer_phone,
-      customerAddress: result.rows[0].customer_address,
-      castleId: result.rows[0].castle_id,
-      castleName: result.rows[0].castle_name,
-      date: result.rows[0].date,
-      paymentMethod: result.rows[0].payment_method,
-      totalPrice: result.rows[0].total_price,
-      deposit: result.rows[0].deposit,
-      status: result.rows[0].status,
-      notes: result.rows[0].notes,
-      createdAt: result.rows[0].created_at,
-      updatedAt: result.rows[0].updated_at,
-      // Email automation tracking
-      emailSent: result.rows[0].email_sent || false,
-      emailSentAt: result.rows[0].email_sent_at || null,
-      manualConfirmation: result.rows[0].manual_confirmation || false,
-      confirmedBy: result.rows[0].confirmed_by || null,
-      // Agreement tracking
-      agreementSigned: result.rows[0].agreement_signed || false,
-      agreementSignedAt: result.rows[0].agreement_signed_at || null,
-      agreementSignedBy: result.rows[0].agreement_signed_by || null,
-      // Enhanced audit trail
-      agreementSignedMethod: result.rows[0].agreement_signed_method || null,
-      agreementIpAddress: result.rows[0].agreement_ip_address || null,
-      agreementUserAgent: result.rows[0].agreement_user_agent || null,
-      agreementPdfGenerated: result.rows[0].agreement_pdf_generated || false,
-      agreementPdfGeneratedAt: result.rows[0].agreement_pdf_generated_at || null,
-      agreementEmailOpened: result.rows[0].agreement_email_opened || false,
-      agreementEmailOpenedAt: result.rows[0].agreement_email_opened_at || null,
-      agreementViewed: result.rows[0].agreement_viewed || false,
-      agreementViewedAt: result.rows[0].agreement_viewed_at || null,
-      auditTrail: result.rows[0].audit_trail || []
-    };
-
+      return {
+        id: result.rows[0].id,
+        bookingRef: result.rows[0].booking_ref,
+        customerName: result.rows[0].customer_name,
+        customerEmail: result.rows[0].customer_email,
+        customerPhone: result.rows[0].customer_phone,
+        customerAddress: result.rows[0].customer_address,
+        castleId: result.rows[0].castle_id,
+        castleName: result.rows[0].castle_name,
+        date: result.rows[0].date,
+        paymentMethod: result.rows[0].payment_method,
+        totalPrice: result.rows[0].total_price,
+        deposit: result.rows[0].deposit,
+        status: result.rows[0].status,
+        notes: result.rows[0].notes,
+        createdAt: result.rows[0].created_at,
+        updatedAt: result.rows[0].updated_at,
+        // Email automation tracking
+        emailSent: result.rows[0].email_sent || false,
+        emailSentAt: result.rows[0].email_sent_at || null,
+        manualConfirmation: result.rows[0].manual_confirmation || false,
+        confirmedBy: result.rows[0].confirmed_by || null,
+        // Agreement tracking
+        agreementSigned: result.rows[0].agreement_signed || false,
+        agreementSignedAt: result.rows[0].agreement_signed_at || null,
+        agreementSignedBy: result.rows[0].agreement_signed_by || null,
+        // Enhanced audit trail
+        agreementSignedMethod: result.rows[0].agreement_signed_method || null,
+        agreementIpAddress: result.rows[0].agreement_ip_address || null,
+        agreementUserAgent: result.rows[0].agreement_user_agent || null,
+        agreementPdfGenerated: result.rows[0].agreement_pdf_generated || false,
+        agreementPdfGeneratedAt:
+          result.rows[0].agreement_pdf_generated_at || null,
+        agreementEmailOpened: result.rows[0].agreement_email_opened || false,
+        agreementEmailOpenedAt:
+          result.rows[0].agreement_email_opened_at || null,
+        agreementViewed: result.rows[0].agreement_viewed || false,
+        agreementViewedAt: result.rows[0].agreement_viewed_at || null,
+        auditTrail: result.rows[0].audit_trail || [],
+      };
     } catch (error: any) {
-      console.error(`Error creating pending booking (attempt ${attempt + 1}):`, error);
-      
+      console.error(
+        `Error creating pending booking (attempt ${attempt + 1}):`,
+        error,
+      );
+
       // Handle duplicate booking constraint violation (not retryable)
-      if (error.code === '23505' && error.constraint === 'idx_bookings_castle_date_active') {
-        throw new Error('A booking already exists for this castle on this date. Please choose a different date or castle.');
+      if (
+        error.code === "23505" &&
+        error.constraint === "idx_bookings_castle_date_active"
+      ) {
+        throw new Error(
+          "A booking already exists for this castle on this date. Please choose a different date or castle.",
+        );
       }
-      
+
       // Handle booking reference constraint violation (retryable)
-      if (error.code === '23505' && error.constraint === 'bookings_booking_ref_key') {
+      if (
+        error.code === "23505" &&
+        error.constraint === "bookings_booking_ref_key"
+      ) {
         if (attempt < maxRetries) {
-          console.warn('Booking reference conflict, retrying', { attempt: attempt + 1 });
+          console.warn("Booking reference conflict, retrying", {
+            attempt: attempt + 1,
+          });
           // Don't return here, let the finally block release and continue the loop
         } else {
-          throw new Error('Booking reference conflict persisted after multiple attempts. Please try again later.');
+          throw new Error(
+            "Booking reference conflict persisted after multiple attempts. Please try again later.",
+          );
         }
       } else {
         // Other errors (not retryable)
-    throw error;
+        throw error;
       }
-  } finally {
-    client.release();
+    } finally {
+      client.release();
+    }
   }
-}
 
   // This should never be reached, but just in case
-  throw new Error('Failed to create booking after all retry attempts');
+  throw new Error("Failed to create booking after all retry attempts");
 }
 
 // Create a new confirmed booking with calendar event ID and automatic conflict resolution
@@ -388,16 +430,18 @@ export async function createConfirmedBooking(booking: {
   calendarEventId: string;
   notes?: string;
   paymentMethod?: string;
+  deposit?: number;
 }): Promise<any> {
   const maxRetries = 3;
-  
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-  const client = await getPool().connect();
-  try {
+    const client = await getPool().connect();
+    try {
       // Generate consistent booking reference using database sequence with retry context
       const bookingRef = await generateFriendlyBookingRef(attempt);
-    
-    const result = await client.query(`
+
+      const result = await client.query(
+        `
       INSERT INTO bookings (
         booking_ref, customer_name, customer_email, customer_phone, 
         customer_address, castle_id, castle_name, date, payment_method, 
@@ -405,181 +449,229 @@ export async function createConfirmedBooking(booking: {
         end_date, total_cost, calendar_event_id
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
       RETURNING *
-    `, [
-      bookingRef,
-      booking.customerName,
-      booking.customerEmail,
-      booking.customerPhone,
-      booking.address,
-      1, // Default castle_id for confirmed bookings
-      booking.castleType,
-      new Date(booking.startDate).toISOString().split('T')[0], // Extract date part
-      booking.paymentMethod || 'cash', // Use actual payment method selected by customer
-      booking.totalCost,
-      Math.floor(booking.totalCost * 0.25), // 25% deposit
-      booking.status,
-      booking.notes || null,
-      booking.castleType,
-      booking.startDate,
-      booking.endDate,
-      booking.totalCost,
-      booking.calendarEventId
-    ]);
+    `,
+        [
+          bookingRef,
+          booking.customerName,
+          booking.customerEmail,
+          booking.customerPhone,
+          booking.address,
+          1, // Default castle_id for confirmed bookings
+          booking.castleType,
+          new Date(booking.startDate).toISOString().split("T")[0], // Extract date part
+          booking.paymentMethod || "cash", // Use actual payment method selected by customer
+          booking.totalCost,
+          booking.deposit !== undefined
+            ? booking.deposit
+            : Math.floor(booking.totalCost * 0.25), // Custom deposit or 25% default
+          booking.status,
+          booking.notes || null,
+          booking.castleType,
+          booking.startDate,
+          booking.endDate,
+          booking.totalCost,
+          booking.calendarEventId,
+        ],
+      );
 
       // Success! Return the booking
-    return {
-      id: result.rows[0].id,
-      bookingRef: result.rows[0].booking_ref,
-      customerName: result.rows[0].customer_name,
-      customerEmail: result.rows[0].customer_email,
-      customerPhone: result.rows[0].customer_phone,
-      customerAddress: result.rows[0].customer_address,
-      castleId: result.rows[0].castle_id,
-      castleName: result.rows[0].castle_name,
-      date: result.rows[0].date,
-      paymentMethod: result.rows[0].payment_method,
-      totalPrice: result.rows[0].total_price,
-      deposit: result.rows[0].deposit,
-      status: result.rows[0].status,
-      notes: result.rows[0].notes,
-      createdAt: result.rows[0].created_at,
-      updatedAt: result.rows[0].updated_at,
-      castleType: result.rows[0].castle_type,
-      startDate: result.rows[0].start_date,
-      endDate: result.rows[0].end_date,
-      totalCost: result.rows[0].total_cost,
-      calendarEventId: result.rows[0].calendar_event_id
-    };
-
+      return {
+        id: result.rows[0].id,
+        bookingRef: result.rows[0].booking_ref,
+        customerName: result.rows[0].customer_name,
+        customerEmail: result.rows[0].customer_email,
+        customerPhone: result.rows[0].customer_phone,
+        customerAddress: result.rows[0].customer_address,
+        castleId: result.rows[0].castle_id,
+        castleName: result.rows[0].castle_name,
+        date: result.rows[0].date,
+        paymentMethod: result.rows[0].payment_method,
+        totalPrice: result.rows[0].total_price,
+        deposit: result.rows[0].deposit,
+        status: result.rows[0].status,
+        notes: result.rows[0].notes,
+        createdAt: result.rows[0].created_at,
+        updatedAt: result.rows[0].updated_at,
+        castleType: result.rows[0].castle_type,
+        startDate: result.rows[0].start_date,
+        endDate: result.rows[0].end_date,
+        totalCost: result.rows[0].total_cost,
+        calendarEventId: result.rows[0].calendar_event_id,
+      };
     } catch (error: any) {
-      console.error(`Error creating confirmed booking (attempt ${attempt + 1}):`, error);
-      
+      console.error(
+        `Error creating confirmed booking (attempt ${attempt + 1}):`,
+        error,
+      );
+
       // Handle duplicate booking constraint violation (not retryable)
-      if (error.code === '23505' && error.constraint === 'idx_bookings_castle_date_active') {
-        throw new Error('A booking already exists for this castle on this date. Please choose a different date or castle.');
+      if (
+        error.code === "23505" &&
+        error.constraint === "idx_bookings_castle_date_active"
+      ) {
+        throw new Error(
+          "A booking already exists for this castle on this date. Please choose a different date or castle.",
+        );
       }
-      
+
       // Handle booking reference constraint violation (retryable)
-      if (error.code === '23505' && error.constraint === 'bookings_booking_ref_key') {
+      if (
+        error.code === "23505" &&
+        error.constraint === "bookings_booking_ref_key"
+      ) {
         if (attempt < maxRetries) {
-          console.warn('Booking reference conflict, retrying', { attempt: attempt + 1 });
+          console.warn("Booking reference conflict, retrying", {
+            attempt: attempt + 1,
+          });
           // Don't return here, let the finally block release and continue the loop
         } else {
-          throw new Error('Booking reference conflict persisted after multiple attempts. Please try again later.');
+          throw new Error(
+            "Booking reference conflict persisted after multiple attempts. Please try again later.",
+          );
         }
       } else {
         // Other errors (not retryable)
-    throw error;
+        throw error;
       }
-  } finally {
-    client.release();
+    } finally {
+      client.release();
+    }
   }
-  }
-  
+
   // This should never be reached, but just in case
-  throw new Error('Failed to create confirmed booking after all retry attempts');
+  throw new Error(
+    "Failed to create confirmed booking after all retry attempts",
+  );
 }
 
 // Get all bookings by status
-export async function getBookingsByStatus(status?: string): Promise<PendingBooking[]> {
-  return measureDatabaseOperation('getBookingsByStatus', async () => {
-    const client = await getPool().connect();
-    try {
-    let query = `SELECT 
+export async function getBookingsByStatus(
+  status?: string,
+): Promise<PendingBooking[]> {
+  return measureDatabaseOperation(
+    "getBookingsByStatus",
+    async () => {
+      const client = await getPool().connect();
+      try {
+        let query = `SELECT 
       id, booking_ref, customer_name, customer_email, customer_phone, customer_address,
       castle_id, castle_name, date, payment_method, total_price, deposit, status, notes,
       created_at, updated_at, start_date, end_date, event_duration,
       agreement_signed, agreement_signed_at, agreement_signed_by, agreement_signed_method,
       email_sent, email_sent_at, manual_confirmation, confirmed_by
     FROM bookings`;
-    let params: any[] = [];
-    
-    if (status) {
-      query += ' WHERE status = $1';
-      params = [status];
-    }
-    
-    query += ' ORDER BY created_at DESC';
-    
-    const result = await client.query(query, params);
-    
-    return result.rows.map(row => ({
-      id: row.id,
-      bookingRef: row.booking_ref,
-      customerName: row.customer_name,
-      customerEmail: row.customer_email,
-      customerPhone: row.customer_phone,
-      customerAddress: row.customer_address,
-      castleId: row.castle_id,
-      castleName: row.castle_name,
-      date: row.date,
-      paymentMethod: row.payment_method,
-      totalPrice: row.total_price,
-      deposit: row.deposit,
-      status: row.status,
-      notes: row.notes,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      startDate: row.start_date,
-      endDate: row.end_date,
-      eventDuration: row.event_duration,
-      // Email automation tracking
-      emailSent: row.email_sent || false,
-      emailSentAt: row.email_sent_at || undefined,
-      manualConfirmation: row.manual_confirmation || false,
-      confirmedBy: row.confirmed_by || undefined,
-      // Agreement tracking
-      agreementSigned: row.agreement_signed || false,
-      agreementSignedAt: row.agreement_signed_at || undefined,
-      agreementSignedBy: row.agreement_signed_by || undefined,
-      // Enhanced audit trail
-      agreementSignedMethod: row.agreement_signed_method || undefined,
-      agreementIpAddress: undefined, // Not selected in this query
-      agreementUserAgent: undefined, // Not selected in this query
-      agreementPdfGenerated: false, // Not selected in this query
-      agreementPdfGeneratedAt: undefined, // Not selected in this query
-      agreementEmailOpened: false, // Not selected in this query
-      agreementEmailOpenedAt: undefined, // Not selected in this query
-      agreementViewed: false, // Not selected in this query
-      agreementViewedAt: undefined, // Not selected in this query
-      auditTrail: undefined // Not selected in this query
-    }));
-    } catch (error) {
-      console.error('Error fetching bookings:', error);
-      throw error;
-    } finally {
-      client.release();
-    }
-  }, { status });
+        let params: any[] = [];
+
+        if (status) {
+          query += " WHERE status = $1";
+          params = [status];
+        }
+
+        query += " ORDER BY created_at DESC";
+
+        const result = await client.query(query, params);
+
+        return result.rows.map((row) => ({
+          id: row.id,
+          bookingRef: row.booking_ref,
+          customerName: row.customer_name,
+          customerEmail: row.customer_email,
+          customerPhone: row.customer_phone,
+          customerAddress: row.customer_address,
+          castleId: row.castle_id,
+          castleName: row.castle_name,
+          date: row.date,
+          paymentMethod: row.payment_method,
+          totalPrice: row.total_price,
+          deposit: row.deposit,
+          status: row.status,
+          notes: row.notes,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+          startDate: row.start_date,
+          endDate: row.end_date,
+          eventDuration: row.event_duration,
+          // Email automation tracking
+          emailSent: row.email_sent || false,
+          emailSentAt: row.email_sent_at || undefined,
+          manualConfirmation: row.manual_confirmation || false,
+          confirmedBy: row.confirmed_by || undefined,
+          // Agreement tracking
+          agreementSigned: row.agreement_signed || false,
+          agreementSignedAt: row.agreement_signed_at || undefined,
+          agreementSignedBy: row.agreement_signed_by || undefined,
+          // Enhanced audit trail
+          agreementSignedMethod: row.agreement_signed_method || undefined,
+          agreementIpAddress: undefined, // Not selected in this query
+          agreementUserAgent: undefined, // Not selected in this query
+          agreementPdfGenerated: false, // Not selected in this query
+          agreementPdfGeneratedAt: undefined, // Not selected in this query
+          agreementEmailOpened: false, // Not selected in this query
+          agreementEmailOpenedAt: undefined, // Not selected in this query
+          agreementViewed: false, // Not selected in this query
+          agreementViewedAt: undefined, // Not selected in this query
+          auditTrail: undefined, // Not selected in this query
+        }));
+      } catch (error) {
+        console.error("Error fetching bookings:", error);
+        throw error;
+      } finally {
+        client.release();
+      }
+    },
+    { status },
+  );
 }
 
 // Update booking status with proper flow validation
-export async function updateBookingStatus(id: number, status: BookingStatus): Promise<void> {
+export async function updateBookingStatus(
+  id: number,
+  status: BookingStatus,
+): Promise<void> {
   const client = await getPool().connect();
   try {
-    console.log('Update booking status', 'system', { bookingId: id, newStatus: status });
-    
+    console.log("Update booking status", "system", {
+      bookingId: id,
+      newStatus: status,
+    });
+
     // Get current booking status to validate transition
-    const currentBookingResult = await client.query('SELECT status FROM bookings WHERE id = $1', [id]);
+    const currentBookingResult = await client.query(
+      "SELECT status FROM bookings WHERE id = $1",
+      [id],
+    );
     if (currentBookingResult.rows.length === 0) {
       throw new Error(`Booking with ID ${id} not found`);
     }
-    
+
     const currentStatus = currentBookingResult.rows[0].status;
-    
+
     // Validate status transition flow: pending → confirmed → completed
     if (!isValidStatusTransition(currentStatus, status)) {
-      throw new Error(`Invalid status transition from '${currentStatus}' to '${status}'. Valid flow: pending → confirmed → completed`);
+      throw new Error(
+        `Invalid status transition from '${currentStatus}' to '${status}'. Valid flow: pending → confirmed → completed`,
+      );
     }
-    
+
     const result = await client.query(
-      'UPDATE bookings SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
-      [status, id]
+      "UPDATE bookings SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+      [status, id],
     );
-    console.log('update', 0, { operation: 'updateBookingStatus', rowsAffected: result.rowCount });
-    console.log('Status transition completed', { bookingId: id, from: currentStatus, to: status });
+    console.log("update", 0, {
+      operation: "updateBookingStatus",
+      rowsAffected: result.rowCount,
+    });
+    console.log("Status transition completed", {
+      bookingId: id,
+      from: currentStatus,
+      to: status,
+    });
   } catch (error) {
-    console.error('Error in updateBookingStatus', error instanceof Error ? error : new Error(String(error)), { bookingId: id, targetStatus: status });
+    console.error(
+      "Error in updateBookingStatus",
+      error instanceof Error ? error : new Error(String(error)),
+      { bookingId: id, targetStatus: status },
+    );
     throw error;
   } finally {
     client.release();
@@ -587,34 +679,52 @@ export async function updateBookingStatus(id: number, status: BookingStatus): Pr
 }
 
 // Validate proper status transition flow
-function isValidStatusTransition(currentStatus: string, newStatus: string): boolean {
+function isValidStatusTransition(
+  currentStatus: string,
+  newStatus: string,
+): boolean {
   const validTransitions: Record<string, string[]> = {
-    'pending': ['confirmed', 'expired'], // Pending can go to confirmed or expired
-    'confirmed': ['completed', 'expired'], // Confirmed can go to completed or expired
-    'completed': [], // Completed is final
-    'expired': [] // Expired is final
+    pending: ["confirmed", "expired"], // Pending can go to confirmed or expired
+    confirmed: ["completed", "expired"], // Confirmed can go to completed or expired
+    completed: [], // Completed is final
+    expired: [], // Expired is final
   };
-  
+
   // Allow same status (idempotent updates)
   if (currentStatus === newStatus) {
     return true;
   }
-  
+
   return validTransitions[currentStatus]?.includes(newStatus) || false;
 }
 
 // Update booking agreement signing
-export async function updateBookingAgreement(id: number, agreementSigned: boolean, agreementSignedAt: string, agreementSignedBy?: string): Promise<void> {
+export async function updateBookingAgreement(
+  id: number,
+  agreementSigned: boolean,
+  agreementSignedAt: string,
+  agreementSignedBy?: string,
+): Promise<void> {
   const client = await getPool().connect();
   try {
-    console.log('Update booking agreement', agreementSignedBy || 'system', { bookingId: id, signed: agreementSigned });
+    console.log("Update booking agreement", agreementSignedBy || "system", {
+      bookingId: id,
+      signed: agreementSigned,
+    });
     const result = await client.query(
-      'UPDATE bookings SET agreement_signed = $1, agreement_signed_at = $2, agreement_signed_by = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4',
-      [agreementSigned, agreementSignedAt, agreementSignedBy || null, id]
+      "UPDATE bookings SET agreement_signed = $1, agreement_signed_at = $2, agreement_signed_by = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4",
+      [agreementSigned, agreementSignedAt, agreementSignedBy || null, id],
     );
-    console.log('update', 0, { operation: 'updateBookingAgreement', rowsAffected: result.rowCount });
+    console.log("update", 0, {
+      operation: "updateBookingAgreement",
+      rowsAffected: result.rowCount,
+    });
   } catch (error) {
-    console.error('Error in updateBookingAgreement', error instanceof Error ? error : new Error(String(error)), { bookingId: id });
+    console.error(
+      "Error in updateBookingAgreement",
+      error instanceof Error ? error : new Error(String(error)),
+      { bookingId: id },
+    );
     throw error;
   } finally {
     client.release();
@@ -622,17 +732,28 @@ export async function updateBookingAgreement(id: number, agreementSigned: boolea
 }
 
 // Update booking email tracking
-export async function updateBookingEmailStatus(id: number, emailSent: boolean, emailSentAt?: Date): Promise<void> {
+export async function updateBookingEmailStatus(
+  id: number,
+  emailSent: boolean,
+  emailSentAt?: Date,
+): Promise<void> {
   const client = await getPool().connect();
   try {
-    console.log('Update booking email status', { bookingId: id, emailSent });
+    console.log("Update booking email status", { bookingId: id, emailSent });
     const result = await client.query(
-      'UPDATE bookings SET email_sent = $1, email_sent_at = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
-      [emailSent, emailSentAt || new Date(), id]
+      "UPDATE bookings SET email_sent = $1, email_sent_at = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3",
+      [emailSent, emailSentAt || new Date(), id],
     );
-    console.log('update', 0, { operation: 'updateBookingEmailStatus', rowsAffected: result.rowCount });
+    console.log("update", 0, {
+      operation: "updateBookingEmailStatus",
+      rowsAffected: result.rowCount,
+    });
   } catch (error) {
-    console.error('Error in updateBookingEmailStatus', error instanceof Error ? error : new Error(String(error)), { bookingId: id });
+    console.error(
+      "Error in updateBookingEmailStatus",
+      error instanceof Error ? error : new Error(String(error)),
+      { bookingId: id },
+    );
     throw error;
   } finally {
     client.release();
@@ -640,29 +761,43 @@ export async function updateBookingEmailStatus(id: number, emailSent: boolean, e
 }
 
 // Update booking manual confirmation tracking
-export async function updateBookingConfirmation(id: number, manualConfirmation: boolean, confirmedBy?: string): Promise<void> {
+export async function updateBookingConfirmation(
+  id: number,
+  manualConfirmation: boolean,
+  confirmedBy?: string,
+): Promise<void> {
   const client = await getPool().connect();
   try {
-    console.log('Update booking confirmation', confirmedBy || 'system', { bookingId: id, manual: manualConfirmation });
-    
+    console.log("Update booking confirmation", confirmedBy || "system", {
+      bookingId: id,
+      manual: manualConfirmation,
+    });
+
     // Add audit trail entry
     if (manualConfirmation && confirmedBy) {
       await addAuditTrailEntry(id, {
-        action: 'manual_confirmation',
-        actor: 'admin',
+        action: "manual_confirmation",
+        actor: "admin",
         actorDetails: confirmedBy,
-        method: 'admin_override',
-        details: { reason: 'Manual confirmation by admin' }
+        method: "admin_override",
+        details: { reason: "Manual confirmation by admin" },
       });
     }
-    
+
     const result = await client.query(
-      'UPDATE bookings SET manual_confirmation = $1, confirmed_by = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
-      [manualConfirmation, confirmedBy || null, id]
+      "UPDATE bookings SET manual_confirmation = $1, confirmed_by = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3",
+      [manualConfirmation, confirmedBy || null, id],
     );
-    console.log('update', 0, { operation: 'updateBookingConfirmation', rowsAffected: result.rowCount });
+    console.log("update", 0, {
+      operation: "updateBookingConfirmation",
+      rowsAffected: result.rowCount,
+    });
   } catch (error) {
-    console.error('Error in updateBookingConfirmation', error instanceof Error ? error : new Error(String(error)), { bookingId: id });
+    console.error(
+      "Error in updateBookingConfirmation",
+      error instanceof Error ? error : new Error(String(error)),
+      { bookingId: id },
+    );
     throw error;
   } finally {
     client.release();
@@ -671,10 +806,10 @@ export async function updateBookingConfirmation(id: number, manualConfirmation: 
 
 // Add entry to audit trail
 export async function addAuditTrailEntry(
-  bookingId: number, 
-  entry: Omit<AuditTrailEntry, 'timestamp'>,
+  bookingId: number,
+  entry: Omit<AuditTrailEntry, "timestamp">,
   ipAddress?: string,
-  userAgent?: string
+  userAgent?: string,
 ): Promise<void> {
   const client = await getPool().connect();
   try {
@@ -682,20 +817,29 @@ export async function addAuditTrailEntry(
       ...entry,
       timestamp: new Date(),
       ipAddress: ipAddress || entry.ipAddress,
-      userAgent: userAgent || entry.userAgent
+      userAgent: userAgent || entry.userAgent,
     };
 
-    console.log('Add audit trail entry', auditEntry.actor, { bookingId, action: auditEntry.action });
+    console.log("Add audit trail entry", auditEntry.actor, {
+      bookingId,
+      action: auditEntry.action,
+    });
 
-    await client.query(`
+    await client.query(
+      `
       UPDATE bookings 
       SET audit_trail = COALESCE(audit_trail, '[]'::jsonb) || $1::jsonb,
           updated_at = CURRENT_TIMESTAMP
       WHERE id = $2
-    `, [JSON.stringify(auditEntry), bookingId]);
-
+    `,
+      [JSON.stringify(auditEntry), bookingId],
+    );
   } catch (error) {
-    console.error('Error adding audit trail entry', error instanceof Error ? error : new Error(String(error)), { bookingId });
+    console.error(
+      "Error adding audit trail entry",
+      error instanceof Error ? error : new Error(String(error)),
+      { bookingId },
+    );
     throw error;
   } finally {
     client.release();
@@ -704,19 +848,23 @@ export async function addAuditTrailEntry(
 
 // Enhanced agreement signing function with full audit trail
 export async function updateBookingAgreementSigning(
-  id: number, 
-  agreementSigned: boolean, 
-  agreementSignedAt: string, 
+  id: number,
+  agreementSigned: boolean,
+  agreementSignedAt: string,
   agreementSignedBy: string,
-  method: 'email' | 'manual' | 'physical' | 'admin_override',
+  method: "email" | "manual" | "physical" | "admin_override",
   ipAddress?: string,
   userAgent?: string,
-  additionalDetails?: Record<string, any>
+  additionalDetails?: Record<string, any>,
 ): Promise<void> {
   const client = await getPool().connect();
   try {
-    console.log('Update booking agreement signing', agreementSignedBy, { bookingId: id, method, signed: agreementSigned });
-    
+    console.log("Update booking agreement signing", agreementSignedBy, {
+      bookingId: id,
+      method,
+      signed: agreementSigned,
+    });
+
     // Update basic agreement fields
     const result = await client.query(
       `UPDATE bookings 
@@ -728,25 +876,45 @@ export async function updateBookingAgreementSigning(
            agreement_user_agent = $6,
            updated_at = CURRENT_TIMESTAMP 
        WHERE id = $7`,
-      [agreementSigned, agreementSignedAt, agreementSignedBy, method, ipAddress || null, userAgent || null, id]
+      [
+        agreementSigned,
+        agreementSignedAt,
+        agreementSignedBy,
+        method,
+        ipAddress || null,
+        userAgent || null,
+        id,
+      ],
     );
 
     // Add comprehensive audit trail entry
-    await addAuditTrailEntry(id, {
-      action: 'agreement_signed',
-      actor: method === 'admin_override' ? 'admin' : 'customer',
-      actorDetails: agreementSignedBy,
-      method: method,
-      details: {
-        agreementSigned,
-        signedAt: agreementSignedAt,
-        ...additionalDetails
-      }
-    }, ipAddress, userAgent);
+    await addAuditTrailEntry(
+      id,
+      {
+        action: "agreement_signed",
+        actor: method === "admin_override" ? "admin" : "customer",
+        actorDetails: agreementSignedBy,
+        method: method,
+        details: {
+          agreementSigned,
+          signedAt: agreementSignedAt,
+          ...additionalDetails,
+        },
+      },
+      ipAddress,
+      userAgent,
+    );
 
-    console.log('update', 0, { operation: 'updateBookingAgreementSigning', rowsAffected: result.rowCount });
+    console.log("update", 0, {
+      operation: "updateBookingAgreementSigning",
+      rowsAffected: result.rowCount,
+    });
   } catch (error) {
-    console.error('Error in updateBookingAgreementSigning', error instanceof Error ? error : new Error(String(error)), { bookingId: id });
+    console.error(
+      "Error in updateBookingAgreementSigning",
+      error instanceof Error ? error : new Error(String(error)),
+      { bookingId: id },
+    );
     throw error;
   } finally {
     client.release();
@@ -754,15 +922,20 @@ export async function updateBookingAgreementSigning(
 }
 
 // Get booking by ID for email sending
-export async function getBookingById(id: number): Promise<PendingBooking | null> {
+export async function getBookingById(
+  id: number,
+): Promise<PendingBooking | null> {
   const client = await getPool().connect();
   try {
-    const result = await client.query(`
+    const result = await client.query(
+      `
       SELECT b.*, c.name as castle_name 
       FROM bookings b 
       LEFT JOIN castles c ON b.castle_id = c.id 
       WHERE b.id = $1
-    `, [id]);
+    `,
+      [id],
+    );
 
     if (result.rows.length === 0) {
       return null;
@@ -810,10 +983,14 @@ export async function getBookingById(id: number): Promise<PendingBooking | null>
       agreementViewedAt: row.agreement_viewed_at || null,
       auditTrail: row.audit_trail || [],
       // Calendar integration
-      calendarEventId: row.calendar_event_id || null
+      calendarEventId: row.calendar_event_id || null,
     };
   } catch (error) {
-    console.error('Error getting booking by ID', error instanceof Error ? error : new Error(String(error)), { bookingId: id });
+    console.error(
+      "Error getting booking by ID",
+      error instanceof Error ? error : new Error(String(error)),
+      { bookingId: id },
+    );
     return null;
   } finally {
     client.release();
@@ -823,37 +1000,37 @@ export async function getBookingById(id: number): Promise<PendingBooking | null>
 // Track agreement email interactions
 export async function trackAgreementEmailInteraction(
   bookingId: number,
-  action: 'email_sent' | 'email_opened' | 'agreement_viewed' | 'pdf_generated',
-  additionalDetails?: Record<string, any>
+  action: "email_sent" | "email_opened" | "agreement_viewed" | "pdf_generated",
+  additionalDetails?: Record<string, any>,
 ): Promise<void> {
   const client = await getPool().connect();
   try {
     const timestamp = new Date();
-    
+
     // Update relevant tracking fields
     switch (action) {
-      case 'email_sent':
+      case "email_sent":
         await client.query(
-          'UPDATE bookings SET email_sent = true, email_sent_at = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
-          [timestamp, bookingId]
+          "UPDATE bookings SET email_sent = true, email_sent_at = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+          [timestamp, bookingId],
         );
         break;
-      case 'email_opened':
+      case "email_opened":
         await client.query(
-          'UPDATE bookings SET agreement_email_opened = true, agreement_email_opened_at = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
-          [timestamp, bookingId]
+          "UPDATE bookings SET agreement_email_opened = true, agreement_email_opened_at = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+          [timestamp, bookingId],
         );
         break;
-      case 'agreement_viewed':
+      case "agreement_viewed":
         await client.query(
-          'UPDATE bookings SET agreement_viewed = true, agreement_viewed_at = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
-          [timestamp, bookingId]
+          "UPDATE bookings SET agreement_viewed = true, agreement_viewed_at = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+          [timestamp, bookingId],
         );
         break;
-      case 'pdf_generated':
+      case "pdf_generated":
         await client.query(
-          'UPDATE bookings SET agreement_pdf_generated = true, agreement_pdf_generated_at = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
-          [timestamp, bookingId]
+          "UPDATE bookings SET agreement_pdf_generated = true, agreement_pdf_generated_at = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+          [timestamp, bookingId],
         );
         break;
     }
@@ -861,14 +1038,18 @@ export async function trackAgreementEmailInteraction(
     // Add audit trail entry
     await addAuditTrailEntry(bookingId, {
       action: action,
-      actor: 'customer',
-      actorDetails: 'email_interaction',
-      details: additionalDetails
+      actor: "customer",
+      actorDetails: "email_interaction",
+      details: additionalDetails,
     });
 
-    console.log('Tracked agreement email interaction', { bookingId, action });
+    console.log("Tracked agreement email interaction", { bookingId, action });
   } catch (error) {
-    console.error('Error tracking email interaction', error instanceof Error ? error : new Error(String(error)), { bookingId });
+    console.error(
+      "Error tracking email interaction",
+      error instanceof Error ? error : new Error(String(error)),
+      { bookingId },
+    );
     throw error;
   } finally {
     client.release();
@@ -887,12 +1068,17 @@ export async function updateExpiredBookings(): Promise<void> {
       AND end_date IS NOT NULL 
       AND end_date < CURRENT_TIMESTAMP
     `);
-    
+
     if (result.rowCount && result.rowCount > 0) {
-      console.log('Auto-completed expired bookings', { transitionsCompleted: result.rowCount });
+      console.log("Auto-completed expired bookings", {
+        transitionsCompleted: result.rowCount,
+      });
     }
   } catch (error) {
-    console.error('Error updating expired bookings', error instanceof Error ? error : new Error(String(error)));
+    console.error(
+      "Error updating expired bookings",
+      error instanceof Error ? error : new Error(String(error)),
+    );
   } finally {
     client.release();
   }
@@ -904,112 +1090,160 @@ export async function deleteBooking(id: number): Promise<void> {
   try {
     // First get the booking details to check if it has a calendar event
     const booking = await getBookingById(id);
-    
+
     if (!booking) {
       throw new Error(`Booking with ID ${id} not found`);
     }
 
     // Handle calendar event deletion based on booking status
-    if (booking.status === 'confirmed' || booking.status === 'completed') {
+    if (booking.status === "confirmed" || booking.status === "completed") {
       // These booking types should have calendar events
       if (booking.calendarEventId) {
         try {
           const calendarService = new GoogleCalendarService();
           await calendarService.deleteBookingEvent(booking.calendarEventId);
-          console.log(`✅ Deleted calendar event ${booking.calendarEventId} for ${booking.status} booking ${id}`);
+          console.log(
+            `✅ Deleted calendar event ${booking.calendarEventId} for ${booking.status} booking ${id}`,
+          );
         } catch (calendarError) {
-          console.error(`⚠️ Failed to delete calendar event ${booking.calendarEventId} for ${booking.status} booking ${id}:`, calendarError);
+          console.error(
+            `⚠️ Failed to delete calendar event ${booking.calendarEventId} for ${booking.status} booking ${id}:`,
+            calendarError,
+          );
         }
       } else {
         // This is concerning - confirmed/completed bookings should have calendar events
-        console.warn(`⚠️ ${booking.status} booking ${id} (${booking.bookingRef}) missing calendarEventId - searching for orphaned calendar events`);
-        
+        console.warn(
+          `⚠️ ${booking.status} booking ${id} (${booking.bookingRef}) missing calendarEventId - searching for orphaned calendar events`,
+        );
+
         try {
           const calendarService = new GoogleCalendarService();
-          
-          console.log(`🔍 Searching for orphaned calendar events for ${booking.status} booking ${id}`);
-          
+
+          console.log(
+            `🔍 Searching for orphaned calendar events for ${booking.status} booking ${id}`,
+          );
+
           // Use booking date if startDate/endDate not available, with wider search range
           const bookingDate = booking.startDate || booking.date;
           if (bookingDate) {
             const searchStart = new Date(bookingDate);
             searchStart.setDate(searchStart.getDate() - 7); // 1 week before for safety
-            
+
             const searchEnd = new Date(booking.endDate || bookingDate);
             searchEnd.setDate(searchEnd.getDate() + 7); // 1 week after for safety
-            
-            console.log(`🔍 Searching calendar events from ${searchStart.toISOString()} to ${searchEnd.toISOString()}`);
-            
-            const events = await calendarService.getEventsInRange(searchStart, searchEnd);
-            console.log(`📅 Found ${events.length} total calendar events in date range`);
-            
+
+            console.log(
+              `🔍 Searching calendar events from ${searchStart.toISOString()} to ${searchEnd.toISOString()}`,
+            );
+
+            const events = await calendarService.getEventsInRange(
+              searchStart,
+              searchEnd,
+            );
+            console.log(
+              `📅 Found ${events.length} total calendar events in date range`,
+            );
+
             // Look for events that might match this booking using multiple criteria
-            const matchingEvents = events.filter(event => {
-              const summary = event.summary?.toLowerCase() || '';
-              const description = event.description?.toLowerCase() || '';
-              
+            const matchingEvents = events.filter((event) => {
+              const summary = event.summary?.toLowerCase() || "";
+              const description = event.description?.toLowerCase() || "";
+
               // Search criteria (multiple ways to match)
-              const bookingRefMatch = booking.bookingRef && (
-                summary.includes(booking.bookingRef.toLowerCase()) || 
-                description.includes(booking.bookingRef.toLowerCase())
+              const bookingRefMatch =
+                booking.bookingRef &&
+                (summary.includes(booking.bookingRef.toLowerCase()) ||
+                  description.includes(booking.bookingRef.toLowerCase()));
+
+              const customerNameMatch =
+                booking.customerName &&
+                (summary.includes(booking.customerName.toLowerCase()) ||
+                  description.includes(booking.customerName.toLowerCase()));
+
+              const phoneMatch =
+                booking.customerPhone &&
+                description.includes(booking.customerPhone);
+              const emailMatch =
+                booking.customerEmail &&
+                description.includes(booking.customerEmail.toLowerCase());
+
+              return (
+                bookingRefMatch || customerNameMatch || phoneMatch || emailMatch
               );
-              
-              const customerNameMatch = booking.customerName && (
-                summary.includes(booking.customerName.toLowerCase()) ||
-                description.includes(booking.customerName.toLowerCase())
-              );
-              
-              const phoneMatch = booking.customerPhone && description.includes(booking.customerPhone);
-              const emailMatch = booking.customerEmail && description.includes(booking.customerEmail.toLowerCase());
-              
-              return bookingRefMatch || customerNameMatch || phoneMatch || emailMatch;
             });
-            
+
             if (matchingEvents.length > 0) {
-              console.log(`📅 Found ${matchingEvents.length} matching calendar events for ${booking.status} booking ${id}:`);
-              
+              console.log(
+                `📅 Found ${matchingEvents.length} matching calendar events for ${booking.status} booking ${id}:`,
+              );
+
               for (const event of matchingEvents) {
                 console.log(`  - Event: ${event.summary} (ID: ${event.id})`);
                 try {
                   await calendarService.deleteBookingEvent(event.id!);
-                  console.log(`✅ Deleted matching calendar event ${event.id} for ${booking.status} booking ${id}`);
+                  console.log(
+                    `✅ Deleted matching calendar event ${event.id} for ${booking.status} booking ${id}`,
+                  );
                 } catch (deleteError) {
-                  console.error(`⚠️ Failed to delete matching calendar event ${event.id}:`, deleteError);
+                  console.error(
+                    `⚠️ Failed to delete matching calendar event ${event.id}:`,
+                    deleteError,
+                  );
                 }
               }
             } else {
-              console.log(`ℹ️ No matching calendar events found for ${booking.status} booking ${id}`);
-              console.log(`   Booking ref: ${booking.bookingRef}, Customer: ${booking.customerName}`);
+              console.log(
+                `ℹ️ No matching calendar events found for ${booking.status} booking ${id}`,
+              );
+              console.log(
+                `   Booking ref: ${booking.bookingRef}, Customer: ${booking.customerName}`,
+              );
             }
           } else {
-            console.log(`⚠️ No booking date available for calendar event search (booking ${id})`);
+            console.log(
+              `⚠️ No booking date available for calendar event search (booking ${id})`,
+            );
           }
         } catch (searchError) {
-          console.error(`⚠️ Failed to search for orphaned calendar events for ${booking.status} booking ${id}:`, searchError);
+          console.error(
+            `⚠️ Failed to search for orphaned calendar events for ${booking.status} booking ${id}:`,
+            searchError,
+          );
         }
       }
-    } else if (booking.status === 'pending') {
+    } else if (booking.status === "pending") {
       // Pending bookings don't have calendar events by design
-      console.log(`ℹ️ Deleting pending booking ${id} - no calendar event expected`);
+      console.log(
+        `ℹ️ Deleting pending booking ${id} - no calendar event expected`,
+      );
     } else {
       // Handle other statuses (expired, etc.)
       if (booking.calendarEventId) {
         try {
           const calendarService = new GoogleCalendarService();
           await calendarService.deleteBookingEvent(booking.calendarEventId);
-          console.log(`✅ Deleted calendar event ${booking.calendarEventId} for ${booking.status} booking ${id}`);
+          console.log(
+            `✅ Deleted calendar event ${booking.calendarEventId} for ${booking.status} booking ${id}`,
+          );
         } catch (calendarError) {
-          console.error(`⚠️ Failed to delete calendar event ${booking.calendarEventId} for ${booking.status} booking ${id}:`, calendarError);
+          console.error(
+            `⚠️ Failed to delete calendar event ${booking.calendarEventId} for ${booking.status} booking ${id}:`,
+            calendarError,
+          );
         }
       }
     }
-    
+
     // Delete the booking from database
-    await client.query('DELETE FROM bookings WHERE id = $1', [id]);
+    await client.query("DELETE FROM bookings WHERE id = $1", [id]);
     console.log(`✅ Deleted booking ${id} from database`);
-    
   } catch (error) {
-    console.error('Error deleting booking', error instanceof Error ? error : new Error(String(error)), { bookingId: id });
+    console.error(
+      "Error deleting booking",
+      error instanceof Error ? error : new Error(String(error)),
+      { bookingId: id },
+    );
     throw error;
   } finally {
     client.release();
@@ -1017,7 +1251,12 @@ export async function deleteBooking(id: number): Promise<void> {
 }
 
 // Update booking details
-export async function updateBooking(id: number, updates: Partial<Omit<PendingBooking, 'id' | 'bookingRef' | 'createdAt' | 'updatedAt'>>): Promise<void> {
+export async function updateBooking(
+  id: number,
+  updates: Partial<
+    Omit<PendingBooking, "id" | "bookingRef" | "createdAt" | "updatedAt">
+  >,
+): Promise<void> {
   const client = await getPool().connect();
   try {
     const setClause = [];
@@ -1084,17 +1323,38 @@ export async function updateBooking(id: number, updates: Partial<Omit<PendingBoo
       setClause.push(`end_date = $${paramCount++}`);
       values.push(updates.endDate);
     }
+    // Agreement-related fields
+    if (updates.agreementSigned !== undefined) {
+      setClause.push(`agreement_signed = $${paramCount++}`);
+      values.push(updates.agreementSigned);
+    }
+    if (updates.agreementSignedBy !== undefined) {
+      setClause.push(`agreement_signed_by = $${paramCount++}`);
+      values.push(updates.agreementSignedBy);
+    }
+    if (updates.agreementSignedAt !== undefined) {
+      setClause.push(`agreement_signed_at = $${paramCount++}`);
+      values.push(updates.agreementSignedAt);
+    }
+    if (updates.agreementSignedMethod !== undefined) {
+      setClause.push(`agreement_signed_method = $${paramCount++}`);
+      values.push(updates.agreementSignedMethod);
+    }
 
     if (setClause.length === 0) return;
 
     setClause.push(`updated_at = CURRENT_TIMESTAMP`);
     values.push(id);
 
-    const query = `UPDATE bookings SET ${setClause.join(', ')} WHERE id = $${paramCount}`;
-    
+    const query = `UPDATE bookings SET ${setClause.join(", ")} WHERE id = $${paramCount}`;
+
     await client.query(query, values);
   } catch (error) {
-    console.error('Error updating booking', error instanceof Error ? error : new Error(String(error)), { bookingId: id });
+    console.error(
+      "Error updating booking",
+      error instanceof Error ? error : new Error(String(error)),
+      { bookingId: id },
+    );
     throw error;
   } finally {
     client.release();
@@ -1141,7 +1401,9 @@ export async function queryBookingsWithFilters(query: {
     if (query.status) {
       if (Array.isArray(query.status)) {
         if (query.status.length > 0) {
-          const statusPlaceholders = query.status.map(() => `$${paramCount++}`).join(',');
+          const statusPlaceholders = query.status
+            .map(() => `$${paramCount++}`)
+            .join(",");
           sqlQuery += ` AND status IN (${statusPlaceholders})`;
           params.push(...query.status);
         }
@@ -1152,11 +1414,11 @@ export async function queryBookingsWithFilters(query: {
       }
     }
 
-    sqlQuery += ' ORDER BY created_at DESC';
+    sqlQuery += " ORDER BY created_at DESC";
 
     const result = await client.query(sqlQuery, params);
-    
-    const bookings = result.rows.map(row => ({
+
+    const bookings = result.rows.map((row) => ({
       id: row.id,
       bookingRef: row.booking_ref,
       customerName: row.customer_name,
@@ -1172,12 +1434,16 @@ export async function queryBookingsWithFilters(query: {
       status: row.status,
       notes: row.notes,
       createdAt: row.created_at,
-      updatedAt: row.updated_at
+      updatedAt: row.updated_at,
     }));
 
     return { bookings };
   } catch (error) {
-    console.error('Error querying bookings with filters', error instanceof Error ? error : new Error(String(error)), { query });
+    console.error(
+      "Error querying bookings with filters",
+      error instanceof Error ? error : new Error(String(error)),
+      { query },
+    );
     throw error;
   } finally {
     client.release();
@@ -1196,7 +1462,11 @@ export async function getBookingStats(query?: {
   confirmed: number;
   completed: number;
   revenue: number;
-  popularCastles: Array<{ castleId: string; castleName: string; bookingCount: number }>;
+  popularCastles: Array<{
+    castleId: string;
+    castleName: string;
+    bookingCount: number;
+  }>;
 }> {
   const client = await getPool().connect();
   try {
@@ -1209,10 +1479,10 @@ export async function getBookingStats(query?: {
         COALESCE(SUM(CASE WHEN status IN ('confirmed', 'completed') THEN total_price ELSE 0 END), 0) as revenue
       FROM bookings
     `;
-    
+
     const params: any[] = [];
     let paramCount = 1;
-    let whereClause = ' WHERE status IN (\'pending\', \'confirmed\', \'completed\')'; // Only include active bookings
+    let whereClause = " WHERE status IN ('pending', 'confirmed', 'completed')"; // Only include active bookings
 
     // Add date range filter
     if (query?.dateFrom) {
@@ -1226,14 +1496,18 @@ export async function getBookingStats(query?: {
 
     // Add castle filter
     if (query?.castleIds && query.castleIds.length > 0) {
-      const castlePlaceholders = query.castleIds.map(() => `$${paramCount++}`).join(',');
+      const castlePlaceholders = query.castleIds
+        .map(() => `$${paramCount++}`)
+        .join(",");
       whereClause += ` AND castle_id IN (${castlePlaceholders})`;
-      params.push(...query.castleIds.map(id => parseInt(id)));
+      params.push(...query.castleIds.map((id) => parseInt(id)));
     }
 
     // Add status filter (only for active bookings)
     if (query?.statuses && query.statuses.length > 0) {
-      const statusPlaceholders = query.statuses.map(() => `$${paramCount++}`).join(',');
+      const statusPlaceholders = query.statuses
+        .map(() => `$${paramCount++}`)
+        .join(",");
       whereClause += ` AND status IN (${statusPlaceholders})`;
       params.push(...query.statuses);
     }
@@ -1251,40 +1525,53 @@ export async function getBookingStats(query?: {
       FROM castles c
       LEFT JOIN bookings b ON c.id = b.castle_id AND b.status IN ('pending', 'confirmed', 'completed')
     `;
-    
+
     let popularCastlesParams: any[] = [];
     let popularCastlesParamCount = 1;
-    let popularCastlesWhere = '';
+    let popularCastlesWhere = "";
 
     // Apply same filters to popular castles query
     if (query?.dateFrom) {
-      popularCastlesWhere += popularCastlesWhere ? ` AND b.date >= $${popularCastlesParamCount++}` : ` WHERE b.date >= $${popularCastlesParamCount++}`;
+      popularCastlesWhere += popularCastlesWhere
+        ? ` AND b.date >= $${popularCastlesParamCount++}`
+        : ` WHERE b.date >= $${popularCastlesParamCount++}`;
       popularCastlesParams.push(query.dateFrom);
     }
     if (query?.dateTo) {
-      popularCastlesWhere += popularCastlesWhere ? ` AND b.date <= $${popularCastlesParamCount++}` : ` WHERE b.date <= $${popularCastlesParamCount++}`;
+      popularCastlesWhere += popularCastlesWhere
+        ? ` AND b.date <= $${popularCastlesParamCount++}`
+        : ` WHERE b.date <= $${popularCastlesParamCount++}`;
       popularCastlesParams.push(query.dateTo);
     }
     if (query?.castleIds && query.castleIds.length > 0) {
-      const castlePlaceholders = query.castleIds.map(() => `$${popularCastlesParamCount++}`).join(',');
-      popularCastlesWhere += popularCastlesWhere ? ` AND c.id IN (${castlePlaceholders})` : ` WHERE c.id IN (${castlePlaceholders})`;
-      popularCastlesParams.push(...query.castleIds.map(id => parseInt(id)));
+      const castlePlaceholders = query.castleIds
+        .map(() => `$${popularCastlesParamCount++}`)
+        .join(",");
+      popularCastlesWhere += popularCastlesWhere
+        ? ` AND c.id IN (${castlePlaceholders})`
+        : ` WHERE c.id IN (${castlePlaceholders})`;
+      popularCastlesParams.push(...query.castleIds.map((id) => parseInt(id)));
     }
 
-    popularCastlesQuery += popularCastlesWhere + `
+    popularCastlesQuery +=
+      popularCastlesWhere +
+      `
       GROUP BY c.id, c.name
       HAVING COUNT(b.id) > 0
       ORDER BY booking_count DESC, c.name ASC
       LIMIT 5
     `;
 
-    const popularCastlesResult = await client.query(popularCastlesQuery, popularCastlesParams);
+    const popularCastlesResult = await client.query(
+      popularCastlesQuery,
+      popularCastlesParams,
+    );
 
     const stats = result.rows[0];
-    const popularCastles = popularCastlesResult.rows.map(row => ({
+    const popularCastles = popularCastlesResult.rows.map((row) => ({
       castleId: row.castle_id,
       castleName: row.castle_name,
-      bookingCount: parseInt(row.booking_count)
+      bookingCount: parseInt(row.booking_count),
     }));
 
     return {
@@ -1293,10 +1580,14 @@ export async function getBookingStats(query?: {
       confirmed: parseInt(stats.confirmed),
       completed: parseInt(stats.completed),
       revenue: parseInt(stats.revenue),
-      popularCastles
+      popularCastles,
     };
   } catch (error) {
-    console.error('Error fetching booking stats', error instanceof Error ? error : new Error(String(error)), { query });
+    console.error(
+      "Error fetching booking stats",
+      error instanceof Error ? error : new Error(String(error)),
+      { query },
+    );
     throw error;
   } finally {
     client.release();

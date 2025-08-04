@@ -1,10 +1,16 @@
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { X } from 'lucide-react';
-import React from 'react';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { X } from "lucide-react";
+import React from "react";
 
 export interface Castle {
   id: number;
@@ -23,14 +29,12 @@ export interface BookingFormData {
   customerPhone: string;
   address: string;
   singleDate: string;
-  multipleDate: boolean;
-  startDate: string;
-  endDate: string;
   eventDuration: number; // 8 or 24 hours (replaces overnight boolean)
   additionalCosts: boolean;
   additionalCostsDescription: string;
   additionalCostsAmount: number;
   saveAsConfirmed?: boolean; // For manual confirmation workflow
+  noDepositRequired?: boolean; // For bookings that don't require a deposit
 }
 
 interface BookingFormModalProps {
@@ -41,7 +45,10 @@ interface BookingFormModalProps {
   isSubmitting: boolean;
   onClose: () => void;
   onSubmit: (e: React.FormEvent) => void;
-  onFormChange: (field: keyof BookingFormData, value: string | boolean | number) => void;
+  onFormChange: (
+    field: keyof BookingFormData,
+    value: string | boolean | number,
+  ) => void;
   calculateTotalCost: () => number;
   showConfirmationToggle?: boolean; // Show "Save as Confirmed" option for new bookings
 }
@@ -56,7 +63,7 @@ export function BookingFormModal({
   onSubmit,
   onFormChange,
   calculateTotalCost,
-  showConfirmationToggle = false
+  showConfirmationToggle = false,
 }: BookingFormModalProps) {
   if (!open) return null;
 
@@ -67,7 +74,7 @@ export function BookingFormModal({
           {/* Modal Header */}
           <div className="flex items-center justify-between mb-4 sm:mb-6">
             <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
-              {isEditing ? 'Edit Booking' : 'Add New Booking'}
+              {isEditing ? "Edit Booking" : "Add New Booking"}
             </h2>
             <Button
               variant="outline"
@@ -88,7 +95,7 @@ export function BookingFormModal({
               </Label>
               <Select
                 value={bookingForm.castle}
-                onValueChange={(value) => onFormChange('castle', value)}
+                onValueChange={(value) => onFormChange("castle", value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a bouncy castle" />
@@ -113,7 +120,7 @@ export function BookingFormModal({
                   id="customerName"
                   type="text"
                   value={bookingForm.customerName}
-                  onChange={(e) => onFormChange('customerName', e.target.value)}
+                  onChange={(e) => onFormChange("customerName", e.target.value)}
                   placeholder="Enter customer name"
                   required
                 />
@@ -126,7 +133,9 @@ export function BookingFormModal({
                   id="customerPhone"
                   type="tel"
                   value={bookingForm.customerPhone}
-                  onChange={(e) => onFormChange('customerPhone', e.target.value)}
+                  onChange={(e) =>
+                    onFormChange("customerPhone", e.target.value)
+                  }
                   placeholder="Enter contact number"
                   required
                 />
@@ -142,7 +151,7 @@ export function BookingFormModal({
                 id="customerEmail"
                 type="email"
                 value={bookingForm.customerEmail}
-                onChange={(e) => onFormChange('customerEmail', e.target.value)}
+                onChange={(e) => onFormChange("customerEmail", e.target.value)}
                 placeholder="Enter email address"
                 required
               />
@@ -157,76 +166,38 @@ export function BookingFormModal({
                 id="address"
                 type="text"
                 value={bookingForm.address}
-                onChange={(e) => onFormChange('address', e.target.value)}
+                onChange={(e) => onFormChange("address", e.target.value)}
                 placeholder="Enter delivery address"
                 required
               />
             </div>
 
             {/* Date Selection */}
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="multipleDate"
-                  checked={bookingForm.multipleDate}
-                  onCheckedChange={(checked) => onFormChange('multipleDate', !!checked)}
-                />
-                <Label htmlFor="multipleDate" className="text-sm font-medium">
-                  Multiple days
-                </Label>
-              </div>
-
-              {!bookingForm.multipleDate ? (
-                <div className="space-y-2">
-                  <Label htmlFor="singleDate" className="text-sm font-medium">
-                    Date *
-                  </Label>
-                  <Input
-                    id="singleDate"
-                    type="date"
-                    value={bookingForm.singleDate}
-                    onChange={(e) => onFormChange('singleDate', e.target.value)}
-                    required
-                  />
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="startDate" className="text-sm font-medium">
-                      Start Date *
-                    </Label>
-                    <Input
-                      id="startDate"
-                      type="date"
-                      value={bookingForm.startDate}
-                      onChange={(e) => onFormChange('startDate', e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="endDate" className="text-sm font-medium">
-                      End Date *
-                    </Label>
-                    <Input
-                      id="endDate"
-                      type="date"
-                      value={bookingForm.endDate}
-                      onChange={(e) => onFormChange('endDate', e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-              )}
+            <div className="space-y-2">
+              <Label htmlFor="singleDate" className="text-sm font-medium">
+                Date *
+              </Label>
+              <Input
+                id="singleDate"
+                type="date"
+                value={bookingForm.singleDate}
+                onChange={(e) => onFormChange("singleDate", e.target.value)}
+                required
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                For multiple day bookings, simply add as many day bookings as
+                needed.
+              </p>
             </div>
 
             {/* Duration Selection */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">
-                Event Duration
-              </Label>
-              <Select 
-                value={bookingForm.eventDuration.toString()} 
-                onValueChange={(value) => onFormChange('eventDuration', parseInt(value))}
+              <Label className="text-sm font-medium">Event Duration</Label>
+              <Select
+                value={bookingForm.eventDuration.toString()}
+                onValueChange={(value) =>
+                  onFormChange("eventDuration", parseInt(value))
+                }
               >
                 <SelectTrigger className="bg-white">
                   <SelectValue placeholder="Select duration" />
@@ -244,38 +215,59 @@ export function BookingFormModal({
                 <Checkbox
                   id="additionalCosts"
                   checked={bookingForm.additionalCosts}
-                  onCheckedChange={(checked) => onFormChange('additionalCosts', !!checked)}
+                  onCheckedChange={(checked) =>
+                    onFormChange("additionalCosts", !!checked)
+                  }
                 />
-                <Label htmlFor="additionalCosts" className="text-sm font-medium">
+                <Label
+                  htmlFor="additionalCosts"
+                  className="text-sm font-medium"
+                >
                   Additional costs / Discounts
                 </Label>
               </div>
-              
+
               {bookingForm.additionalCosts && (
                 <div className="space-y-3 pl-6">
                   <div className="space-y-2">
-                    <Label htmlFor="additionalCostsDescription" className="text-sm font-medium">
+                    <Label
+                      htmlFor="additionalCostsDescription"
+                      className="text-sm font-medium"
+                    >
                       Description
                     </Label>
                     <Input
                       id="additionalCostsDescription"
                       type="text"
                       value={bookingForm.additionalCostsDescription}
-                      onChange={(e) => onFormChange('additionalCostsDescription', e.target.value)}
+                      onChange={(e) =>
+                        onFormChange(
+                          "additionalCostsDescription",
+                          e.target.value,
+                        )
+                      }
                       placeholder="e.g., Extra setup, delivery fee, discount, etc."
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="additionalCostsAmount" className="text-sm font-medium">
+                    <Label
+                      htmlFor="additionalCostsAmount"
+                      className="text-sm font-medium"
+                    >
                       Amount (£)
                     </Label>
                     <Input
                       id="additionalCostsAmount"
                       type="number"
                       step="0.01"
-                      value={bookingForm.additionalCostsAmount}
-                      onChange={(e) => onFormChange('additionalCostsAmount', parseFloat(e.target.value) || 0)}
+                      value={bookingForm.additionalCostsAmount || ""}
+                      onChange={(e) =>
+                        onFormChange(
+                          "additionalCostsAmount",
+                          parseFloat(e.target.value) || 0,
+                        )
+                      }
                       placeholder="0.00 (use negative for discounts)"
                       required
                     />
@@ -287,39 +279,30 @@ export function BookingFormModal({
             {/* Cost Summary */}
             {bookingForm.castle && (
               <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="font-medium text-gray-900 mb-2">Booking Summary</h3>
+                <h3 className="font-medium text-gray-900 mb-2">
+                  Booking Summary
+                </h3>
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
                     <span>Castle:</span>
-                    <span>{castles.find(c => c.id.toString() === bookingForm.castle)?.name}</span>
+                    <span>
+                      {
+                        castles.find(
+                          (c) => c.id.toString() === bookingForm.castle,
+                        )?.name
+                      }
+                    </span>
                   </div>
                   {(() => {
-                    const selectedCastle = castles.find(c => c.id.toString() === bookingForm.castle);
+                    const selectedCastle = castles.find(
+                      (c) => c.id.toString() === bookingForm.castle,
+                    );
                     const basePrice = Math.floor(selectedCastle?.price || 0);
-                    let numberOfDays = 1;
-                    if (bookingForm.multipleDate && bookingForm.startDate && bookingForm.endDate) {
-                      const startDate = new Date(bookingForm.startDate);
-                      const endDate = new Date(bookingForm.endDate);
-                      
-                      // Check if dates are valid
-                      if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
-                        const timeDiff = endDate.getTime() - startDate.getTime();
-                        numberOfDays = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
-                        // Ensure numberOfDays is at least 1
-                        numberOfDays = Math.max(1, numberOfDays);
-                      }
-                    }
                     return (
-                      <>
-                        <div className="flex justify-between">
-                          <span>Daily Rate:</span>
-                          <span>£{isNaN(basePrice) ? 0 : basePrice}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Number of Days:</span>
-                          <span>{numberOfDays}</span>
-                        </div>
-                      </>
+                      <div className="flex justify-between">
+                        <span>Base Price:</span>
+                        <span>£{isNaN(basePrice) ? 0 : basePrice}</span>
+                      </div>
                     );
                   })()}
                   {bookingForm.eventDuration === 24 && (
@@ -331,7 +314,12 @@ export function BookingFormModal({
                   {bookingForm.additionalCosts && (
                     <div className="flex justify-between">
                       <span>{bookingForm.additionalCostsDescription}:</span>
-                      <span>£{isNaN(bookingForm.additionalCostsAmount) ? 0 : bookingForm.additionalCostsAmount}</span>
+                      <span>
+                        £
+                        {isNaN(bookingForm.additionalCostsAmount)
+                          ? 0
+                          : bookingForm.additionalCostsAmount}
+                      </span>
                     </div>
                   )}
                   <hr className="my-2" />
@@ -345,25 +333,52 @@ export function BookingFormModal({
 
             {/* Manual Confirmation Toggle */}
             {!isEditing && showConfirmationToggle && (
-              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                <div className="flex items-start space-x-3">
-                  <Checkbox
-                    id="saveAsConfirmed"
-                    checked={bookingForm.saveAsConfirmed || false}
-                    onCheckedChange={(checked) => 
-                      onFormChange('saveAsConfirmed', checked === true)
-                    }
-                  />
-                  <div className="flex-1">
-                    <Label 
-                      htmlFor="saveAsConfirmed" 
-                      className="text-sm font-medium text-blue-900 cursor-pointer"
-                    >
-                      Save as Confirmed
-                    </Label>
-                    <p className="text-xs text-blue-700 mt-1">
-                      Customer will sign agreement manually/physically. Skip email automation and mark as confirmed immediately.
-                    </p>
+              <div className="space-y-3">
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <div className="flex items-start space-x-3">
+                    <Checkbox
+                      id="saveAsConfirmed"
+                      checked={bookingForm.saveAsConfirmed || false}
+                      onCheckedChange={(checked) =>
+                        onFormChange("saveAsConfirmed", checked === true)
+                      }
+                    />
+                    <div className="flex-1">
+                      <Label
+                        htmlFor="saveAsConfirmed"
+                        className="text-sm font-medium text-blue-900 cursor-pointer"
+                      >
+                        Save as Confirmed - Agreement Signed
+                      </Label>
+                      <p className="text-xs text-blue-700 mt-1">
+                        Customer will sign agreement manually/physically. Skip
+                        email automation and mark as confirmed immediately.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                  <div className="flex items-start space-x-3">
+                    <Checkbox
+                      id="noDepositRequired"
+                      checked={bookingForm.noDepositRequired || false}
+                      onCheckedChange={(checked) =>
+                        onFormChange("noDepositRequired", checked === true)
+                      }
+                    />
+                    <div className="flex-1">
+                      <Label
+                        htmlFor="noDepositRequired"
+                        className="text-sm font-medium text-green-900 cursor-pointer"
+                      >
+                        No deposit required
+                      </Label>
+                      <p className="text-xs text-green-700 mt-1">
+                        Booking does not require a deposit payment. Deposit
+                        amount will be set to £0.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -383,33 +398,48 @@ export function BookingFormModal({
                 type="submit"
                 disabled={isSubmitting}
                 className={
-                  bookingForm.saveAsConfirmed 
-                    ? "bg-green-600 hover:bg-green-700" 
+                  bookingForm.saveAsConfirmed
+                    ? "bg-green-600 hover:bg-green-700"
                     : "bg-blue-600 hover:bg-blue-700"
                 }
               >
-                {isSubmitting 
-                  ? (
-                    <>
-                      <span className="hidden sm:inline">
-                        {isEditing ? 'Updating' : (bookingForm.saveAsConfirmed ? 'Creating Confirmed' : 'Creating')} Booking...
-                      </span>
-                      <span className="sm:hidden">
-                        {isEditing ? 'Updating...' : (bookingForm.saveAsConfirmed ? 'Creating...' : 'Creating...')}
-                      </span>
-                    </>
-                  )
-                  : (
-                    <>
-                      <span className="hidden sm:inline">
-                        {isEditing ? 'Update' : (bookingForm.saveAsConfirmed ? 'Create Confirmed' : 'Create')} Booking
-                      </span>
-                      <span className="sm:hidden">
-                        {isEditing ? 'Update' : (bookingForm.saveAsConfirmed ? 'Confirm' : 'Create')}
-                      </span>
-                    </>
-                  )
-                }
+                {isSubmitting ? (
+                  <>
+                    <span className="hidden sm:inline">
+                      {isEditing
+                        ? "Updating"
+                        : bookingForm.saveAsConfirmed
+                          ? "Creating Confirmed"
+                          : "Creating"}{" "}
+                      Booking...
+                    </span>
+                    <span className="sm:hidden">
+                      {isEditing
+                        ? "Updating..."
+                        : bookingForm.saveAsConfirmed
+                          ? "Creating..."
+                          : "Creating..."}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="hidden sm:inline">
+                      {isEditing
+                        ? "Update"
+                        : bookingForm.saveAsConfirmed
+                          ? "Create Confirmed"
+                          : "Create"}{" "}
+                      Booking
+                    </span>
+                    <span className="sm:hidden">
+                      {isEditing
+                        ? "Update"
+                        : bookingForm.saveAsConfirmed
+                          ? "Confirm"
+                          : "Create"}
+                    </span>
+                  </>
+                )}
               </Button>
             </div>
           </form>
@@ -417,4 +447,4 @@ export function BookingFormModal({
       </div>
     </div>
   );
-} 
+}
