@@ -98,32 +98,81 @@ export async function POST(request: NextRequest) {
         auditTrail = booking.audit_trail || [];
       }
 
-      // Generate PDF
-      const browser = await puppeteer.launch({
+      // Generate PDF - Configure for serverless environments
+      const isDev = process.env.NODE_ENV === 'development';
+      const isVercel = process.env.VERCEL === '1';
+      
+      let browserConfig: any = {
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
-      });
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--single-process',
+          '--disable-gpu'
+        ]
+      };
+
+      // Add Vercel-specific configuration
+      if (isVercel) {
+        browserConfig.args.push(
+          '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-renderer-backgrounding'
+        );
+        // Try to use the system Chrome if available
+        try {
+          const chromium = require('@sparticuz/chromium');
+          browserConfig.executablePath = await chromium.executablePath();
+          browserConfig.args.push(...chromium.args);
+        } catch (e) {
+          console.log('Chromium package not available, using default');
+        }
+      }
       
-      const page = await browser.newPage();
+      let browser;
+      let pdfBuffer;
       
-      // Create HTML content for the report
-      const htmlContent = generateBookingReportHTML(booking, auditTrail);
-      
-      await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-      
-      const pdfBuffer = await page.pdf({
-        format: 'A4',
-        printBackground: true,
-        margin: {
-          top: '10mm',
-          right: '10mm',
-          bottom: '10mm',
-          left: '10mm'
-        },
-        scale: 0.8
-      });
-      
-      await browser.close();
+      try {
+        browser = await puppeteer.launch(browserConfig);
+        
+        const page = await browser.newPage();
+        
+        // Set page timeout for serverless environments
+        page.setDefaultTimeout(30000);
+        
+        // Create HTML content for the report
+        const htmlContent = generateBookingReportHTML(booking, auditTrail);
+        
+        await page.setContent(htmlContent, { 
+          waitUntil: 'networkidle0',
+          timeout: 15000
+        });
+        
+        pdfBuffer = await page.pdf({
+          format: 'A4',
+          printBackground: true,
+          margin: {
+            top: '10mm',
+            right: '10mm',
+            bottom: '10mm',
+            left: '10mm'
+          },
+          scale: 0.8,
+          timeout: 30000
+        });
+        
+      } catch (pdfError) {
+        console.error('PDF generation error:', pdfError);
+        throw new Error(`Failed to generate PDF: ${pdfError instanceof Error ? pdfError.message : 'Unknown error'}`);
+      } finally {
+        if (browser) {
+          await browser.close();
+        }
+      }
 
       // Return PDF as response
       return new NextResponse(pdfBuffer, {

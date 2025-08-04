@@ -7,5 +7,7 @@
 			"path": "../_Cursor-info"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"powershell.cwd": "tands"
+	}
 }
