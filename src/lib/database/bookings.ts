@@ -347,6 +347,9 @@ export async function createPendingBooking(
         deposit: result.rows[0].deposit,
         status: result.rows[0].status,
         notes: result.rows[0].notes,
+        startDate: result.rows[0].start_date,
+        endDate: result.rows[0].end_date,
+        eventDuration: result.rows[0].event_duration,
         createdAt: result.rows[0].created_at,
         updatedAt: result.rows[0].updated_at,
         // Email automation tracking
@@ -725,6 +728,24 @@ export async function updateBookingAgreement(
       error instanceof Error ? error : new Error(String(error)),
       { bookingId: id },
     );
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// Update booking payment method
+export async function updateBookingPaymentMethod(id: number, paymentMethod: string): Promise<void> {
+  const client = await getPool().connect();
+  try {
+    console.log(`Executing updateBookingPaymentMethod: ID=${id}, PaymentMethod=${paymentMethod}`);
+    const result = await client.query(
+      'UPDATE bookings SET payment_method = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      [paymentMethod, id]
+    );
+    console.log(`updateBookingPaymentMethod result: ${result.rowCount} rows affected`);
+  } catch (error) {
+    console.error('Error in updateBookingPaymentMethod:', error);
     throw error;
   } finally {
     client.release();

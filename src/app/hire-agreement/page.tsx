@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { StripePaymentForm } from "@/components/payment/StripePaymentForm";
 
@@ -33,6 +34,8 @@ function HireAgreementContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [paymentIntentId, setPaymentIntentId] = useState<string>('');
+  const [isEditingPaymentMethod, setIsEditingPaymentMethod] = useState(false);
+  const [newPaymentMethod, setNewPaymentMethod] = useState("");
 
   useEffect(() => {
     if (bookingRef) {
@@ -83,6 +86,61 @@ function HireAgreementContent() {
   const handlePaymentError = (error: string) => {
     toast.error(`Payment failed: ${error}`);
     setPaymentCompleted(false);
+  };
+
+  const handlePaymentMethodChange = async (method: string) => {
+    if (!bookingDetails) return;
+
+    try {
+      const response = await fetch(`/api/bookings/${bookingDetails.bookingRef}/update-payment-method`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          paymentMethod: method,
+        }),
+      });
+
+      if (response.ok) {
+        setBookingDetails({
+          ...bookingDetails,
+          paymentMethod: method,
+        });
+        setIsEditingPaymentMethod(false);
+        toast.success("Payment method updated successfully!");
+      } else {
+        throw new Error('Failed to update payment method');
+      }
+    } catch (error) {
+      console.error('Error updating payment method:', error);
+      toast.error("Failed to update payment method. Please try again.");
+    }
+  };
+
+  const getPaymentMethodDisplay = (method: string) => {
+    switch (method) {
+      case 'cash':
+        return 'Cash on Delivery';
+      case 'online':
+        return 'Online Payment';
+      case 'card':
+        return 'Card on Delivery';
+      case 'bank_transfer':
+        return 'Bank Transfer'; // Legacy support
+      default:
+        return method;
+    }
+  };
+
+  const getPaymentAmountDue = () => {
+    if (!bookingDetails) return 0;
+    
+    if (bookingDetails.paymentMethod === 'online') {
+      return bookingDetails.totalPrice; // Full amount for online payment
+    } else {
+      return bookingDetails.deposit; // Just deposit for cash on delivery
+    }
   };
 
   const handleSubmitAgreement = async () => {
@@ -178,13 +236,92 @@ function HireAgreementContent() {
                 <div className="space-y-1 text-sm text-gray-600">
                   <p><strong>Castle:</strong> {bookingDetails.castleName}</p>
                   <p><strong>Date:</strong> {format(new Date(bookingDetails.date), "EEEE, MMMM do, yyyy")}</p>
-                                <p><strong>Total Cost:</strong> £{bookingDetails.totalPrice}</p>
-              <p><strong>Payment Method:</strong> {bookingDetails.paymentMethod === 'cash' ? 'Cash on Delivery' : bookingDetails.paymentMethod === 'card' ? 'Card on Delivery' : bookingDetails.paymentMethod === 'bank_transfer' ? 'Bank Transfer' : 'Cash on Delivery'}</p>
+                  <p><strong>Total Cost:</strong> £{bookingDetails.totalPrice}</p>
+                  <div className="flex items-center justify-between">
+                    <p><strong>Payment Method:</strong> {getPaymentMethodDisplay(bookingDetails.paymentMethod)}</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setIsEditingPaymentMethod(true);
+                        setNewPaymentMethod(bookingDetails.paymentMethod);
+                      }}
+                      className="ml-2"
+                    >
+                      Change
+                    </Button>
+                  </div>
+                  {bookingDetails.paymentMethod === 'online' && (
+                    <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
+                      <p className="text-blue-700 text-xs"><strong>Online Payment:</strong> Full amount (£{bookingDetails.totalPrice}) will be charged when you sign this agreement.</p>
+                    </div>
+                  )}
+                  {bookingDetails.paymentMethod === 'cash' && (
+                    <div className="mt-2 p-2 bg-green-50 rounded border border-green-200">
+                      <p className="text-green-700 text-xs"><strong>Cash on Delivery:</strong> Deposit of £{bookingDetails.deposit} required now, remaining £{bookingDetails.totalPrice - bookingDetails.deposit} paid on delivery.</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
+
+        {/* Payment Method Change Modal */}
+        {isEditingPaymentMethod && (
+          <Card className="mb-8 border-2 border-blue-500">
+            <CardHeader>
+              <CardTitle className="text-blue-700">Change Payment Method</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Select new payment method:</label>
+                  <Select value={newPaymentMethod} onValueChange={setNewPaymentMethod}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose payment method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Cash on Delivery</SelectItem>
+                      <SelectItem value="online">Online Payment</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {newPaymentMethod === 'online' && (
+                  <div className="p-3 bg-blue-50 rounded border border-blue-200">
+                    <p className="text-blue-700 text-sm">
+                      <strong>Online Payment:</strong> You will pay the full amount (£{bookingDetails?.totalPrice}) online when you sign this agreement.
+                    </p>
+                  </div>
+                )}
+                
+                {newPaymentMethod === 'cash' && (
+                  <div className="p-3 bg-green-50 rounded border border-green-200">
+                    <p className="text-green-700 text-sm">
+                      <strong>Cash on Delivery:</strong> You will pay a deposit of £{bookingDetails?.deposit} now, and the remaining £{(bookingDetails?.totalPrice || 0) - (bookingDetails?.deposit || 0)} will be paid in cash upon delivery.
+                    </p>
+                  </div>
+                )}
+                
+                <div className="flex gap-2 pt-4">
+                  <Button
+                    onClick={() => handlePaymentMethodChange(newPaymentMethod)}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    Update Payment Method
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsEditingPaymentMethod(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Terms and Conditions */}
         <Card className="mb-8">
@@ -286,8 +423,18 @@ function HireAgreementContent() {
                   <div>
                     <p><strong>Bouncy Castle Hired:</strong> {bookingDetails.castleName}</p>
                     <p><strong>Hire Date:</strong> {format(new Date(bookingDetails.date), "EEEE, MMMM do, yyyy")}</p>
-                    <p><strong>Payment Method:</strong> {bookingDetails.paymentMethod === 'cash' ? 'Cash on Delivery' : bookingDetails.paymentMethod === 'card' ? 'Card on Delivery' : bookingDetails.paymentMethod === 'bank_transfer' ? 'Bank Transfer' : 'Cash on Delivery'}</p>
-                    <p><strong>Amount Due:</strong> £{bookingDetails.totalPrice}</p>
+                    <p><strong>Payment Method:</strong> {getPaymentMethodDisplay(bookingDetails.paymentMethod)}</p>
+                    {bookingDetails.paymentMethod === 'online' ? (
+                      <>
+                        <p><strong>Amount to Pay:</strong> £{bookingDetails.totalPrice} (Full Amount)</p>
+                        <p><strong>Payment Due:</strong> Upon signing this agreement</p>
+                      </>
+                    ) : (
+                      <>
+                        <p><strong>Deposit Due:</strong> £{bookingDetails.deposit}</p>
+                        <p><strong>Balance Due on Delivery:</strong> £{bookingDetails.totalPrice - bookingDetails.deposit}</p>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

@@ -65,7 +65,7 @@ function HireAgreementSuccessContent() {
               <ul className="text-sm text-gray-700 space-y-1 text-left">
                 <li>• Please ensure someone is available for delivery and collection</li>
                 <li>• Have the delivery address ready and accessible</li>
-                <li>• Prepare payment method (cash or bank transfer)</li>
+                <li>• Prepare payment method (cash on delivery or online payment)</li>
                 <li>• Review safety instructions before use</li>
               </ul>
             </div>

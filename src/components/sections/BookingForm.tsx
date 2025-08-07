@@ -35,6 +35,7 @@ export function BookingForm() {
   const [eventDuration, setEventDuration] = useState(8); // Default 8 hours
   const [specialRequests, setSpecialRequests] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [selectedPaymentDetails, setSelectedPaymentDetails] = useState("25% deposit required when booking confirmed, balance paid in cash upon delivery");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
@@ -300,7 +301,10 @@ export function BookingForm() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
               type="button"
-              onClick={() => setPaymentMethod("cash")}
+              onClick={() => {
+                setPaymentMethod("cash");
+                setSelectedPaymentDetails("25% deposit required when booking confirmed, balance paid in cash upon delivery");
+              }}
               className={`p-3 rounded-md border-2 transition-all duration-200 text-sm font-medium ${
                 paymentMethod === "cash"
                   ? "border-green-500 bg-green-50 text-green-700"
@@ -311,16 +315,34 @@ export function BookingForm() {
             </button>
             <button
               type="button"
-              onClick={() => setPaymentMethod("bank_transfer")}
+              onClick={() => {
+                setPaymentMethod("online");
+                setSelectedPaymentDetails("Pay online in full when the booking is confirmed, before signing the hire agreement");
+              }}
               className={`p-3 rounded-md border-2 transition-all duration-200 text-sm font-medium ${
-                paymentMethod === "bank_transfer"
+                paymentMethod === "online"
                   ? "border-blue-500 bg-blue-50 text-blue-700"
                   : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
               }`}
             >
-              Bank Transfer
+              Online Payment
             </button>
           </div>
+          
+          {/* Payment Method Details */}
+          {selectedPaymentDetails && (
+            <div className={`mt-3 p-3 rounded-md border-2 ${
+              paymentMethod === "cash"
+                ? "border-green-500 bg-green-50"
+                : "border-blue-500 bg-blue-50"
+            }`}>
+              <p className={`text-sm ${
+                paymentMethod === "cash"
+                  ? "text-green-700"
+                  : "text-blue-700"
+              }`}>{selectedPaymentDetails}</p>
+            </div>
+          )}
         </div>
 
         {/* Pricing Summary */}

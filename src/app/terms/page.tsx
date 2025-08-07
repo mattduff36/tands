@@ -71,7 +71,7 @@ const TermsPage = () => {
                     <li>Bookings can be made online, by phone, or email</li>
                     <li>A non-refundable deposit of 25% is required to secure your booking</li>
                     <li>Full payment is due on the day of hire</li>
-                    <li>We accept cash on delivery and bank transfer</li>
+                    <li>We accept cash on delivery and online payment</li>
                   </ul>
                 </div>
                 <div>
