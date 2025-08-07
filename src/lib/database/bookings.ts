@@ -583,7 +583,8 @@ export async function getBookingsByStatus(
       castle_id, castle_name, date, payment_method, total_price, deposit, status, notes,
       created_at, updated_at, start_date, end_date, event_duration,
       agreement_signed, agreement_signed_at, agreement_signed_by, agreement_signed_method,
-      email_sent, email_sent_at, manual_confirmation, confirmed_by
+      email_sent, email_sent_at, manual_confirmation, confirmed_by,
+      payment_status, payment_intent_id, payment_date, payment_amount, payment_type, payment_failure_reason
     FROM bookings`;
         let params: any[] = [];
 
@@ -636,6 +637,13 @@ export async function getBookingsByStatus(
           agreementViewed: false, // Not selected in this query
           agreementViewedAt: undefined, // Not selected in this query
           auditTrail: undefined, // Not selected in this query
+          // Payment tracking fields
+          paymentStatus: row.payment_status,
+          paymentIntentId: row.payment_intent_id,
+          paymentDate: row.payment_date,
+          paymentAmount: row.payment_amount,
+          paymentType: row.payment_type,
+          paymentFailureReason: row.payment_failure_reason,
         }));
       } catch (error) {
         console.error("Error fetching bookings:", error);

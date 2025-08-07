@@ -26,9 +26,9 @@ export async function POST(
       );
     }
 
-    // Get the booking by reference
-    const pendingBookings = await getBookingsByStatus('pending');
-    const booking = pendingBookings.find(b => b.bookingRef === bookingRef);
+    // Get the booking by reference (search all statuses)
+    const allBookings = await getBookingsByStatus();
+    const booking = allBookings.find(b => b.bookingRef === bookingRef);
 
     if (!booking) {
       return NextResponse.json(
