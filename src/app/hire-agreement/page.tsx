@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { toast } from "sonner";
 import { StripePaymentForm } from "@/components/payment/StripePaymentForm";
 
@@ -275,17 +275,32 @@ function HireAgreementContent() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <label className="text-sm font-medium">Select new payment method:</label>
-                  <Select value={newPaymentMethod} onValueChange={setNewPaymentMethod}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose payment method" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cash">Cash on Delivery</SelectItem>
-                      <SelectItem value="online">Online Payment</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setNewPaymentMethod("cash")}
+                      className={`p-3 rounded-md border-2 transition-all duration-200 text-sm font-medium ${
+                        newPaymentMethod === "cash"
+                          ? "border-green-500 bg-green-50 text-green-700"
+                          : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+                      }`}
+                    >
+                      Cash on Delivery
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNewPaymentMethod("online")}
+                      className={`p-3 rounded-md border-2 transition-all duration-200 text-sm font-medium ${
+                        newPaymentMethod === "online"
+                          ? "border-blue-500 bg-blue-50 text-blue-700"
+                          : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+                      }`}
+                    >
+                      Online Payment
+                    </button>
+                  </div>
                 </div>
                 
                 {newPaymentMethod === 'online' && (
