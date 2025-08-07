@@ -51,6 +51,13 @@ export interface PendingBooking {
   auditTrail?: AuditTrailEntry[];
   // Calendar integration
   calendarEventId?: string;
+  // Stripe payment tracking
+  paymentStatus?: 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunded';
+  paymentIntentId?: string;
+  paymentDate?: Date;
+  paymentAmount?: number; // Amount actually paid (in pence)
+  paymentType?: 'deposit' | 'full';
+  paymentFailureReason?: string;
 }
 
 export interface AuditTrailEntry {
@@ -127,6 +134,21 @@ export async function initializeBookingsTable(): Promise<void> {
       ADD COLUMN IF NOT EXISTS agreement_viewed_at TIMESTAMP WITH TIME ZONE,
       ADD COLUMN IF NOT EXISTS audit_trail JSONB DEFAULT '[]'::jsonb -- Complete audit log as JSON
     `);
+
+    // Add Stripe payment tracking fields
+    await client.query(`
+      ALTER TABLE bookings 
+      ADD COLUMN IF NOT EXISTS payment_status VARCHAR(20) DEFAULT 'pending', -- 'pending', 'deposit_paid', 'paid_full'
+      ADD COLUMN IF NOT EXISTS payment_intent_id VARCHAR(255), -- Stripe payment intent ID
+      ADD COLUMN IF NOT EXISTS payment_date TIMESTAMP WITH TIME ZONE, -- When payment was completed
+      ADD COLUMN IF NOT EXISTS payment_amount INTEGER, -- Amount actually paid (in pence)
+      ADD COLUMN IF NOT EXISTS payment_type VARCHAR(20), -- 'deposit', 'full', 'balance'
+      ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR(255), -- Stripe customer ID for future reference
+      ADD COLUMN IF NOT EXISTS payment_failure_reason TEXT, -- Reason for payment failure
+      ADD COLUMN IF NOT EXISTS admin_payment_comment TEXT -- Admin comment when payment status is manually changed
+    `);
+
+    console.log('Stripe payment tracking fields added to bookings table');
 
     // Add simplified duplicate prevention: unique constraint for castle + date + active status
     // This prevents the most critical duplicate: same castle on same date
@@ -746,6 +768,101 @@ export async function updateBookingPaymentMethod(id: number, paymentMethod: stri
     console.log(`updateBookingPaymentMethod result: ${result.rowCount} rows affected`);
   } catch (error) {
     console.error('Error in updateBookingPaymentMethod:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// Update booking payment status after Stripe webhook
+export async function updateBookingPaymentStatus(
+  bookingRef: string,
+  paymentData: {
+    paymentStatus: 'paid' | 'failed' | 'cancelled';
+    paymentIntentId: string;
+    paymentAmount?: number;
+    paymentType?: 'deposit' | 'full';
+    failureReason?: string;
+  }
+): Promise<void> {
+  const client = await getPool().connect();
+  try {
+    console.log(`Updating payment status for booking ${bookingRef}:`, paymentData);
+    
+    const result = await client.query(
+      `UPDATE bookings SET 
+        payment_status = $1,
+        payment_intent_id = $2,
+        payment_date = $3,
+        payment_amount = $4,
+        payment_type = $5,
+        payment_failure_reason = $6,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE booking_ref = $7`,
+      [
+        paymentData.paymentStatus,
+        paymentData.paymentIntentId,
+        paymentData.paymentStatus === 'paid' ? new Date() : null,
+        paymentData.paymentAmount || null,
+        paymentData.paymentType || null,
+        paymentData.failureReason || null,
+        bookingRef
+      ]
+    );
+    
+    console.log(`Payment status update result: ${result.rowCount} rows affected`);
+  } catch (error) {
+    console.error('Error updating booking payment status:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// Get booking by payment intent ID
+export async function getBookingByPaymentIntent(paymentIntentId: string): Promise<PendingBooking | null> {
+  const client = await getPool().connect();
+  try {
+    const result = await client.query(
+      'SELECT * FROM bookings WHERE payment_intent_id = $1',
+      [paymentIntentId]
+    );
+    
+    if (result.rows.length === 0) {
+      return null;
+    }
+    
+    const row = result.rows[0];
+    return {
+      id: row.id,
+      bookingRef: row.booking_ref,
+      customerName: row.customer_name,
+      customerEmail: row.customer_email,
+      customerPhone: row.customer_phone,
+      customerAddress: row.customer_address,
+      castleId: row.castle_id,
+      castleName: row.castle_name,
+      date: row.date,
+      paymentMethod: row.payment_method,
+      totalPrice: row.total_price,
+      deposit: row.deposit,
+      status: row.status,
+      notes: row.notes,
+      startDate: row.start_date,
+      endDate: row.end_date,
+      eventDuration: row.event_duration,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      // Payment tracking fields
+      paymentStatus: row.payment_status,
+      paymentIntentId: row.payment_intent_id,
+      paymentDate: row.payment_date,
+      paymentAmount: row.payment_amount,
+      paymentType: row.payment_type,
+      paymentFailureReason: row.payment_failure_reason,
+    };
+  } catch (error) {
+    console.error('Error getting booking by payment intent:', error);
     throw error;
   } finally {
     client.release();

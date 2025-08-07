@@ -31,6 +31,7 @@ import {
   FileWarning,
   Check,
   Users,
+  PoundSterling,
 } from "lucide-react";
 import { toast } from "sonner";
 import { BookingDetailsModal } from "@/components/admin/BookingDetailsModal";
@@ -69,6 +70,14 @@ interface Booking {
   agreementSignedAt?: string;
   agreementSignedBy?: string;
   agreementSignedMethod?: "email" | "manual" | "physical" | "admin_override";
+  
+  // Payment tracking information
+  paymentStatus?: 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunded';
+  paymentIntentId?: string;
+  paymentDate?: string;
+  paymentAmount?: number;
+  paymentType?: 'deposit' | 'full';
+  paymentFailureReason?: string;
 }
 
 interface CalendarEvent {
@@ -137,6 +146,13 @@ export default function AdminBookings() {
   // Calendar-specific state
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+
+  // Payment editing state
+  const [showPaymentEditModal, setShowPaymentEditModal] = useState(false);
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  const [newPaymentStatus, setNewPaymentStatus] = useState<'pending' | 'deposit_paid' | 'paid_full'>('pending');
+  const [adminComment, setAdminComment] = useState('');
+  const [isUpdatingPayment, setIsUpdatingPayment] = useState(false);
 
   // Debug: Track events array changes
   useEffect(() => {
@@ -386,18 +402,153 @@ export default function AdminBookings() {
 
     if (booking.agreementSigned) {
       return (
-        <Badge className="flex items-center gap-1 bg-black text-white border-black hover:bg-black">
+        <Badge 
+          className="flex items-center gap-1 bg-black text-white border-black hover:bg-black"
+          title="Agreement: Signed"
+        >
           <FileCheck className="w-3 h-3" />
-          Agreement Signed
         </Badge>
       );
     } else {
       return (
-        <Badge className="flex items-center gap-1 bg-white text-black border-black hover:bg-white">
+        <Badge 
+          className="flex items-center gap-1 bg-white text-black border-black hover:bg-white"
+          title="Agreement: Awaiting signature"
+        >
           <FileWarning className="w-3 h-3" />
-          Awaiting Signature
         </Badge>
       );
+    }
+  };
+
+  // Get payment status badge for confirmed bookings (clickable for editing)
+  const getPaymentBadge = (booking: any) => {
+    // Only show payment status for confirmed bookings
+    if (booking.status !== "confirmed") {
+      return null;
+    }
+
+    // Determine payment status based on available data
+    const paymentStatus = booking.paymentStatus;
+    const paymentMethod = booking.paymentMethod;
+    const paymentType = booking.paymentType;
+
+    // Handle new payment statuses
+    if (paymentStatus === 'paid_full') {
+      // Green - Paid in full
+      return (
+        <Badge 
+          className="flex items-center gap-1 bg-green-100 text-green-800 border-green-200 hover:bg-green-200 cursor-pointer" 
+          title="Payment: Paid in full (click to edit)"
+          onClick={(e) => {
+            e.stopPropagation();
+            handlePaymentBadgeClick(booking);
+          }}
+        >
+          <PoundSterling className="w-3 h-3" />
+        </Badge>
+      );
+    }
+
+    if (paymentStatus === 'deposit_paid') {
+      // Yellow - Deposit paid
+      return (
+        <Badge 
+          className="flex items-center gap-1 bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200 cursor-pointer" 
+          title="Payment: Deposit paid (click to edit)"
+          onClick={(e) => {
+            e.stopPropagation();
+            handlePaymentBadgeClick(booking);
+          }}
+        >
+          <PoundSterling className="w-3 h-3" />
+        </Badge>
+      );
+    }
+
+    // Handle pending payments (default/fallback)
+    if (paymentStatus === 'pending' || !paymentStatus) {
+      // Grey - Pending payment
+      return (
+        <Badge 
+          className="flex items-center gap-1 bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200 cursor-pointer" 
+          title="Payment: Pending (click to edit)"
+          onClick={(e) => {
+            e.stopPropagation();
+            handlePaymentBadgeClick(booking);
+          }}
+        >
+          <PoundSterling className="w-3 h-3" />
+        </Badge>
+      );
+    }
+
+    // Default case - no payment badge if status is unclear
+    return null;
+  };
+
+  // Handle opening payment edit modal
+  const handlePaymentBadgeClick = (booking: Booking) => {
+    if (booking.status !== 'confirmed') return;
+    
+    setEditingBooking(booking);
+    // Set current values as defaults
+    setNewPaymentStatus(booking.paymentStatus || 'pending');
+    setAdminComment('');
+    setShowPaymentEditModal(true);
+  };
+
+  // Handle updating payment status
+  const handleUpdatePaymentStatus = async () => {
+    if (!editingBooking) return;
+
+    // Validate that comment is provided
+    if (!adminComment.trim()) {
+      toast.error('Please provide a comment explaining the payment status change');
+      return;
+    }
+
+    setIsUpdatingPayment(true);
+    try {
+      const response = await fetch(`/api/admin/bookings/${editingBooking.id}/update-payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          paymentStatus: newPaymentStatus,
+          adminComment: adminComment.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update payment status');
+      }
+
+      const result = await response.json();
+      
+      // Update the booking in the local state
+      setBookings(prevBookings => 
+        prevBookings.map(booking => 
+          booking.id === editingBooking.id 
+            ? { 
+                ...booking, 
+                paymentStatus: newPaymentStatus,
+                updatedAt: new Date().toISOString()
+              }
+            : booking
+        )
+      );
+
+      toast.success('Payment status updated successfully');
+      setShowPaymentEditModal(false);
+      setEditingBooking(null);
+      
+    } catch (error) {
+      console.error('Error updating payment status:', error);
+      toast.error('Failed to update payment status');
+    } finally {
+      setIsUpdatingPayment(false);
     }
   };
 
@@ -1629,9 +1780,13 @@ Status: ${booking.status}`;
                       <div className="flex gap-2">
                         {getStatusBadge(booking.status, booking)}
                         {getAgreementBadge(booking)}
+                        {getPaymentBadge(booking)}
                       </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 text-sm text-gray-600">
+                      <div>
+                        <strong>Booking Ref:</strong> {booking.bookingRef}
+                      </div>
                       <div>
                         <strong>Castle:</strong> {booking.castleName}
                       </div>
@@ -1646,9 +1801,6 @@ Status: ${booking.status}`;
                       </div>
                       <div>
                         <strong>Total:</strong> £{booking.totalPrice}
-                      </div>
-                      <div>
-                        <strong>Booking Ref:</strong> {booking.bookingRef}
                       </div>
                     </div>
                   </div>
@@ -2124,6 +2276,94 @@ Status: ${booking.status}`;
             formatEventTime={formatEventTime}
             getStatusColor={getStatusColor}
           />
+        )}
+
+        {/* Payment Edit Modal */}
+        {showPaymentEditModal && editingBooking && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">Edit Payment Status</h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowPaymentEditModal(false)}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-gray-600 mb-2">
+                    Booking: <strong>{editingBooking.bookingRef}</strong> - {editingBooking.customerName}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Total: £{editingBooking.totalPrice} | Deposit: £{editingBooking.deposit}
+                  </p>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium">Payment Status</Label>
+                  <Select value={newPaymentStatus} onValueChange={(value: any) => setNewPaymentStatus(value)}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="deposit_paid">Deposit paid</SelectItem>
+                      <SelectItem value="paid_full">Paid in full</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium">Comment (Required)</Label>
+                  <textarea
+                    value={adminComment}
+                    onChange={(e) => setAdminComment(e.target.value)}
+                    placeholder="Please explain why you're changing the payment status..."
+                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    rows={3}
+                    required
+                  />
+                  {adminComment.trim().length === 0 && (
+                    <p className="text-xs text-red-600 mt-1">A comment is required to explain this change</p>
+                  )}
+                </div>
+
+                <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+                  <p className="text-sm text-yellow-800">
+                    <strong>Note:</strong> This change will be logged as an admin modification and will update the booking's payment status in the database.
+                  </p>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    onClick={handleUpdatePaymentStatus}
+                    disabled={isUpdatingPayment}
+                    className="flex-1"
+                  >
+                    {isUpdatingPayment ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Updating...
+                      </>
+                    ) : (
+                      'Update Payment Status'
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowPaymentEditModal(false)}
+                    disabled={isUpdatingPayment}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
