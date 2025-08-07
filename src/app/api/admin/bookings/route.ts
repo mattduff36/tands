@@ -72,13 +72,10 @@ export async function GET(request: NextRequest) {
       agreementSignedAt: booking.agreementSignedAt?.toISOString(),
       agreementSignedBy: booking.agreementSignedBy,
       agreementSignedMethod: booking.agreementSignedMethod,
-      // Payment tracking fields for admin interface
+      // Payment status field
       paymentStatus: booking.paymentStatus,
       paymentIntentId: booking.paymentIntentId,
       paymentDate: booking.paymentDate?.toISOString(),
-      paymentAmount: booking.paymentAmount,
-      paymentType: booking.paymentType,
-      paymentFailureReason: booking.paymentFailureReason,
       source: 'database'
     }));
 
