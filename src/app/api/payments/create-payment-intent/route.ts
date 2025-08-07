@@ -9,7 +9,7 @@ const stripe = new Stripe(STRIPE_CONFIG.secretKey, {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { bookingRef, amount, customerName, customerEmail, description } = body;
+    const { bookingRef, amount, customerName, customerEmail, description, paymentType } = body;
 
     // Validate required fields
     if (!bookingRef || !amount || !customerName || !customerEmail) {
@@ -31,12 +31,12 @@ export async function POST(request: NextRequest) {
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
       currency: PAYMENT_CONFIG.currency,
-      description: description || `Deposit payment for booking ${bookingRef}`,
+      description: description || `${paymentType === 'full' ? 'Full payment' : 'Deposit payment'} for booking ${bookingRef}`,
       metadata: {
         bookingRef,
         customerName,
         customerEmail,
-        type: 'deposit',
+        type: paymentType || 'deposit',
       },
       receipt_email: customerEmail,
       automatic_payment_methods: {

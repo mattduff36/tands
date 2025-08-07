@@ -483,7 +483,10 @@ function HireAgreementContent() {
                 Secure Your Booking
               </h2>
               <p className="text-gray-600">
-                Complete your deposit payment to finalize the hire agreement
+                {bookingDetails.paymentMethod === 'online' 
+                  ? `Complete your full payment (£${bookingDetails.totalPrice}) to finalize the hire agreement`
+                  : `Complete your deposit payment (£${bookingDetails.deposit}) to finalize the hire agreement`
+                }
               </p>
             </div>
             
@@ -491,7 +494,8 @@ function HireAgreementContent() {
               bookingRef={bookingDetails.bookingRef}
               customerName={bookingDetails.customerName}
               customerEmail={bookingDetails.customerEmail}
-              depositAmount={bookingDetails.deposit}
+              depositAmount={getPaymentAmountDue()}
+              paymentType={bookingDetails.paymentMethod === 'online' ? 'full' : 'deposit'}
               onPaymentSuccess={handlePaymentSuccess}
               onPaymentError={handlePaymentError}
             />

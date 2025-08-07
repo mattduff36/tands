@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { headers } from 'next/headers';
 import { STRIPE_CONFIG } from '@/lib/stripe';
+import { updateBookingPaymentStatus } from '@/lib/database/bookings';
 
 const stripe = new Stripe(STRIPE_CONFIG.secretKey, {
   apiVersion: '2025-07-30.basil',
@@ -77,72 +78,91 @@ export async function POST(request: NextRequest) {
 async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent) {
   try {
     const bookingRef = paymentIntent.metadata.bookingRef;
+    const paymentType = paymentIntent.metadata.type as 'deposit' | 'full';
     
     if (!bookingRef) {
       console.error('No booking reference found in payment intent metadata');
       return;
     }
 
-    // Update booking in database with payment information
-    // This would typically be a database call to update the booking record
-    console.log(`Updating booking ${bookingRef} with successful payment ${paymentIntent.id}`);
+    console.log(`Processing successful payment for booking ${bookingRef}: ${paymentIntent.id}`);
     
-    // Example database update (replace with your actual database logic):
-    /*
-    await updateBooking(bookingRef, {
+    // Update booking in database with payment information
+    await updateBookingPaymentStatus(bookingRef, {
       paymentStatus: 'paid',
       paymentIntentId: paymentIntent.id,
-      depositAmount: paymentIntent.amount / 100, // Convert from pence to pounds
-      paymentDate: new Date(),
-      paymentMethod: 'stripe',
+      paymentAmount: paymentIntent.amount, // Already in pence
+      paymentType: paymentType || 'deposit',
     });
-    */
 
-    // Send confirmation email to customer
+    console.log(`Successfully updated booking ${bookingRef} with payment status: paid`);
+
+    // TODO: Send confirmation email to customer
     // await sendPaymentConfirmationEmail(paymentIntent.metadata.customerEmail, paymentIntent);
     
   } catch (error) {
     console.error('Error updating booking after payment success:', error);
+    throw error; // Re-throw to ensure webhook returns error status
   }
 }
 
 async function handlePaymentFailure(paymentIntent: Stripe.PaymentIntent) {
   try {
     const bookingRef = paymentIntent.metadata.bookingRef;
+    const paymentType = paymentIntent.metadata.type as 'deposit' | 'full';
     
     if (!bookingRef) {
       console.error('No booking reference found in payment intent metadata');
       return;
     }
 
-    console.log(`Payment failed for booking ${bookingRef}: ${paymentIntent.id}`);
+    console.log(`Processing failed payment for booking ${bookingRef}: ${paymentIntent.id}`);
+    
+    // Get failure reason from payment intent
+    const failureReason = paymentIntent.last_payment_error?.message || 'Payment failed';
     
     // Update booking status to reflect payment failure
-    // await updateBooking(bookingRef, { paymentStatus: 'failed' });
+    await updateBookingPaymentStatus(bookingRef, {
+      paymentStatus: 'failed',
+      paymentIntentId: paymentIntent.id,
+      paymentType: paymentType || 'deposit',
+      failureReason: failureReason,
+    });
+
+    console.log(`Successfully updated booking ${bookingRef} with payment status: failed`);
     
-    // Send failure notification email
+    // TODO: Send failure notification email
     // await sendPaymentFailureEmail(paymentIntent.metadata.customerEmail, paymentIntent);
     
   } catch (error) {
     console.error('Error handling payment failure:', error);
+    throw error; // Re-throw to ensure webhook returns error status
   }
 }
 
 async function handlePaymentCancellation(paymentIntent: Stripe.PaymentIntent) {
   try {
     const bookingRef = paymentIntent.metadata.bookingRef;
+    const paymentType = paymentIntent.metadata.type as 'deposit' | 'full';
     
     if (!bookingRef) {
       console.error('No booking reference found in payment intent metadata');
       return;
     }
 
-    console.log(`Payment canceled for booking ${bookingRef}: ${paymentIntent.id}`);
+    console.log(`Processing canceled payment for booking ${bookingRef}: ${paymentIntent.id}`);
     
     // Update booking status to reflect payment cancellation
-    // await updateBooking(bookingRef, { paymentStatus: 'cancelled' });
+    await updateBookingPaymentStatus(bookingRef, {
+      paymentStatus: 'cancelled',
+      paymentIntentId: paymentIntent.id,
+      paymentType: paymentType || 'deposit',
+    });
+
+    console.log(`Successfully updated booking ${bookingRef} with payment status: cancelled`);
     
   } catch (error) {
     console.error('Error handling payment cancellation:', error);
+    throw error; // Re-throw to ensure webhook returns error status
   }
 }
