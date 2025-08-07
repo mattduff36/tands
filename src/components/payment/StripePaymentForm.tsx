@@ -10,7 +10,8 @@ interface StripePaymentFormProps {
   bookingRef: string;
   customerName: string;
   customerEmail: string;
-  depositAmount: number;
+  depositAmount: number; // Amount to be paid (deposit or full amount depending on payment method)
+  paymentType?: 'deposit' | 'full'; // Type of payment being made
   onPaymentSuccess: (paymentIntentId: string) => void;
   onPaymentError: (error: string) => void;
 }
@@ -20,6 +21,7 @@ export function StripePaymentForm({
   customerName,
   customerEmail,
   depositAmount,
+  paymentType = 'deposit',
   onPaymentSuccess,
   onPaymentError,
 }: StripePaymentFormProps) {
@@ -47,7 +49,8 @@ export function StripePaymentForm({
           amount: Math.round(depositAmount * 100), // Convert to pence
           customerName,
           customerEmail,
-          description: `Deposit for bouncy castle booking ${bookingRef}`,
+          description: `${paymentType === 'full' ? 'Full payment' : 'Deposit payment'} for bouncy castle booking ${bookingRef}`,
+          paymentType,
         }),
       });
 
@@ -120,17 +123,22 @@ export function StripePaymentForm({
             <svg className="w-6 h-6 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
             </svg>
-            Secure Deposit Payment
+            {paymentType === 'full' ? 'Secure Full Payment' : 'Secure Deposit Payment'}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="bg-blue-50 rounded-lg p-4 mb-6 border border-blue-200">
             <div className="flex justify-between items-center">
-              <span className="font-medium text-blue-800">Deposit Required:</span>
+              <span className="font-medium text-blue-800">
+                {paymentType === 'full' ? 'Total Amount:' : 'Deposit Required:'}
+              </span>
               <span className="font-bold text-blue-800 text-lg">£{depositAmount.toFixed(2)}</span>
             </div>
             <p className="text-sm text-blue-700 mt-2">
-              This secures your booking. The remaining balance will be collected on delivery.
+              {paymentType === 'full' 
+                ? 'This is the complete payment for your booking.' 
+                : 'This secures your booking. The remaining balance will be collected on delivery.'
+              }
             </p>
           </div>
 
