@@ -72,7 +72,7 @@ interface Booking {
   agreementSignedMethod?: "email" | "manual" | "physical" | "admin_override";
   
   // Payment tracking information
-  paymentStatus?: 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunded';
+  paymentStatus?: 'pending' | 'deposit_paid' | 'paid_full';
   paymentIntentId?: string;
   paymentDate?: string;
   paymentAmount?: number;
@@ -468,11 +468,11 @@ export default function AdminBookings() {
 
     // Handle pending payments (default/fallback)
     if (paymentStatus === 'pending' || !paymentStatus) {
-      // Grey - Pending payment
+      // Grey - No payment
       return (
         <Badge 
           className="flex items-center gap-1 bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200 cursor-pointer" 
-          title="Payment: Pending (click to edit)"
+          title="Payment: No Payment (click to edit)"
           onClick={(e) => {
             e.stopPropagation();
             handlePaymentBadgeClick(booking);
@@ -487,13 +487,63 @@ export default function AdminBookings() {
     return null;
   };
 
+  // Map booking payment status to admin UI payment status (now they match, so direct mapping)
+  const mapPaymentStatusToAdminUI = (paymentStatus?: string): 'pending' | 'deposit_paid' | 'paid_full' => {
+    switch (paymentStatus) {
+      case 'paid_full':
+        return 'paid_full';
+      case 'deposit_paid':
+        return 'deposit_paid';
+      case 'pending':
+      default:
+        return 'pending';
+    }
+  };
+
+  // Render payment status button (circular with £ symbol only)
+  const getPaymentButton = (booking: Booking) => {
+    if (booking.status !== 'confirmed') return null;
+
+    const paymentStatus = booking.paymentStatus;
+    
+    // Determine button style and tooltip based on payment status
+    let buttonClass = '';
+    let tooltipText = '';
+    
+    // Handle new payment statuses (same logic as getPaymentBadge)
+    if (paymentStatus === 'paid_full') {
+      buttonClass = 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200';
+      tooltipText = 'Payment: Paid Full (click to edit)';
+    } else if (paymentStatus === 'deposit_paid') {
+      buttonClass = 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200';
+      tooltipText = 'Payment: Deposit Paid (click to edit)';
+    } else {
+      // pending, failed, cancelled, refunded, or no status
+      buttonClass = 'bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200';
+      tooltipText = 'Payment: No Payment (click to edit)';
+    }
+
+    return (
+      <button
+        className={`flex items-center justify-center w-10 h-10 rounded-full border transition-colors ${buttonClass}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          handlePaymentBadgeClick(booking);
+        }}
+        title={tooltipText}
+      >
+        <PoundSterling className="w-5 h-5" />
+      </button>
+    );
+  };
+
   // Handle opening payment edit modal
   const handlePaymentBadgeClick = (booking: Booking) => {
     if (booking.status !== 'confirmed') return;
     
     setEditingBooking(booking);
-    // Set current values as defaults
-    setNewPaymentStatus(booking.paymentStatus || 'pending');
+    // Set current values as defaults with proper mapping
+    setNewPaymentStatus(mapPaymentStatusToAdminUI(booking.paymentStatus));
     setAdminComment('');
     setShowPaymentEditModal(true);
   };
@@ -1768,19 +1818,18 @@ Status: ${booking.status}`;
               {filteredBookings.slice(0, 6).map((booking) => (
                 <div
                   key={booking.id}
-                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border rounded-lg hover:bg-gray-50 cursor-pointer gap-3 transition-colors"
+                  className="flex items-start justify-between p-4 border rounded-lg hover:bg-gray-50 cursor-pointer gap-3 transition-colors"
                   onClick={() => {
                     // Since filteredBookings only contains database bookings, always convert to calendar event format
                     handleViewDetails(bookingToCalendarEvent(booking));
                   }}
                 >
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-2">
                       <h3 className="font-medium">{booking.customerName}</h3>
                       <div className="flex gap-2">
                         {getStatusBadge(booking.status, booking)}
                         {getAgreementBadge(booking)}
-                        {getPaymentBadge(booking)}
                       </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 text-sm text-gray-600">
@@ -1803,6 +1852,11 @@ Status: ${booking.status}`;
                         <strong>Total:</strong> £{booking.totalPrice}
                       </div>
                     </div>
+                  </div>
+                  
+                  {/* Payment Status Button - Always Right Side */}
+                  <div className="flex-shrink-0 ml-2">
+                    {getPaymentButton(booking)}
                   </div>
                 </div>
               ))}
@@ -2310,7 +2364,7 @@ Status: ${booking.status}`;
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="pending">No Payment</SelectItem>
                       <SelectItem value="deposit_paid">Deposit paid</SelectItem>
                       <SelectItem value="paid_full">Paid in full</SelectItem>
                     </SelectContent>
