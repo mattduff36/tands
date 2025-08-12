@@ -1882,7 +1882,7 @@ Status: ${booking.status}`;
             </div>
           ) : (
             <div className="max-h-[600px] overflow-y-auto space-y-4">
-              {filteredBookings.slice(0, 6).map((booking) => (
+              {filteredBookings.map((booking) => (
                 <div
                   key={booking.id}
                   className={`flex items-start justify-between p-4 border rounded-lg cursor-pointer gap-3 transition-colors ${(() => {
@@ -1937,12 +1937,6 @@ Status: ${booking.status}`;
                   </div>
                 </div>
               ))}
-              {filteredBookings.length > 6 && (
-                <div className="text-center py-4 text-sm text-gray-500">
-                  Showing 6 of {filteredBookings.length} bookings. Scroll to see
-                  more.
-                </div>
-              )}
             </div>
           )}
         </CardContent>
