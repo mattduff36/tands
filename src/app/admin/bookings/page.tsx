@@ -232,14 +232,25 @@ export default function AdminBookings() {
     setIsLoading(true);
     try {
       const { dateFrom, dateTo } = getDateRange();
-      const response = await fetch(
-        `/api/admin/bookings?dateFrom=${dateFrom}&dateTo=${dateTo}`,
-      );
+      const response = await fetch(`/api/admin/bookings?dateFrom=${dateFrom}&dateTo=${dateTo}`);
       if (response.ok) {
         const data = await response.json();
         setBookings(data.bookings || []);
       } else {
-        toast.error("Failed to fetch bookings");
+        // Attempt a fallback without date filters (diagnostic)
+        try {
+          const fallback = await fetch(`/api/admin/bookings`);
+          if (fallback.ok) {
+            const data = await fallback.json();
+            setBookings(data.bookings || []);
+            toast.warning("Fetched bookings without date filter (fallback)");
+          } else {
+            const err = await fallback.json().catch(() => ({ error: `HTTP ${fallback.status}` }));
+            toast.error(err.error || "Failed to fetch bookings");
+          }
+        } catch (e) {
+          toast.error("Failed to fetch bookings");
+        }
       }
     } catch (error) {
       console.error("Error fetching bookings:", error);
