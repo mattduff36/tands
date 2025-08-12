@@ -5,6 +5,7 @@ import { Elements } from '@stripe/react-stripe-js';
 import stripePromise, { STRIPE_APPEARANCE } from '@/lib/stripe';
 import { StripeCheckoutForm } from './StripeCheckoutForm';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import Image from 'next/image';
 
 interface StripePaymentFormProps {
   bookingRef: string;
@@ -160,9 +161,9 @@ export function StripePaymentForm({
               <span>Secured by Stripe • PCI DSS Level 1 Compliant</span>
             </div>
             <div className="flex items-center justify-center space-x-4 mt-2">
-              <img src="https://js.stripe.com/v3/fingerprinted/img/visa-729c05c240c4bdb47b03ac81d9945bfe.svg" alt="Visa" className="h-6" />
-              <img src="https://js.stripe.com/v3/fingerprinted/img/mastercard-4d8844094130711885b5e41b28c9848f.svg" alt="Mastercard" className="h-6" />
-              <img src="https://js.stripe.com/v3/fingerprinted/img/amex-a49b82f46c5cd31dc8da393d35ca2eb7.svg" alt="American Express" className="h-6" />
+              <Image src="https://js.stripe.com/v3/fingerprinted/img/visa-729c05c240c4bdb47b03ac81d9945bfe.svg" alt="Visa" width={48} height={24} />
+              <Image src="https://js.stripe.com/v3/fingerprinted/img/mastercard-4d8844094130711885b5e41b28c9848f.svg" alt="Mastercard" width={48} height={24} />
+              <Image src="https://js.stripe.com/v3/fingerprinted/img/amex-a49b82f46c5cd31dc8da393d35ca2eb7.svg" alt="American Express" width={48} height={24} />
             </div>
           </div>
         </CardContent>

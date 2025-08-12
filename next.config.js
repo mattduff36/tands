@@ -12,6 +12,7 @@ const nextConfig = {
   images: {
     domains: [
       'd98nzplymhizhheh.public.blob.vercel-storage.com', // Vercel Blob storage
+      'js.stripe.com',
     ],
     formats: ['image/webp', 'image/avif'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],

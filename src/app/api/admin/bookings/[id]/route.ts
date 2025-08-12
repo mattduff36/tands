@@ -106,11 +106,10 @@ export async function DELETE(
         deposit: booking.deposit,
         notes: booking.notes || undefined,
       };
-      try {
-        await sendCancellationEmail(emailData as any, { reasonKey, adminMessage });
-      } catch (e) {
+      // Fire-and-forget email; don't block response
+      sendCancellationEmail(emailData as any, { reasonKey, adminMessage }).catch(() => {
         console.warn('Cancellation email failed but proceeding with deletion');
-      }
+      });
 
       // Add audit trail entry
       try {
