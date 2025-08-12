@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       eventDuration,
       paymentMethod,
       totalPrice,
-      deposit: deposit || Math.floor(totalPrice * 0.25),
+      deposit: deposit ?? Math.floor(totalPrice * 0.25),
       notes: specialRequests,
     });
 
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
         phone: booking.customerPhone,
       },
       location: eventAddress,
-      notes: `Booking Ref: ${booking.bookingRef}\nTotal: £${totalPrice}\nDeposit: £${deposit || Math.floor(totalPrice * 0.25)}\nPayment: ${paymentMethod}\nCreated by Admin\n${specialRequests || ""}`,
+      notes: `Booking Ref: ${booking.bookingRef}\nTotal: £${totalPrice}\nDeposit: £${deposit ?? Math.floor(totalPrice * 0.25)}\nPayment: ${paymentMethod}\nCreated by Admin\n${specialRequests || ""}`,
       duration: {
         start: eventStartDateTime.toISOString(),
         end: eventEndDateTime.toISOString(),
