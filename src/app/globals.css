@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Ensure toast backgrounds are fully opaque */
+.toaster [data-sonner-toast] {
+  background-color: rgba(255, 255, 255, 1) !important;
+}
+.dark .toaster [data-sonner-toast] {
+  background-color: rgba(24, 24, 27, 1) !important; /* zinc-900 */
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

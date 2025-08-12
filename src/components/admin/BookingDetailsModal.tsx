@@ -395,7 +395,7 @@ export function BookingDetailsModal({
                     className="text-red-600 border-red-200 hover:bg-red-50"
                   >
                     <Trash2 className="w-4 h-4 mr-2" />
-                    Delete
+                    Decline & Delete
                   </Button>
                 )}
               </div>
