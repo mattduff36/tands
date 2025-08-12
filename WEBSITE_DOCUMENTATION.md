@@ -56,7 +56,7 @@
 ### Third-Party Services
 - **Payments**: Stripe
 - **Calendar**: Google Calendar API
-- **Email**: (Email system implementation details)
+- **Email**: Nodemailer SMTP (transactional emails: booking received, agreement, confirmation, cancellation)
 - **Hosting**: Vercel
 - **Database Hosting**: (Database provider details)
 
@@ -123,6 +123,10 @@ src/
 │   │   └── booking.ts          # Booking-related types
 │   ├── utils/                  # Utility functions
 │   │   └── performance-monitor.ts # Database performance monitoring
+│   ├── email/                  # Email utilities and templates
+│   │   ├── email-service.ts    # Email sending functions (agreement, received, confirmation, cancellation)
+│   │   └── templates/
+│   │       └── cancellation-reasons.json # Editable templates for decline/cancellation reasons
 │   ├── validation/             # Data validation
 │   │   └── booking-validation.ts
 │   └── stripe.ts               # Stripe configuration
@@ -357,6 +361,9 @@ const statusFilters = {
 - **Update Payment**: Modal for changing payment status
 - **Confirm Booking**: Change status from pending to confirmed
 - **Send Agreement**: Trigger agreement email to customer
+ - **Decline & Delete**: Presents reason selection before deletion; sends cancellation email to customer and writes an audit entry. Reasons: Distance too far, Castle unavailable, Other (admin-provided message)
+
+The bookings list renders all bookings inside a scrollable container (height ~ six rows). It does not truncate; overflow can be viewed by scrolling.
 
 ### Admin API Endpoints
 - `GET /api/admin/bookings` - Fetch all bookings with filters
@@ -382,11 +389,12 @@ const statusFilters = {
 
 #### Address Autocomplete
 - `GET /api/addresses/autocomplete?q=...` - UK address suggestions (getAddress.io preferred; OS Places fallback; Geoapify fallback)
-- `POST /api/addresses/resolve` - Normalize selected address and provide coordinates (getAddress.io preferred)
+- `POST /api/addresses/resolve` - Normalize selected address and provide coordinates (getAddress.io preferred). Enhancements: accepts `{ label?, coordinates? }`, returns 400 for empty/invalid JSON, and uses a 30‑day in‑memory LRU cache keyed by label/coords.
 
 ### Admin Endpoints
 - `GET /api/admin/bookings` - Get all bookings (admin only)
 - `POST /api/admin/bookings/[id]/update-payment` - Update payment status (admin only)
+ - `DELETE /api/admin/bookings/[id]` - Decline/delete booking. Optional JSON body `{ reasonKey, adminMessage }`. Sends cancellation email (fire‑and‑forget), appends an audit trail entry, then deletes.
 
 ### API Response Patterns
 ```typescript
@@ -572,6 +580,11 @@ const paymentIntent = await stripe.paymentIntents.create({
   - `agreement_email_opened`: Track email opens
   - `agreement_viewed`: Track agreement page views
 
+### Cancellation Emails
+- Triggered when an admin declines a booking (via `DELETE /api/admin/bookings/[id]` with `reasonKey`)
+- Templates at `src/lib/email/templates/cancellation-reasons.json` (HTML/text/subject). Placeholders: `{{bookingRef}}`, `{{customerName}}`, `{{castleName}}`, `{{date}}`, `{{fromName}}`, and for "other" reasons `{{adminMessage}}`/`{{adminMessageHtml}}`.
+- Email sending is non‑blocking to keep admin UI responsive.
+
 ---
 
 ## UI/UX Patterns
@@ -662,6 +675,16 @@ OS_PLACES_API_KEY=...
 - **Build Command**: `npm run build`
 - **Framework**: Next.js (auto-detected)
 - **Node Version**: Latest LTS
+
+### Next.js Configuration
+- `next.config.js` includes:
+  - `compiler.removeConsole` in production
+  - `images.domains` includes `js.stripe.com` to allow optimized remote card brand logos in the Stripe form
+
+### Next.js Configuration
+- `next.config.js` includes:
+  - `compiler.removeConsole` in production
+  - `images.domains` includes `js.stripe.com` to allow optimized remote card brand logos in the Stripe form
 
 ---
 
