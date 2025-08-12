@@ -35,6 +35,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { BookingDetailsModal } from "@/components/admin/BookingDetailsModal";
+import { haversineMiles } from "@/lib/utils/distance";
+import { BUSINESS_LOCATION } from "@/lib/config/business";
 import {
   BookingFormModal,
   BookingFormData,
@@ -118,6 +120,7 @@ export default function AdminBookings() {
     completed: true,
     expired: false,
   });
+  const [bookingDistances, setBookingDistances] = useState<Record<number, number>>({});
 
   const [timeRange, setTimeRange] = useState("all");
 
@@ -245,6 +248,51 @@ export default function AdminBookings() {
       setIsLoading(false);
     }
   };
+
+  // Compute distances for loaded bookings
+  useEffect(() => {
+    const controller = new AbortController();
+    async function computeDistances() {
+      const tasks: Array<Promise<void>> = [];
+      for (const b of bookings) {
+        if (!b.customerAddress) continue;
+        if (bookingDistances[b.id] !== undefined) continue;
+        tasks.push(
+          (async () => {
+            try {
+              const res = await fetch("/api/addresses/resolve", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ label: b.customerAddress }),
+                signal: controller.signal,
+              });
+              if (!res.ok) return;
+              const data = await res.json();
+              const coords = data?.coordinates;
+              if (coords && typeof coords.lat === "number" && typeof coords.lng === "number") {
+                const miles = haversineMiles(
+                  BUSINESS_LOCATION.coordinates,
+                  { lat: coords.lat, lng: coords.lng },
+                );
+                setBookingDistances((prev) => ({ ...prev, [b.id]: Math.round(miles * 10) / 10 }));
+              }
+            } catch {}
+          })(),
+        );
+      }
+      void Promise.allSettled(tasks);
+    }
+    if (bookings.length > 0) computeDistances();
+    return () => controller.abort();
+  }, [bookings]);
+
+  function getDistanceHighlightClass(distance?: number, status?: string): string {
+    if (typeof distance !== "number" || !isFinite(distance)) return "";
+    if (status !== "pending") return "";
+    if (distance > 35) return "bg-red-50 border-red-300";
+    if (distance > 20) return "bg-yellow-50 border-yellow-300";
+    return "";
+  }
 
   // Calendar-specific functions
   const fetchCalendarData = async () => {
@@ -1818,7 +1866,14 @@ Status: ${booking.status}`;
               {filteredBookings.slice(0, 6).map((booking) => (
                 <div
                   key={booking.id}
-                  className="flex items-start justify-between p-4 border rounded-lg hover:bg-gray-50 cursor-pointer gap-3 transition-colors"
+                  className={`flex items-start justify-between p-4 border rounded-lg cursor-pointer gap-3 transition-colors ${(() => {
+                    const d = bookingDistances[booking.id];
+                    if (typeof d === 'number' && booking.status === 'pending') {
+                      if (d > 35) return 'bg-red-50 border-red-300';
+                      if (d > 20) return 'bg-yellow-50 border-yellow-300';
+                    }
+                    return 'hover:bg-gray-50';
+                  })()}`}
                   onClick={() => {
                     // Since filteredBookings only contains database bookings, always convert to calendar event format
                     handleViewDetails(bookingToCalendarEvent(booking));
@@ -1827,9 +1882,12 @@ Status: ${booking.status}`;
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-2">
                       <h3 className="font-medium">{booking.customerName}</h3>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 items-center">
                         {getStatusBadge(booking.status, booking)}
                         {getAgreementBadge(booking)}
+                        {typeof bookingDistances[booking.id] === 'number' && (
+                          <span className="text-xs text-gray-600">{bookingDistances[booking.id]} mi</span>
+                        )}
                       </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 text-sm text-gray-600">
