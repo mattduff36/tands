@@ -23,19 +23,16 @@ export async function GET(request: NextRequest) {
     const client = await getPool().connect();
 
     try {
-      // Get all bookings with essential data
+      // Get all bookings with all columns for full debug visibility
       const bookingsResult = await client.query(`
-        SELECT id, booking_ref, customer_name, customer_email, status, 
-               date, total_price, castle_id, castle_name, created_at, updated_at,
-               agreement_signed, email_sent
+        SELECT *
         FROM bookings 
         ORDER BY created_at DESC
       `);
 
-      // Get all castles with essential data
+      // Get all castles with all columns
       const castlesResult = await client.query(`
-        SELECT id, name, theme, size, price, description, image_url,
-               maintenance_status, maintenance_notes
+        SELECT *
         FROM castles 
         ORDER BY id ASC
       `);

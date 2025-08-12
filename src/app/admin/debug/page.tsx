@@ -85,7 +85,7 @@ interface RawData {
 }
 
 export default function DebugPage() {
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [bookings, setBookings] = useState<any[]>([]);
   const [castles, setCastles] = useState<Castle[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [rawData, setRawData] = useState<RawData | null>(null);
@@ -99,6 +99,7 @@ export default function DebugPage() {
       const bookingsResponse = await fetch('/api/admin/bookings');
       if (bookingsResponse.ok) {
         const bookingsData = await bookingsResponse.json();
+        // Use admin list for quick summary, but prefer raw debug details when available
         setBookings(bookingsData.bookings || []);
       }
 
@@ -324,58 +325,54 @@ export default function DebugPage() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {bookings.map((booking) => (
+                    {(rawData?.bookings ?? bookings).map((booking: any) => (
                       <Card key={booking.id} className="border-l-4 border-l-blue-500">
                         <CardContent className="p-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                              <h3 className="font-semibold text-gray-900 mb-2">Booking Details</h3>
+                              <h3 className="font-semibold text-gray-900 mb-2">Summary</h3>
                               <div className="space-y-1 text-sm">
                                 <p><strong>ID:</strong> {booking.id}</p>
-                                <p><strong>Ref:</strong> {booking.bookingRef}</p>
-                                <p><strong>Status:</strong> {getStatusBadge(booking.status)}</p>
-                                <p><strong>Date:</strong> {formatDate(booking.date)}</p>
-                                <p><strong>Castle:</strong> {booking.castleName}</p>
+                                <p><strong>Ref:</strong> {booking.booking_ref || booking.bookingRef}</p>
+                                <p><strong>Status:</strong> {getStatusBadge((booking.status || 'unknown').toString())}</p>
+                                <p><strong>Date:</strong> {formatDate(booking.date || booking.start_date || booking.created_at)}</p>
+                                <p><strong>Castle:</strong> {booking.castle_name || booking.castleName}</p>
                               </div>
                             </div>
                             <div>
-                              <h3 className="font-semibold text-gray-900 mb-2">Customer Info</h3>
-                              <div className="space-y-1 text-sm">
-                                <p><strong>Name:</strong> {booking.customerName}</p>
-                                <p><strong>Email:</strong> {booking.customerEmail}</p>
-                                <p><strong>Phone:</strong> {booking.customerPhone}</p>
-                                <p><strong>Address:</strong> {booking.customerAddress}</p>
-                              </div>
-                            </div>
-                            <div>
-                              <h3 className="font-semibold text-gray-900 mb-2">Payment & Agreement</h3>
-                              <div className="space-y-1 text-sm">
-                                <p><strong>Total:</strong> £{booking.totalPrice}</p>
-                                <p><strong>Deposit:</strong> £{booking.deposit}</p>
-                                <p><strong>Method:</strong> {booking.paymentMethod}</p>
-                                <p><strong>Agreement Signed:</strong> {booking.agreementSigned ? 'Yes' : 'No'}</p>
-                                {booking.agreementSignedAt && (
-                                  <p><strong>Signed At:</strong> {formatDate(booking.agreementSignedAt)}</p>
-                                )}
-                                {booking.agreementSignedBy && (
-                                  <p><strong>Signed By:</strong> {booking.agreementSignedBy}</p>
-                                )}
-                              </div>
+                              <h3 className="font-semibold text-gray-900 mb-2">Raw Record</h3>
+                              <pre className="text-xs text-gray-700 bg-gray-50 p-3 rounded overflow-x-auto">
+                                {JSON.stringify(booking, null, 2)}
+                              </pre>
                             </div>
                           </div>
-                          <div className="mt-4 pt-4 border-t">
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                              <div>
-                                <p><strong>Created:</strong> {formatDate(booking.createdAt)}</p>
-                                <p><strong>Updated:</strong> {formatDate(booking.updatedAt)}</p>
-                              </div>
-                              <div>
-                                {booking.notes && (
-                                  <p><strong>Notes:</strong> {booking.notes}</p>
-                                )}
-                              </div>
+                          {/* Activity Log */}
+                          {Array.isArray(booking.audit_trail) && booking.audit_trail.length > 0 && (
+                            <div className="mt-4 pt-4 border-t">
+                              <h4 className="font-semibold text-gray-900 mb-2">Activity Log</h4>
+                              <ul className="space-y-2 text-sm">
+                                {booking.audit_trail
+                                  .slice()
+                                  .sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+                                  .map((entry: any, idx: number) => (
+                                    <li key={idx} className="bg-white border rounded p-2">
+                                      <div className="flex items-center justify-between">
+                                        <span className="font-medium">{entry.action || 'update'}</span>
+                                        <span className="text-gray-500">{formatDate(entry.timestamp)}</span>
+                                      </div>
+                                      {entry.details && (
+                                        <pre className="mt-1 text-xs text-gray-700 bg-gray-50 p-2 rounded overflow-x-auto">
+                                          {JSON.stringify(entry.details, null, 2)}
+                                        </pre>
+                                      )}
+                                      {entry.user && (
+                                        <div className="text-xs text-gray-600 mt-1">by {entry.user}</div>
+                                      )}
+                                    </li>
+                                  ))}
+                              </ul>
                             </div>
-                          </div>
+                          )}
                         </CardContent>
                       </Card>
                     ))}
