@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import type { Castle } from "@/lib/database/castles";
+// Using an inline dropdown for reliability instead of Popover
+import { haversineMiles } from "@/lib/utils/distance";
+import { BUSINESS_LOCATION } from "@/lib/config/business";
 
 export function BookingForm() {
   const searchParams = useSearchParams();
@@ -31,6 +34,13 @@ export function BookingForm() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [addressCoordinates, setAddressCoordinates] = useState<{ lat: number; lng: number } | null>(null);
+  const [addressSuggestions, setAddressSuggestions] = useState<Array<{ id: string; label: string; coordinates: { lat: number; lng: number } | null }>>([]);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [showAddressDropdown, setShowAddressDropdown] = useState(false);
+  const [distanceMiles, setDistanceMiles] = useState<number | null>(null);
+  const latestAutocompleteId = useRef(0);
+  const suppressNextAutocompleteRef = useRef(false);
 
   const [eventDuration, setEventDuration] = useState(8); // Default 8 hours
   const [specialRequests, setSpecialRequests] = useState("");
@@ -61,6 +71,98 @@ export function BookingForm() {
   useEffect(() => {
     fetchCastles();
   }, []);
+
+  // Debounced address autocomplete
+  useEffect(() => {
+    if (suppressNextAutocompleteRef.current) {
+      // Skip one autocomplete cycle right after a user selects a suggestion
+      suppressNextAutocompleteRef.current = false;
+      return;
+    }
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    async function runAutocomplete(query: string, requestId: number) {
+      try {
+        setIsLoadingSuggestions(true);
+        setShowAddressDropdown(true);
+        const res = await fetch(`/api/addresses/autocomplete?q=${encodeURIComponent(query)}&limit=8`);
+        if (requestId !== latestAutocompleteId.current) return; // stale
+        if (!res.ok) {
+          setAddressSuggestions([]);
+          setShowAddressDropdown(true);
+          return;
+        }
+        const data = await res.json();
+        const suggestions = Array.isArray(data.suggestions) ? data.suggestions : [];
+        setAddressSuggestions(suggestions);
+        setShowAddressDropdown(true);
+      } catch (e) {
+        if (requestId !== latestAutocompleteId.current) return; // stale
+        setAddressSuggestions([]);
+        setShowAddressDropdown(true);
+      } finally {
+        if (requestId === latestAutocompleteId.current) setIsLoadingSuggestions(false);
+      }
+    }
+
+    if (address && address.trim().length >= 3) {
+      // Reset selected coords if user edits text after selecting
+      setAddressCoordinates(null);
+      setDistanceMiles(null);
+      timeoutId = setTimeout(() => {
+        const newId = latestAutocompleteId.current + 1;
+        latestAutocompleteId.current = newId;
+        runAutocomplete(address.trim(), newId);
+      }, 250);
+    } else {
+      setAddressSuggestions([]);
+      setShowAddressDropdown(false);
+    }
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      // Bump id to invalidate any in-flight result
+      latestAutocompleteId.current += 1;
+    };
+  }, [address]);
+
+  // When we have coordinates, compute distance
+  useEffect(() => {
+    if (addressCoordinates) {
+      const miles = haversineMiles(BUSINESS_LOCATION.coordinates, addressCoordinates);
+      setDistanceMiles(Math.round(miles * 10) / 10);
+    } else {
+      setDistanceMiles(null);
+    }
+  }, [addressCoordinates]);
+
+  async function handleSelectAddressSuggestion(s: { id: string; label: string; coordinates: { lat: number; lng: number } | null }) {
+    try {
+      suppressNextAutocompleteRef.current = true;
+      setAddress(s.label);
+      setShowAddressDropdown(false);
+      setAddressSuggestions([]);
+      // Resolve to normalized address + coords (reverse geocode if needed)
+      const res = await fetch('/api/addresses/resolve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label: s.label, coordinates: s.coordinates }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.coordinates?.lat && data?.coordinates?.lng) {
+          setAddressCoordinates({ lat: data.coordinates.lat, lng: data.coordinates.lng });
+        } else {
+          setAddressCoordinates(null);
+        }
+        // Keep the user's selected label in the input to avoid confusion
+      } else {
+        setAddressCoordinates(s.coordinates);
+      }
+    } catch (e) {
+      setAddressCoordinates(s.coordinates);
+    }
+  }
 
   // Helper to check if a date is before today (ignoring time)
   const isBeforeToday = (date: Date) => {
@@ -250,7 +352,7 @@ export function BookingForm() {
               className="bg-white"
             />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 relative">
             <Label htmlFor="address" className="text-sm font-medium">
               Event Address *
             </Label>
@@ -258,10 +360,48 @@ export function BookingForm() {
               id="address"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              placeholder="Event location address"
+              onFocus={() => setShowAddressDropdown(address.trim().length >= 3)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') setShowAddressDropdown(false);
+              }}
+              placeholder="Start typing your UK address..."
               required
               className="bg-white"
+              autoComplete="street-address"
             />
+            {showAddressDropdown && (
+              <div className="absolute z-50 left-0 right-0 mt-1 max-h-72 overflow-auto rounded-md border bg-white shadow">
+                {isLoadingSuggestions ? (
+                  <div className="p-3 text-sm text-gray-600">Searching addresses…</div>
+                ) : addressSuggestions.length === 0 ? (
+                  <div className="p-3 text-sm text-gray-600">No suggestions</div>
+                ) : (
+                  <ul className="divide-y divide-gray-100" role="listbox" aria-label="Address suggestions">
+                    {addressSuggestions.map((s) => (
+                      <li key={s.id}>
+                        <button
+                          type="button"
+                          className="w-full text-left px-3 py-2 hover:bg-gray-50 focus:bg-gray-50 focus:outline-none"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => handleSelectAddressSuggestion(s)}
+                        >
+                          <span className="text-sm text-gray-900">{s.label}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+            {typeof distanceMiles === 'number' && distanceMiles > 35 ? (
+              <div className="mt-2 rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-800">
+                Due to the distance (about {distanceMiles} miles from Edwinstowe), this request will likely not be accepted.
+              </div>
+            ) : typeof distanceMiles === 'number' && distanceMiles > 20 ? (
+              <div className="mt-2 rounded-md border border-yellow-300 bg-yellow-50 p-2 text-sm text-yellow-800">
+                Heads up: the event looks to be about {distanceMiles} miles from Edwinstowe. There may be an additional charge, and during busy periods we may not be able to approve bookings this far away.
+              </div>
+            ) : null}
           </div>
         </div>
 

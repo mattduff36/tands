@@ -380,6 +380,10 @@ const statusFilters = {
 - `POST /api/payments/create-payment-intent` - Create Stripe payment intent
 - `POST /api/payments/webhook` - Handle Stripe webhooks
 
+#### Address Autocomplete
+- `GET /api/addresses/autocomplete?q=...` - UK address suggestions (getAddress.io preferred; OS Places fallback; Geoapify fallback)
+- `POST /api/addresses/resolve` - Normalize selected address and provide coordinates (getAddress.io preferred)
+
 ### Admin Endpoints
 - `GET /api/admin/bookings` - Get all bookings (admin only)
 - `POST /api/admin/bookings/[id]/update-payment` - Update payment status (admin only)
@@ -642,6 +646,15 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 # Google Calendar
 GOOGLE_CALENDAR_API_KEY=...
 GOOGLE_CALENDAR_ID=...
+ 
+# Address Autocomplete (Geoapify)
+GEOAPIFY_API_KEY=...
+
+# Address Autocomplete (getAddress.io - preferred)
+GETADDRESS_API_KEY=...
+
+# Address Autocomplete (Ordnance Survey Places - fallback)
+OS_PLACES_API_KEY=...
 ```
 
 ### Deployment Platform
