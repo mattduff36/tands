@@ -401,6 +401,10 @@ export function BookingForm() {
               <div className="mt-2 rounded-md border border-yellow-300 bg-yellow-50 p-2 text-sm text-yellow-800">
                 Heads up: the event looks to be about {distanceMiles} miles from Edwinstowe. There may be an additional charge, and during busy periods we may not be able to approve bookings this far away.
               </div>
+            ) : typeof distanceMiles === 'number' && distanceMiles > 0 ? (
+              <div className="mt-2 rounded-md border border-green-300 bg-green-50 p-2 text-sm text-green-800">
+                {distanceMiles} miles from Edwinstowe — request qualifies for free delivery.
+              </div>
             ) : null}
           </div>
         </div>
