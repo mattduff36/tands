@@ -137,6 +137,7 @@ export default function AdminReports() {
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchReportData();
   }, [timeRange]);

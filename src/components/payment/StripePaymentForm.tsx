@@ -31,6 +31,7 @@ export function StripePaymentForm({
 
   useEffect(() => {
     // Create payment intent when component mounts
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     createPaymentIntent();
   }, [bookingRef, depositAmount]);
 

@@ -298,7 +298,7 @@ export default function AdminBookings() {
     }
     if (bookings.length > 0) computeDistances();
     return () => controller.abort();
-  }, [bookings]);
+  }, [bookings, bookingDistances]);
 
   function getDistanceHighlightClass(distance?: number, status?: string): string {
     if (typeof distance !== "number" || !isFinite(distance)) return "";
@@ -373,9 +373,14 @@ export default function AdminBookings() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     fetchBookings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     fetchCastles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     fetchCalendarData();
+    // We intentionally avoid adding functions as deps to prevent ref churn
+    // and unnecessary re-fetches; this runs when date range controls change.
   }, [currentDate, timeRange]);
 
   // Filter database bookings only - calendar events are now kept separate

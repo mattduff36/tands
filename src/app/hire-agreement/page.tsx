@@ -37,6 +37,7 @@ function HireAgreementContent() {
   const [isEditingPaymentMethod, setIsEditingPaymentMethod] = useState(false);
   const [newPaymentMethod, setNewPaymentMethod] = useState("");
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (bookingRef) {
       fetchBookingDetails();

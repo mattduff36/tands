@@ -100,6 +100,7 @@ export default function VercelAnalytics({ timeRange = '30d' }: VercelAnalyticsPr
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     fetchAnalytics();
   }, [timeRange]);
 

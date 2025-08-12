@@ -67,6 +67,11 @@ export function BookingDetailsModal({
   formatEventTime,
   getStatusColor,
 }: BookingDetailsModalProps) {
+  // Hooks must be declared before any early returns
+  const [showDeclineDialog, setShowDeclineDialog] = useState(false);
+  const [declineReason, setDeclineReason] = useState<"distance_too_far" | "castle_unavailable" | "other">("distance_too_far");
+  const [declineMessage, setDeclineMessage] = useState("");
+
   if (!open || !event) return null;
 
   // Determine the correct status
@@ -89,10 +94,6 @@ export function BookingDetailsModal({
   if (eventEnd < now && status !== "completed") {
     status = "completed";
   }
-
-  const [showDeclineDialog, setShowDeclineDialog] = useState(false);
-  const [declineReason, setDeclineReason] = useState<"distance_too_far" | "castle_unavailable" | "other">("distance_too_far");
-  const [declineMessage, setDeclineMessage] = useState("");
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
