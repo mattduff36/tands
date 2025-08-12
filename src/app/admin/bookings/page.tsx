@@ -260,6 +260,9 @@ export default function AdminBookings() {
     }
   };
 
+  // Expose fetchBookings so child modal can refresh after decline
+  // (no change needed beyond keeping it in scope of component)
+
   // Compute distances for loaded bookings
   useEffect(() => {
     const controller = new AbortController();
@@ -2312,14 +2315,10 @@ Status: ${booking.status}`;
             onDelete={
               selectedEvent.id.startsWith("db_")
                 ? () => {
-                    // Find the booking by ID for database bookings
-                    const bookingId = selectedEvent.id.replace("db_", "");
-                    const booking = bookings.find(
-                      (b) => b.id.toString() === bookingId,
-                    );
-                    if (booking) {
-                      handleDeleteBooking(booking.id);
-                    }
+                    // After decline & email completes inside modal, we refresh list
+                    // The modal calls onDelete to trigger this callback
+                    fetchBookings();
+                    setShowDetailsModal(false);
                   }
                 : () => handleDeleteCalendarEvent(selectedEvent.id)
             }

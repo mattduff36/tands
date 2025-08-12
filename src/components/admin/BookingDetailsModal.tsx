@@ -10,7 +10,7 @@ import {
   UserCheck,
   RefreshCw,
 } from "lucide-react";
-import React from "react";
+import React, { useState } from "react";
 
 export interface CalendarEvent {
   id: string;
@@ -89,6 +89,10 @@ export function BookingDetailsModal({
   if (eventEnd < now && status !== "completed") {
     status = "completed";
   }
+
+  const [showDeclineDialog, setShowDeclineDialog] = useState(false);
+  const [declineReason, setDeclineReason] = useState<"distance_too_far" | "castle_unavailable" | "other">("distance_too_far");
+  const [declineMessage, setDeclineMessage] = useState("");
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
@@ -389,14 +393,109 @@ export function BookingDetailsModal({
 
                 {/* Delete button */}
                 {onDelete && (
-                  <Button
-                    variant="outline"
-                    onClick={() => onDelete(event.id)}
-                    className="text-red-600 border-red-200 hover:bg-red-50"
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Decline & Delete
-                  </Button>
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowDeclineDialog(true)}
+                      className="text-red-600 border-red-200 hover:bg-red-50"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Decline & Delete
+                    </Button>
+
+                    {showDeclineDialog && (
+                      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-2">
+                        <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+                          <div className="p-4 border-b">
+                            <h3 className="text-lg font-semibold">Decline Booking</h3>
+                            <p className="text-sm text-gray-600 mt-1">Select a reason to include in the email to the customer.</p>
+                          </div>
+                          <div className="p-4 space-y-3">
+                            <div className="space-y-2">
+                              <label className="flex items-center gap-2 text-sm">
+                                <input
+                                  type="radio"
+                                  name="decline_reason"
+                                  value="distance_too_far"
+                                  checked={declineReason === 'distance_too_far'}
+                                  onChange={() => setDeclineReason('distance_too_far')}
+                                />
+                                Distance too far
+                              </label>
+                              <label className="flex items-center gap-2 text-sm">
+                                <input
+                                  type="radio"
+                                  name="decline_reason"
+                                  value="castle_unavailable"
+                                  checked={declineReason === 'castle_unavailable'}
+                                  onChange={() => setDeclineReason('castle_unavailable')}
+                                />
+                                Castle unavailable
+                              </label>
+                              <label className="flex items-center gap-2 text-sm">
+                                <input
+                                  type="radio"
+                                  name="decline_reason"
+                                  value="other"
+                                  checked={declineReason === 'other'}
+                                  onChange={() => setDeclineReason('other')}
+                                />
+                                Other
+                              </label>
+                            </div>
+
+                            {declineReason === 'other' && (
+                              <div>
+                                <label className="block text-sm font-medium mb-1">Reason (required)</label>
+                                <textarea
+                                  className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  rows={3}
+                                  value={declineMessage}
+                                  onChange={(e) => setDeclineMessage(e.target.value)}
+                                  placeholder="Please explain the reason"
+                                />
+                              </div>
+                            )}
+                          </div>
+                          <div className="px-4 py-3 border-t flex gap-2 justify-end">
+                            <Button variant="outline" onClick={() => setShowDeclineDialog(false)}>Cancel</Button>
+                            <Button
+                              className="bg-red-600 hover:bg-red-700 text-white"
+                              onClick={() => {
+                                if (declineReason === 'other' && !declineMessage.trim()) {
+                                  alert('Please provide a reason for "Other"');
+                                  return;
+                                }
+                                // Pass event id via onDelete but we need to include reason; we'll encode it globally via window event
+                                // Instead, call DELETE here with body, then close parent modal
+                                fetch(`/api/admin/bookings/${event.id.replace('db_','')}`, {
+                                  method: 'DELETE',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    reasonKey: declineReason,
+                                    adminMessage: declineReason === 'other' ? declineMessage.trim() : undefined,
+                                  }),
+                                }).then(async (res) => {
+                                  if (!res.ok) {
+                                    const msg = await res.json().catch(() => ({}));
+                                    alert(msg.error || 'Failed to decline booking');
+                                  } else {
+                                    // Notify parent via onDelete to refresh list
+                                    onDelete(event.id);
+                                  }
+                                  setShowDeclineDialog(false);
+                                }).catch(() => {
+                                  alert('Network error. Please try again.');
+                                });
+                              }}
+                            >
+                              Confirm Decline & Email
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>

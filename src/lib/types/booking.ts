@@ -1,3 +1,5 @@
+export type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'expired';
+
 /**
  * TypeScript type definitions for bouncy castle booking system
  */

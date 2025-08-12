@@ -1,0 +1,19 @@
+{
+  "distance_too_far": {
+    "subject": "Booking Request Cancelled - {{bookingRef}}",
+    "html": "<!DOCTYPE html><html><body style=\"font-family:Arial,sans-serif\"><p>Hi {{customerName}},</p><p>Thank you for your booking request ({{bookingRef}}) for {{castleName}} on {{date}}.</p><div style=\"background:#fff3cd;border:1px solid #ffeaa7;padding:12px;border-radius:8px\"><p style=\"margin:0\"><strong>Unfortunately we are unable to accept this request</strong> because the event address is outside our service area.</p></div><p>If you believe this is an error or your event location is flexible, please reply to this email and we will be happy to review it.</p><p>Kind regards,<br/><strong>{{fromName}}</strong></p></body></html>",
+    "text": "Hi {{customerName}},\n\nThank you for your booking request ({{bookingRef}}) for {{castleName}} on {{date}}.\n\nUnfortunately we are unable to accept this request because the event address is outside our service area.\n\nIf you believe this is an error or your event location is flexible, please reply to this email and we will be happy to review it.\n\nKind regards,\n{{fromName}}"
+  },
+  "castle_unavailable": {
+    "subject": "Booking Request Cancelled - {{bookingRef}}",
+    "html": "<!DOCTYPE html><html><body style=\"font-family:Arial,sans-serif\"><p>Hi {{customerName}},</p><p>Thank you for your booking request ({{bookingRef}}) for {{castleName}} on {{date}}.</p><div style=\"background:#ffebee;border:1px solid #ffcdd2;padding:12px;border-radius:8px\"><p style=\"margin:0\"><strong>Unfortunately we are unable to accept this request</strong> because the selected castle is unavailable for the requested date.</p></div><p>If your date is flexible or you would like recommendations for an alternative castle, please reply to this email and we’ll help you find a suitable option.</p><p>Kind regards,<br/><strong>{{fromName}}</strong></p></body></html>",
+    "text": "Hi {{customerName}},\n\nThank you for your booking request ({{bookingRef}}) for {{castleName}} on {{date}}.\n\nUnfortunately we are unable to accept this request because the selected castle is unavailable for the requested date.\n\nIf your date is flexible or you would like recommendations for an alternative castle, please reply to this email and we'll help you find a suitable option.\n\nKind regards,\n{{fromName}}"
+  },
+  "other": {
+    "subject": "Booking Request Cancelled - {{bookingRef}}",
+    "html": "<!DOCTYPE html><html><body style=\"font-family:Arial,sans-serif\"><p>Hi {{customerName}},</p><p>Thank you for your booking request ({{bookingRef}}) for {{castleName}} on {{date}}.</p><div style=\"background:#fff8e1;border:1px solid #ffe082;padding:12px;border-radius:8px\"><p style=\"margin:0\"><strong>We are unable to accept this request.</strong></p></div>{{adminMessageHtml}}<p>If you’d like to discuss alternatives or have any questions, please reply to this email.</p><p>Kind regards,<br/><strong>{{fromName}}</strong></p></body></html>",
+    "text": "Hi {{customerName}},\n\nThank you for your booking request ({{bookingRef}}) for {{castleName}} on {{date}}.\n\nWe are unable to accept this request.\n\n{{adminMessage}}\n\nIf you'd like to discuss alternatives or have any questions, please reply to this email.\n\nKind regards,\n{{fromName}}"
+  }
+}
+
+

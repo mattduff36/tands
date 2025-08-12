@@ -4,6 +4,8 @@
  */
 
 import nodemailer from 'nodemailer';
+import fs from 'fs';
+import path from 'path';
 
 export interface EmailConfig {
   host: string;
@@ -82,6 +84,99 @@ function createTransporter() {
       pass: config.pass,
     },
   });
+}
+
+// Very small template renderer for {{placeholders}}
+function renderTemplate(template: string, variables: Record<string, string | number | undefined>): string {
+  if (!template) return '';
+  return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, key) => {
+    const value = variables[key];
+    return value === undefined || value === null ? '' : String(value);
+  });
+}
+
+// Load cancellation templates from JSON file
+function loadCancellationTemplates(): Record<string, { subject: string; html: string; text: string }> {
+  const templatesPath = path.join(process.cwd(), 'src', 'lib', 'email', 'templates', 'cancellation-reasons.json');
+  try {
+    const raw = fs.readFileSync(templatesPath, 'utf-8');
+    return JSON.parse(raw);
+  } catch (error) {
+    console.error('Failed to load cancellation templates JSON:', error);
+    // Provide safe defaults if file missing to avoid crashing
+    return {
+      distance_too_far: {
+        subject: 'Booking Request Cancelled - {{bookingRef}}',
+        html: '<p>Hi {{customerName}},</p><p>Unfortunately, we are unable to accept your booking request ({{bookingRef}}) because the event address is outside our service area.</p><p>Regards,<br/>{{fromName}}</p>',
+        text: 'Hi {{customerName}},\n\nUnfortunately, we are unable to accept your booking request ({{bookingRef}}) because the event address is outside our service area.\n\nRegards,\n{{fromName}}'
+      },
+      castle_unavailable: {
+        subject: 'Booking Request Cancelled - {{bookingRef}}',
+        html: '<p>Hi {{customerName}},</p><p>Unfortunately, we are unable to accept your booking request ({{bookingRef}}) because the selected castle is unavailable for the requested date.</p><p>Regards,<br/>{{fromName}}</p>',
+        text: 'Hi {{customerName}},\n\nUnfortunately, we are unable to accept your booking request ({{bookingRef}}) because the selected castle is unavailable for the requested date.\n\nRegards,\n{{fromName}}'
+      },
+      other: {
+        subject: 'Booking Request Cancelled - {{bookingRef}}',
+        html: '<p>Hi {{customerName}},</p><p>We are unable to accept your booking request ({{bookingRef}}).</p>{{adminMessageHtml}}<p>Regards,<br/>{{fromName}}</p>',
+        text: 'Hi {{customerName}},\n\nWe are unable to accept your booking request ({{bookingRef}}).\n\n{{adminMessage}}\n\nRegards,\n{{fromName}}'
+      }
+    };
+  }
+}
+
+export async function sendCancellationEmail(
+  bookingData: BookingEmailData,
+  options: { reasonKey: 'distance_too_far' | 'castle_unavailable' | 'other'; adminMessage?: string }
+): Promise<boolean> {
+  const config = getEmailConfig();
+
+  if (!config.enabled) {
+    console.log('Email service disabled. Would send cancellation email to:', bookingData.customerEmail, options);
+    return false;
+  }
+
+  const templates = loadCancellationTemplates();
+  const template = templates[options.reasonKey] || templates.other;
+
+  try {
+    const transporter = createTransporter();
+    const dateFormatted = new Date(bookingData.date).toLocaleDateString('en-GB', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+
+    const adminMessage = (options.reasonKey === 'other' && options.adminMessage) ? options.adminMessage.trim() : '';
+    const adminMessageHtml = adminMessage ? `<div style="background:#fff8e1;border:1px solid #ffe082;padding:12px;border-radius:6px;margin:12px 0"><p style="margin:0"><strong>Reason:</strong> ${adminMessage}</p></div>` : '';
+
+    const variables = {
+      bookingRef: bookingData.bookingRef,
+      customerName: bookingData.customerName,
+      castleName: bookingData.castleName,
+      eventAddress: bookingData.eventAddress || '',
+      date: dateFormatted,
+      totalCost: bookingData.totalCost?.toFixed ? bookingData.totalCost.toFixed(2) : String(bookingData.totalCost || ''),
+      fromName: config.fromName,
+      adminMessage,
+      adminMessageHtml
+    } as Record<string, string>;
+
+    const mailOptions = {
+      from: `"${config.fromName}" <${config.fromAddress}>`,
+      to: bookingData.customerEmail,
+      subject: renderTemplate(template.subject, variables),
+      html: renderTemplate(template.html, variables),
+      text: renderTemplate(template.text, variables)
+    };
+
+    const result = await transporter.sendMail(mailOptions);
+    if (config.debug) {
+      console.log('Cancellation email sent successfully:', result.messageId);
+      console.log('Preview URL:', nodemailer.getTestMessageUrl(result));
+    }
+    return true;
+  } catch (error) {
+    console.error('Error sending cancellation email:', error);
+    return false;
+  }
 }
 
 // Generate tracking pixel HTML for email opens
