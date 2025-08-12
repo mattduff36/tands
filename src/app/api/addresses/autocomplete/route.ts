@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       const suggestions = (data.suggestions || []).map((s) => ({
         id: s.id,
         label: s.address,
-        coordinates: null as const,
+        coordinates: null,
       }));
       return NextResponse.json({ suggestions });
     }
