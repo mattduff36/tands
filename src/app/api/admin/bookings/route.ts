@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
       customerEmail: booking.customerEmail,
       customerPhone: booking.customerPhone,
       customerAddress: booking.customerAddress,
+      eventGroundType: booking.eventGroundType,
       castleId: booking.castleId,
       castleName: booking.castleName,
       date: booking.date,

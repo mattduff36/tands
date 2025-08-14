@@ -148,6 +148,12 @@ export async function initializeBookingsTable(): Promise<void> {
       ADD COLUMN IF NOT EXISTS admin_payment_comment TEXT -- Admin comment when payment status is manually changed
     `);
 
+    // Add event ground type field
+    await client.query(`
+      ALTER TABLE bookings 
+      ADD COLUMN IF NOT EXISTS event_ground_type VARCHAR(10) -- 'grass', 'gravel', 'unsure'
+    `);
+
     console.log('Stripe payment tracking fields added to bookings table');
 
     // Add simplified duplicate prevention: unique constraint for castle + date + active status
@@ -329,9 +335,9 @@ export async function createPendingBooking(
         `
       INSERT INTO bookings (
         booking_ref, customer_name, customer_email, customer_phone, 
-        customer_address, castle_id, castle_name, date, payment_method, 
+        customer_address, event_ground_type, castle_id, castle_name, date, payment_method, 
         total_price, deposit, notes, start_date, end_date, event_duration
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       RETURNING *
     `,
         [
@@ -340,6 +346,7 @@ export async function createPendingBooking(
           booking.customerEmail,
           booking.customerPhone,
           booking.customerAddress,
+          booking.eventGroundType || null,
           booking.castleId,
           booking.castleName,
           booking.date,
@@ -361,6 +368,7 @@ export async function createPendingBooking(
         customerEmail: result.rows[0].customer_email,
         customerPhone: result.rows[0].customer_phone,
         customerAddress: result.rows[0].customer_address,
+        eventGroundType: result.rows[0].event_ground_type,
         castleId: result.rows[0].castle_id,
         castleName: result.rows[0].castle_name,
         date: result.rows[0].date,
@@ -507,6 +515,7 @@ export async function createConfirmedBooking(booking: {
         customerEmail: result.rows[0].customer_email,
         customerPhone: result.rows[0].customer_phone,
         customerAddress: result.rows[0].customer_address,
+        eventGroundType: result.rows[0].event_ground_type,
         castleId: result.rows[0].castle_id,
         castleName: result.rows[0].castle_name,
         date: result.rows[0].date,
@@ -579,7 +588,7 @@ export async function getBookingsByStatus(
       const client = await getPool().connect();
       try {
         let query = `SELECT 
-      id, booking_ref, customer_name, customer_email, customer_phone, customer_address,
+      id, booking_ref, customer_name, customer_email, customer_phone, customer_address, event_ground_type,
       castle_id, castle_name, date, payment_method, total_price, deposit, status, notes,
       created_at, updated_at, start_date, end_date, event_duration,
       agreement_signed, agreement_signed_at, agreement_signed_by, agreement_signed_method,
@@ -604,6 +613,7 @@ export async function getBookingsByStatus(
           customerEmail: row.customer_email,
           customerPhone: row.customer_phone,
           customerAddress: row.customer_address,
+          eventGroundType: row.event_ground_type,
           castleId: row.castle_id,
           castleName: row.castle_name,
           date: row.date,
@@ -848,6 +858,7 @@ export async function getBookingByPaymentIntent(paymentIntentId: string): Promis
       customerEmail: row.customer_email,
       customerPhone: row.customer_phone,
       customerAddress: row.customer_address,
+      eventGroundType: row.event_ground_type,
       castleId: row.castle_id,
       castleName: row.castle_name,
       date: row.date,
@@ -1095,6 +1106,7 @@ export async function getBookingById(
       customerEmail: row.customer_email,
       customerPhone: row.customer_phone,
       customerAddress: row.customer_address,
+      eventGroundType: row.event_ground_type,
       castleId: row.castle_id,
       castleName: row.castle_name,
       date: row.date,
@@ -1571,6 +1583,7 @@ export async function queryBookingsWithFilters(query: {
       customerEmail: row.customer_email,
       customerPhone: row.customer_phone,
       customerAddress: row.customer_address,
+      eventGroundType: row.event_ground_type,
       castleId: row.castle_id,
       castleName: row.castle_name,
       date: row.date,

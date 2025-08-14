@@ -50,6 +50,7 @@ interface Booking {
   customerEmail: string;
   customerPhone: string;
   customerAddress: string;
+  eventGroundType?: 'grass' | 'gravel' | 'unsure';
   castleId: number;
   castleName: string;
   date: string;
@@ -810,6 +811,12 @@ Customer: ${booking.customerName}
 Email: ${booking.customerEmail}
 Phone: ${booking.customerPhone}
 Castle: ${booking.castleName}
+Ground Type: ${booking.eventGroundType ? (
+  booking.eventGroundType === 'grass' ? 'Grass' :
+  booking.eventGroundType === 'gravel' ? 'Gravel' :
+  booking.eventGroundType === 'unsure' ? 'Unsure' : 
+  booking.eventGroundType
+) : 'Not specified'}
 Duration: ${booking.eventDuration || 8} hours
 Special Requests: ${booking.notes || "[none]"}
 Total: £${booking.totalPrice}
@@ -1909,7 +1916,7 @@ Status: ${booking.status}`;
                         )}
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 text-sm text-gray-600">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2 text-sm text-gray-600">
                       <div>
                         <strong>Booking Ref:</strong> {booking.bookingRef}
                       </div>
@@ -1924,6 +1931,24 @@ Status: ${booking.status}`;
                         {booking.eventDuration
                           ? `${booking.eventDuration} hours`
                           : "8 hours"}
+                      </div>
+                      <div>
+                        <strong>Ground:</strong>{" "}
+                        {booking.eventGroundType ? (
+                          <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                            booking.eventGroundType === 'grass' ? 'bg-green-100 text-green-800' :
+                            booking.eventGroundType === 'gravel' ? 'bg-blue-100 text-blue-800' :
+                            booking.eventGroundType === 'unsure' ? 'bg-orange-100 text-orange-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {booking.eventGroundType === 'grass' ? '🌱 Grass' :
+                             booking.eventGroundType === 'gravel' ? '🪨 Gravel' :
+                             booking.eventGroundType === 'unsure' ? '❓ Unsure' :
+                             booking.eventGroundType}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">Not specified</span>
+                        )}
                       </div>
                       <div>
                         <strong>Total:</strong> £{booking.totalPrice}

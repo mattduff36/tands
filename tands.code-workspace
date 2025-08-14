@@ -1,10 +1,12 @@
 {
 	"folders": [
 		{
+			"name": "tands",
 			"path": "."
 		},
 		{
-			"path": "../_Cursor-info"
+			"name": "_Cursor-info",
+			"path": "X:/Websites/_Cursor-info"
 		}
 	],
 	"settings": {

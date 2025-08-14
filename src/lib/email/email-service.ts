@@ -31,6 +31,7 @@ export interface BookingEmailData {
   endDate: string;
   eventDuration?: number;
   eventAddress?: string;
+  eventGroundType?: 'grass' | 'gravel' | 'unsure';
   totalCost: number;
   deposit: number;
   notes?: string;
@@ -49,6 +50,24 @@ function formatHireDuration(eventDuration?: number): string {
     return '8 Hours (10:00 - 18:00)';
   } else {
     return `${eventDuration} Hours`;
+  }
+}
+
+// Format ground type for display in emails
+function formatGroundType(groundType?: 'grass' | 'gravel' | 'unsure'): string {
+  if (!groundType) {
+    return 'Not specified';
+  }
+  
+  switch (groundType) {
+    case 'grass':
+      return 'Grass';
+    case 'gravel':
+      return 'Gravel';
+    case 'unsure':
+      return 'Customer unsure';
+    default:
+      return groundType;
   }
 }
 
@@ -234,6 +253,7 @@ export async function sendAgreementEmail(bookingData: BookingEmailData): Promise
               <p><strong>Contact Number:</strong> ${bookingData.customerPhone}</p>
               <p><strong>Bouncy Castle:</strong> ${bookingData.castleName}</p>
               ${bookingData.eventAddress ? `<p><strong>Event Address:</strong> ${bookingData.eventAddress}</p>` : ''}
+              <p><strong>Ground Type:</strong> ${formatGroundType(bookingData.eventGroundType)}</p>
               <p><strong>Event Date:</strong> ${new Date(bookingData.date).toLocaleDateString('en-GB', { 
                 weekday: 'long', 
                 year: 'numeric', 
@@ -282,6 +302,7 @@ Booking Details:
 - Contact Number: ${bookingData.customerPhone}
 - Bouncy Castle: ${bookingData.castleName}${bookingData.eventAddress ? `
 - Event Address: ${bookingData.eventAddress}` : ''}
+- Ground Type: ${formatGroundType(bookingData.eventGroundType)}
 - Event Date: ${new Date(bookingData.date).toLocaleDateString('en-GB')}
 - Hire Duration: ${formatHireDuration(bookingData.eventDuration)}
 - Special Requests: ${bookingData.notes || '[none]'}
@@ -359,6 +380,7 @@ export async function sendBookingReceivedEmail(bookingData: BookingEmailData): P
               <p><strong>Contact Number:</strong> ${bookingData.customerPhone}</p>
               <p><strong>Bouncy Castle:</strong> ${bookingData.castleName}</p>
               ${bookingData.eventAddress ? `<p><strong>Event Address:</strong> ${bookingData.eventAddress}</p>` : ''}
+              <p><strong>Ground Type:</strong> ${formatGroundType(bookingData.eventGroundType)}</p>
               <p><strong>Event Date:</strong> ${new Date(bookingData.date).toLocaleDateString('en-GB', { 
                 weekday: 'long', 
                 year: 'numeric', 
@@ -409,6 +431,7 @@ Your Booking Request:
 - Contact Number: ${bookingData.customerPhone}
 - Bouncy Castle: ${bookingData.castleName}${bookingData.eventAddress ? `
 - Event Address: ${bookingData.eventAddress}` : ''}
+- Ground Type: ${formatGroundType(bookingData.eventGroundType)}
 - Event Date: ${new Date(bookingData.date).toLocaleDateString('en-GB')}
 - Hire Duration: ${formatHireDuration(bookingData.eventDuration)}
 - Special Requests: ${bookingData.notes || '[none]'}
@@ -482,6 +505,7 @@ export async function sendConfirmationEmail(bookingData: BookingEmailData): Prom
               <p><strong>Contact Number:</strong> ${bookingData.customerPhone}</p>
               <p><strong>Bouncy Castle:</strong> ${bookingData.castleName}</p>
               ${bookingData.eventAddress ? `<p><strong>Event Address:</strong> ${bookingData.eventAddress}</p>` : ''}
+              <p><strong>Ground Type:</strong> ${formatGroundType(bookingData.eventGroundType)}</p>
               <p><strong>Event Date:</strong> ${new Date(bookingData.date).toLocaleDateString('en-GB', { 
                 weekday: 'long', 
                 year: 'numeric', 
@@ -533,6 +557,7 @@ Booking Details:
 - Contact Number: ${bookingData.customerPhone}
 - Bouncy Castle: ${bookingData.castleName}${bookingData.eventAddress ? `
 - Event Address: ${bookingData.eventAddress}` : ''}
+- Ground Type: ${formatGroundType(bookingData.eventGroundType)}
 - Event Date: ${new Date(bookingData.date).toLocaleDateString('en-GB')}
 - Hire Duration: ${formatHireDuration(bookingData.eventDuration)}
 - Special Requests: ${bookingData.notes || '[none]'}

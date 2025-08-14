@@ -41,6 +41,12 @@ export interface ContactInfo {
   alternativePhone?: string;
 }
 
+// Event ground type enumeration
+export type EventGroundType = 
+  | 'grass'             // Grass surface
+  | 'gravel'            // Gravel surface
+  | 'unsure';           // Customer unsure about surface type
+
 // Address information interface
 export interface Address {
   street: string;
@@ -53,6 +59,7 @@ export interface Address {
     lng: number;
   };
   deliveryNotes?: string;
+  groundType?: EventGroundType;  // Ground surface type at event location
 }
 
 // Castle information interface
@@ -189,6 +196,9 @@ export interface CreateBookingRequest {
   castleId: string;
   timeSlot: Omit<TimeSlot, 'duration'>;  // Duration calculated automatically
   additionalServices?: AdditionalServices;
+  
+  // Event details
+  eventGroundType: EventGroundType;  // Required ground type information
   
   // Payment information
   paymentMethod: PaymentMethod;

@@ -39,6 +39,7 @@ export function BookingForm() {
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [showAddressDropdown, setShowAddressDropdown] = useState(false);
   const [distanceMiles, setDistanceMiles] = useState<number | null>(null);
+  const [eventGroundType, setEventGroundType] = useState<'grass' | 'gravel' | 'unsure' | ''>('');
   const latestAutocompleteId = useRef(0);
   const suppressNextAutocompleteRef = useRef(false);
 
@@ -176,7 +177,7 @@ export function BookingForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedCastleId || !date || !name || !email || !phone || !address) {
+    if (!selectedCastleId || !date || !name || !email || !phone || !address || !eventGroundType) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -209,6 +210,7 @@ export function BookingForm() {
         eventStartTime: eventStartTime.toISOString(),
         eventEndTime: eventEndTime.toISOString(),
         eventAddress: address,
+        eventGroundType: eventGroundType,
         specialRequests: specialRequests || undefined,
         isOvernight: eventDuration === 24,
         totalPrice: selectedCastle ? Math.floor(selectedCastle.price) + (eventDuration === 24 ? 20 : 0) : 0,
@@ -409,19 +411,64 @@ export function BookingForm() {
           </div>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="duration" className="text-sm font-medium">
-            Event Duration *
-          </Label>
-          <Select value={eventDuration.toString()} onValueChange={(value) => setEventDuration(parseInt(value))}>
-            <SelectTrigger className="bg-white">
-              <SelectValue placeholder="Select duration" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="8">8 hours (Standard)</SelectItem>
-              <SelectItem value="24">24 hours (Overnight)</SelectItem>
-            </SelectContent>
-          </Select>
+        {/* Event Duration and Ground Type - Combined on Desktop */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="duration" className="text-sm font-medium">
+              Event Duration *
+            </Label>
+            <Select value={eventDuration.toString()} onValueChange={(value) => setEventDuration(parseInt(value))}>
+              <SelectTrigger className="bg-white">
+                <SelectValue placeholder="Select duration" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="8">8 hours (Standard)</SelectItem>
+                <SelectItem value="24">24 hours (Overnight)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">
+              Event Ground Type *
+            </Label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setEventGroundType('grass')}
+                className={`p-2 rounded-md border-2 transition-all duration-200 text-xs font-medium ${
+                  eventGroundType === 'grass'
+                    ? "border-green-500 bg-green-50 text-green-700"
+                    : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                🌱 Grass
+              </button>
+              <button
+                type="button"
+                onClick={() => setEventGroundType('gravel')}
+                className={`p-2 rounded-md border-2 transition-all duration-200 text-xs font-medium ${
+                  eventGroundType === 'gravel'
+                    ? "border-blue-500 bg-blue-50 text-blue-700"
+                    : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                🪨 Gravel
+              </button>
+              <button
+                type="button"
+                onClick={() => setEventGroundType('unsure')}
+                className={`p-2 rounded-md border-2 transition-all duration-200 text-xs font-medium ${
+                  eventGroundType === 'unsure'
+                    ? "border-orange-500 bg-orange-50 text-orange-700"
+                    : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                ❓ Unsure
+              </button>
+            </div>
+
+          </div>
         </div>
 
         {/* Special Requests */}
