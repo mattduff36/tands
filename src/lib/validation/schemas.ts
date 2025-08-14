@@ -36,10 +36,7 @@ export const bookingSchema = z.object({
   eventEndTime: z.string().datetime('Invalid end time format').optional(),
   castleId: z.number().int().positive(),
   eventAddress: z.string().min(1, 'Address is required').max(200).trim(),
-  eventGroundType: z.enum(['grass', 'gravel', 'unsure'], {
-    required_error: 'Ground type is required',
-    invalid_type_error: 'Ground type must be grass, gravel, or unsure'
-  }),
+  eventGroundType: z.enum(['grass', 'gravel', 'unsure']),
   specialRequests: z.string().max(500).trim().optional(),
   isOvernight: z.boolean().default(false),
   totalPrice: z.number().min(0).max(10000),

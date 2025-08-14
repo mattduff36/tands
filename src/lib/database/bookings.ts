@@ -16,6 +16,7 @@ export interface PendingBooking {
   customerEmail: string;
   customerPhone: string;
   customerAddress: string;
+  eventGroundType?: 'grass' | 'gravel' | 'unsure';
   castleId: number;
   castleName: string;
   date: string;
