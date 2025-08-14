@@ -140,13 +140,20 @@ function HireAgreementContent() {
     if (bookingDetails.paymentMethod === 'online') {
       return bookingDetails.totalPrice; // Full amount for online payment
     } else {
-      return bookingDetails.deposit; // Just deposit for cash on delivery
+      return bookingDetails.deposit; // Just deposit for cash on delivery (can be 0 if admin set no deposit)
     }
   };
 
   const handleSubmitAgreement = async () => {
-    if (!hasAgreed || !bookingDetails || !paymentCompleted) {
-      toast.error("Please complete payment and agree to the terms and conditions");
+    if (!hasAgreed || !bookingDetails) {
+      toast.error("Please agree to the terms and conditions");
+      return;
+    }
+
+    // Require payment only when amount due > 0
+    const amountDue = getPaymentAmountDue();
+    if (amountDue > 0 && !paymentCompleted) {
+      toast.error("Please complete the required payment to continue");
       return;
     }
 
@@ -238,7 +245,7 @@ function HireAgreementContent() {
                   <p><strong>Castle:</strong> {bookingDetails.castleName}</p>
                   <p><strong>Date:</strong> {format(new Date(bookingDetails.date), "EEEE, MMMM do, yyyy")}</p>
                   <p><strong>Total Cost:</strong> £{bookingDetails.totalPrice}</p>
-                  <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between">
                     <p><strong>Payment Method:</strong> {getPaymentMethodDisplay(bookingDetails.paymentMethod)}</p>
                     <Button
                       variant="outline"
@@ -252,14 +259,18 @@ function HireAgreementContent() {
                       Change
                     </Button>
                   </div>
-                  {bookingDetails.paymentMethod === 'online' && (
+          {bookingDetails.paymentMethod === 'online' && (
                     <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
                       <p className="text-blue-700 text-xs"><strong>Online Payment:</strong> Full amount (£{bookingDetails.totalPrice}) will be charged when you sign this agreement.</p>
                     </div>
                   )}
-                  {bookingDetails.paymentMethod === 'cash' && (
+          {bookingDetails.paymentMethod === 'cash' && (
                     <div className="mt-2 p-2 bg-green-50 rounded border border-green-200">
-                      <p className="text-green-700 text-xs"><strong>Cash on Delivery:</strong> Deposit of £{bookingDetails.deposit} required now, remaining £{bookingDetails.totalPrice - bookingDetails.deposit} paid on delivery.</p>
+              {bookingDetails.deposit > 0 ? (
+                <p className="text-green-700 text-xs"><strong>Cash on Delivery:</strong> Deposit of £{bookingDetails.deposit} required now, remaining £{bookingDetails.totalPrice - bookingDetails.deposit} paid on delivery.</p>
+              ) : (
+                <p className="text-green-700 text-xs"><strong>Cash on Delivery:</strong> No deposit required now. Full balance (£{bookingDetails.totalPrice}) will be paid in cash on delivery.</p>
+              )}
                     </div>
                   )}
                 </div>
@@ -312,11 +323,17 @@ function HireAgreementContent() {
                   </div>
                 )}
                 
-                {newPaymentMethod === 'cash' && (
+                    {newPaymentMethod === 'cash' && (
                   <div className="p-3 bg-green-50 rounded border border-green-200">
-                    <p className="text-green-700 text-sm">
-                      <strong>Cash on Delivery:</strong> You will pay a deposit of £{bookingDetails?.deposit} now, and the remaining £{(bookingDetails?.totalPrice || 0) - (bookingDetails?.deposit || 0)} will be paid in cash upon delivery.
-                    </p>
+                    {bookingDetails?.deposit && bookingDetails.deposit > 0 ? (
+                      <p className="text-green-700 text-sm">
+                        <strong>Cash on Delivery:</strong> You will pay a deposit of £{bookingDetails.deposit} now, and the remaining £{(bookingDetails.totalPrice || 0) - (bookingDetails.deposit || 0)} will be paid in cash upon delivery.
+                      </p>
+                    ) : (
+                      <p className="text-green-700 text-sm">
+                        <strong>Cash on Delivery:</strong> No deposit required now. Full balance (£{bookingDetails?.totalPrice || 0}) will be paid in cash on delivery.
+                      </p>
+                    )}
                   </div>
                 )}
                 
@@ -447,8 +464,17 @@ function HireAgreementContent() {
                       </>
                     ) : (
                       <>
-                        <p><strong>Deposit Due:</strong> £{bookingDetails.deposit}</p>
-                        <p><strong>Balance Due on Delivery:</strong> £{bookingDetails.totalPrice - bookingDetails.deposit}</p>
+                        {bookingDetails.deposit > 0 ? (
+                          <>
+                            <p><strong>Deposit Due:</strong> £{bookingDetails.deposit}</p>
+                            <p><strong>Balance Due on Delivery:</strong> £{bookingDetails.totalPrice - bookingDetails.deposit}</p>
+                          </>
+                        ) : (
+                          <>
+                            <p><strong>Deposit Due:</strong> £0 (No deposit required)</p>
+                            <p><strong>Balance Due on Delivery:</strong> £{bookingDetails.totalPrice}</p>
+                          </>
+                        )}
                       </>
                     )}
                   </div>
@@ -491,8 +517,8 @@ function HireAgreementContent() {
           </CardContent>
         </Card>
 
-        {/* Payment Section - Shows after checkbox is checked */}
-        {hasAgreed && !paymentCompleted && (
+        {/* Payment Section - Only render Stripe when there is an amount to pay now */}
+        {hasAgreed && !paymentCompleted && getPaymentAmountDue() > 0 && (
           <div className="mb-8">
             <div className="text-center mb-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
@@ -518,8 +544,29 @@ function HireAgreementContent() {
           </div>
         )}
 
-        {/* Payment Success Confirmation */}
-        {paymentCompleted && (
+        {/* No payment required info (e.g., cash with zero deposit) */}
+        {hasAgreed && getPaymentAmountDue() === 0 && (
+          <Card className="mb-8 bg-green-50 border-green-200">
+            <CardContent className="pt-6">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-green-800">No payment required before signing</h3>
+                  <p className="text-sm text-green-700">
+                    Your payment method is Cash on Delivery and no deposit is required. You can complete the hire agreement now.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Payment Success Confirmation (only when a payment was actually made) */}
+        {paymentCompleted && getPaymentAmountDue() > 0 && (
           <Card className="mb-8 bg-green-50 border-green-200">
             <CardContent className="pt-6">
               <div className="flex items-center space-x-3">
@@ -539,8 +586,8 @@ function HireAgreementContent() {
           </Card>
         )}
 
-        {/* Submit Button - Only shows after payment is completed */}
-        {hasAgreed && paymentCompleted && (
+        {/* Submit Button - Allowed when either payment completed or no payment due */}
+        {hasAgreed && (paymentCompleted || getPaymentAmountDue() === 0) && (
           <div className="text-center">
             <Button
               onClick={handleSubmitAgreement}
@@ -555,8 +602,8 @@ function HireAgreementContent() {
           </div>
         )}
 
-        {/* Instructions when only checkbox is checked */}
-        {hasAgreed && !paymentCompleted && (
+        {/* Instructions when only checkbox is checked and payment is still due */}
+        {hasAgreed && !paymentCompleted && getPaymentAmountDue() > 0 && (
           <div className="text-center">
             <p className="text-sm text-gray-600 bg-blue-50 border border-blue-200 rounded-lg p-4">
               💡 <strong>Next Step:</strong> Complete the secure deposit payment above to finalize your hire agreement
