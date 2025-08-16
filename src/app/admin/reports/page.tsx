@@ -160,6 +160,10 @@ export default function AdminReports() {
 
     setIsExporting(true);
     try {
+      console.log(
+        `Exporting booking data for: ${bookingRef.trim().toUpperCase()}`,
+      );
+
       const response = await fetch("/api/admin/bookings/export", {
         method: "POST",
         headers: {
@@ -170,17 +174,32 @@ export default function AdminReports() {
         }),
       });
 
+      console.log(`Export response status: ${response.status}`);
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to export booking data");
+        let errorMessage = "Failed to export booking data";
+        try {
+          const error = await response.json();
+          errorMessage = error.error || errorMessage;
+          if (error.details) {
+            console.error("Export error details:", error.details);
+            errorMessage += ` (${error.details})`;
+          }
+        } catch (parseError) {
+          console.error("Failed to parse error response:", parseError);
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
+      console.log("Export result received:", !!result.success);
 
       if (result.success) {
         // Create and trigger download
         const dataStr = JSON.stringify(result.data, null, 2);
         const dataBlob = new Blob([dataStr], { type: "application/json" });
+        console.log(`JSON export size: ${dataBlob.size} bytes`);
+
         const url = URL.createObjectURL(dataBlob);
         const link = document.createElement("a");
         link.href = url;
@@ -195,7 +214,7 @@ export default function AdminReports() {
         );
         setBookingRef(""); // Clear the input
       } else {
-        throw new Error("Export failed");
+        throw new Error("Export failed - no success flag in response");
       }
     } catch (error) {
       console.error("Export error:", error);
@@ -217,6 +236,10 @@ export default function AdminReports() {
 
     setIsGeneratingReport(true);
     try {
+      console.log(
+        `Generating PDF report for booking: ${bookingRef.trim().toUpperCase()}`,
+      );
+
       const response = await fetch("/api/admin/bookings/report", {
         method: "POST",
         headers: {
@@ -227,13 +250,39 @@ export default function AdminReports() {
         }),
       });
 
+      console.log(`PDF generation response status: ${response.status}`);
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to generate PDF report");
+        let errorMessage = "Failed to generate PDF report";
+        try {
+          const error = await response.json();
+          errorMessage = error.error || errorMessage;
+          if (error.details) {
+            console.error("PDF generation error details:", error.details);
+            errorMessage += ` (${error.details})`;
+          }
+        } catch (parseError) {
+          console.error("Failed to parse error response:", parseError);
+        }
+        throw new Error(errorMessage);
+      }
+
+      // Check if response is actually a PDF
+      const contentType = response.headers.get("content-type");
+      console.log(`Response content type: ${contentType}`);
+
+      if (!contentType || !contentType.includes("application/pdf")) {
+        throw new Error("Server did not return a PDF file");
       }
 
       // Get the PDF blob and trigger download
       const pdfBlob = await response.blob();
+      console.log(`PDF blob size: ${pdfBlob.size} bytes`);
+
+      if (pdfBlob.size === 0) {
+        throw new Error("Generated PDF is empty");
+      }
+
       const url = URL.createObjectURL(pdfBlob);
       const link = document.createElement("a");
       link.href = url;
