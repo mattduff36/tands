@@ -154,11 +154,16 @@ export async function POST(request: NextRequest) {
           ? booking.payment_amount / 100
           : 0; // payment_amount is always in pence
 
-        // Fix historic bookings - if status is 'completed' but no payment status, mark as paid in full
+        // Fix payment amount for paid_full bookings and historic bookings
         let adjustedPaymentStatus = booking.payment_status;
         let adjustedPaymentAmount = paymentAmountPounds;
 
-        if (
+        // If payment status is paid_full, ensure payment amount reflects full payment
+        if (booking.payment_status === "paid_full") {
+          adjustedPaymentAmount = totalPricePounds; // Full payment for paid_full status
+        }
+        // Fix historic bookings - if status is 'completed' but no payment status, mark as paid in full
+        else if (
           booking.status === "completed" &&
           (!booking.payment_status || booking.payment_status === "pending")
         ) {
