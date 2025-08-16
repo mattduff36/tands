@@ -54,6 +54,13 @@ export default function AdminReports() {
   const [isExporting, setIsExporting] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
+  // Accounting export state
+  const [accountingDateFrom, setAccountingDateFrom] = useState("");
+  const [accountingDateTo, setAccountingDateTo] = useState("");
+  const [isExportingAccounting, setIsExportingAccounting] = useState(false);
+  const [isGeneratingAccountingPDF, setIsGeneratingAccountingPDF] =
+    useState(false);
+
   // Calculate date range based on timeRange
   const getDateRange = () => {
     const now = new Date();
@@ -141,12 +148,6 @@ export default function AdminReports() {
   useEffect(() => {
     fetchReportData();
   }, [timeRange]);
-
-  const handleExport = () => {
-    // TODO: Implement export functionality
-    console.log("Export functionality to be implemented");
-    toast.info("Feature coming soon!");
-  };
 
   const handleTimeRangeChange = (newRange: string) => {
     setTimeRange(newRange);
@@ -314,6 +315,100 @@ export default function AdminReports() {
     }
   };
 
+  const handleAccountingExport = async (format: "csv" | "pdf") => {
+    if (!accountingDateFrom || !accountingDateTo) {
+      toast.error("Please select both start and end dates");
+      return;
+    }
+
+    if (new Date(accountingDateFrom) > new Date(accountingDateTo)) {
+      toast.error("Start date must be before end date");
+      return;
+    }
+
+    const setLoading =
+      format === "csv"
+        ? setIsExportingAccounting
+        : setIsGeneratingAccountingPDF;
+    setLoading(true);
+
+    try {
+      console.log(
+        `Exporting accounting data: ${accountingDateFrom} to ${accountingDateTo}, format: ${format}`,
+      );
+
+      const response = await fetch("/api/admin/reports/accounting", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          dateFrom: accountingDateFrom,
+          dateTo: accountingDateTo,
+          format: format,
+        }),
+      });
+
+      console.log(`Accounting export response status: ${response.status}`);
+
+      if (!response.ok) {
+        let errorMessage = `Failed to export accounting data as ${format.toUpperCase()}`;
+        try {
+          const error = await response.json();
+          errorMessage = error.error || errorMessage;
+          if (error.details) {
+            console.error("Accounting export error details:", error.details);
+            errorMessage += ` (${error.details})`;
+          }
+        } catch (parseError) {
+          console.error("Failed to parse error response:", parseError);
+        }
+        throw new Error(errorMessage);
+      }
+
+      // Handle the file download
+      const blob = await response.blob();
+      console.log(`Accounting ${format} size: ${blob.size} bytes`);
+
+      if (blob.size === 0) {
+        throw new Error(`Generated ${format.toUpperCase()} is empty`);
+      }
+
+      // Get filename from response headers or create default
+      const contentDisposition = response.headers.get("Content-Disposition");
+      let filename = `accounting-export-${accountingDateFrom}-to-${accountingDateTo}-${new Date().toISOString().split("T")[0]}.${format}`;
+
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success(
+        `Accounting ${format.toUpperCase()} exported successfully for ${accountingDateFrom} to ${accountingDateTo}`,
+      );
+    } catch (error) {
+      console.error("Accounting export error:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : `Failed to export accounting ${format.toUpperCase()}`,
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (error) {
     return (
       <div className="space-y-6">
@@ -375,10 +470,6 @@ export default function AdminReports() {
             </select>
             <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
           </div>
-          <Button onClick={handleExport} disabled={isLoading || !reportData}>
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </Button>
         </div>
       </div>
 
@@ -512,6 +603,153 @@ export default function AdminReports() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Accounting Data Export */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <PoundSterling className="w-5 h-5 mr-2" />
+                Accounting Data Export
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-start">
+                  <PoundSterling className="w-5 h-5 text-green-600 mt-0.5 mr-3 flex-shrink-0" />
+                  <div>
+                    <h4 className="text-sm font-medium text-green-900 mb-1">
+                      Financial Data for Accountant
+                    </h4>
+                    <p className="text-sm text-green-700">
+                      Export comprehensive financial data for all bookings
+                      within a date range. Includes payment details, revenue
+                      recognition, outstanding balances, and transaction records
+                      formatted for accounting purposes.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="accountingDateFrom">Start Date</Label>
+                    <Input
+                      id="accountingDateFrom"
+                      type="date"
+                      value={accountingDateFrom}
+                      onChange={(e) => setAccountingDateFrom(e.target.value)}
+                      className="mt-1"
+                      disabled={
+                        isExportingAccounting || isGeneratingAccountingPDF
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="accountingDateTo">End Date</Label>
+                    <Input
+                      id="accountingDateTo"
+                      type="date"
+                      value={accountingDateTo}
+                      onChange={(e) => setAccountingDateTo(e.target.value)}
+                      className="mt-1"
+                      disabled={
+                        isExportingAccounting || isGeneratingAccountingPDF
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="flex space-x-3">
+                  <Button
+                    onClick={() => handleAccountingExport("csv")}
+                    disabled={
+                      isExportingAccounting ||
+                      isGeneratingAccountingPDF ||
+                      !accountingDateFrom ||
+                      !accountingDateTo
+                    }
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    {isExportingAccounting ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mr-2" />
+                        Exporting CSV...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4 mr-2" />
+                        Export CSV
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={() => handleAccountingExport("pdf")}
+                    disabled={
+                      isExportingAccounting ||
+                      isGeneratingAccountingPDF ||
+                      !accountingDateFrom ||
+                      !accountingDateTo
+                    }
+                    className="flex-1"
+                  >
+                    {isGeneratingAccountingPDF ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                        Generating PDF...
+                      </>
+                    ) : (
+                      <>
+                        <FileOutput className="w-4 h-4 mr-2" />
+                        Generate PDF
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                <div className="text-sm text-gray-600 space-y-3">
+                  <div>
+                    <h5 className="font-medium text-gray-900 mb-2">
+                      Accounting Export Features:
+                    </h5>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div className="bg-gray-50 border border-gray-200 rounded p-3">
+                        <div className="font-medium text-gray-900 mb-1">
+                          📊 CSV Export
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          Detailed spreadsheet with all financial data, perfect
+                          for importing into accounting software
+                        </div>
+                      </div>
+                      <div className="bg-green-50 border border-green-200 rounded p-3">
+                        <div className="font-medium text-gray-900 mb-1">
+                          📈 PDF Report
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          Professional financial summary with totals and
+                          detailed transaction table
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <h5 className="font-medium text-gray-900">Includes:</h5>
+                    <ul className="list-disc list-inside space-y-1 ml-4">
+                      <li>Complete booking and customer details</li>
+                      <li>Payment status, amounts, and dates</li>
+                      <li>Revenue recognition status</li>
+                      <li>Outstanding balances and deposit tracking</li>
+                      <li>Transaction IDs and payment methods</li>
+                      <li>Agreement signatures and legal compliance data</li>
+                      <li>Financial summary with totals and breakdowns</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Booking Data Export */}
           <Card>
