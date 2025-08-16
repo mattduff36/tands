@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      // Get comprehensive booking data for accounting
+      // Get comprehensive booking data for accounting (exclude cancelled and expired bookings)
       const accountingQuery = `
         SELECT 
           booking_ref,
@@ -110,10 +110,13 @@ export async function POST(request: NextRequest) {
           notes
         FROM bookings 
         WHERE date >= $1 AND date <= $2
+        AND status NOT IN ('cancelled', 'expired')
         ORDER BY date ASC, booking_ref ASC
       `;
 
-      console.log(`Querying accounting data from ${dateFrom} to ${dateTo}`);
+      console.log(
+        `Querying accounting data from ${dateFrom} to ${dateTo} (excluding cancelled/expired bookings)`,
+      );
       const bookingsResult = await Promise.race([
         client.query(accountingQuery, [dateFrom, dateTo]),
         new Promise((_, reject) =>

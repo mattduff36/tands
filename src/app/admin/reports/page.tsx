@@ -621,10 +621,11 @@ export default function AdminReports() {
                       Financial Data for Accountant
                     </h4>
                     <p className="text-sm text-green-700">
-                      Export comprehensive financial data for all bookings
-                      within a date range. Includes payment details, revenue
-                      recognition, outstanding balances, and transaction records
-                      formatted for accounting purposes.
+                      Export comprehensive financial data for all active
+                      bookings within a date range. Includes payment details,
+                      revenue recognition, outstanding balances, and transaction
+                      records formatted for accounting purposes. Excludes
+                      cancelled and expired bookings.
                     </p>
                   </div>
                 </div>
@@ -737,13 +738,20 @@ export default function AdminReports() {
                   <div>
                     <h5 className="font-medium text-gray-900">Includes:</h5>
                     <ul className="list-disc list-inside space-y-1 ml-4">
-                      <li>Complete booking and customer details</li>
+                      <li>
+                        Complete booking and customer details (active bookings
+                        only)
+                      </li>
                       <li>Payment status, amounts, and dates</li>
                       <li>Revenue recognition status</li>
                       <li>Outstanding balances and deposit tracking</li>
                       <li>Transaction IDs and payment methods</li>
                       <li>Agreement signatures and legal compliance data</li>
                       <li>Financial summary with totals and breakdowns</li>
+                      <li>
+                        Excludes cancelled and expired bookings for accurate
+                        financials
+                      </li>
                     </ul>
                   </div>
                 </div>
