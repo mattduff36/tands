@@ -50,7 +50,7 @@ interface Booking {
   customerEmail: string;
   customerPhone: string;
   customerAddress: string;
-  eventGroundType?: 'grass' | 'gravel' | 'unsure';
+  eventGroundType?: "grass" | "gravel" | "unsure";
   castleId: number;
   castleName: string;
   date: string;
@@ -73,13 +73,13 @@ interface Booking {
   agreementSignedAt?: string;
   agreementSignedBy?: string;
   agreementSignedMethod?: "email" | "manual" | "physical" | "admin_override";
-  
+
   // Payment tracking information
-  paymentStatus?: 'pending' | 'deposit_paid' | 'paid_full';
+  paymentStatus?: "pending" | "deposit_paid" | "paid_full";
   paymentIntentId?: string;
   paymentDate?: string;
   paymentAmount?: number;
-  paymentType?: 'deposit' | 'full';
+  paymentType?: "deposit" | "full";
   paymentFailureReason?: string;
 }
 
@@ -121,7 +121,9 @@ export default function AdminBookings() {
     completed: true,
     expired: false,
   });
-  const [bookingDistances, setBookingDistances] = useState<Record<number, number>>({});
+  const [bookingDistances, setBookingDistances] = useState<
+    Record<number, number>
+  >({});
 
   const [timeRange, setTimeRange] = useState("all");
 
@@ -154,8 +156,10 @@ export default function AdminBookings() {
   // Payment editing state
   const [showPaymentEditModal, setShowPaymentEditModal] = useState(false);
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
-  const [newPaymentStatus, setNewPaymentStatus] = useState<'pending' | 'deposit_paid' | 'paid_full'>('pending');
-  const [adminComment, setAdminComment] = useState('');
+  const [newPaymentStatus, setNewPaymentStatus] = useState<
+    "pending" | "deposit_paid" | "paid_full"
+  >("pending");
+  const [adminComment, setAdminComment] = useState("");
   const [isUpdatingPayment, setIsUpdatingPayment] = useState(false);
 
   // Debug: Track events array changes
@@ -233,7 +237,9 @@ export default function AdminBookings() {
     setIsLoading(true);
     try {
       const { dateFrom, dateTo } = getDateRange();
-      const response = await fetch(`/api/admin/bookings?dateFrom=${dateFrom}&dateTo=${dateTo}`);
+      const response = await fetch(
+        `/api/admin/bookings?dateFrom=${dateFrom}&dateTo=${dateTo}`,
+      );
       if (response.ok) {
         const data = await response.json();
         setBookings(data.bookings || []);
@@ -246,7 +252,9 @@ export default function AdminBookings() {
             setBookings(data.bookings || []);
             toast.warning("Fetched bookings without date filter (fallback)");
           } else {
-            const err = await fallback.json().catch(() => ({ error: `HTTP ${fallback.status}` }));
+            const err = await fallback
+              .json()
+              .catch(() => ({ error: `HTTP ${fallback.status}` }));
             toast.error(err.error || "Failed to fetch bookings");
           }
         } catch (e) {
@@ -284,12 +292,19 @@ export default function AdminBookings() {
               if (!res.ok) return;
               const data = await res.json();
               const coords = data?.coordinates;
-              if (coords && typeof coords.lat === "number" && typeof coords.lng === "number") {
-                const miles = haversineMiles(
-                  BUSINESS_LOCATION.coordinates,
-                  { lat: coords.lat, lng: coords.lng },
-                );
-                setBookingDistances((prev) => ({ ...prev, [b.id]: Math.round(miles * 10) / 10 }));
+              if (
+                coords &&
+                typeof coords.lat === "number" &&
+                typeof coords.lng === "number"
+              ) {
+                const miles = haversineMiles(BUSINESS_LOCATION.coordinates, {
+                  lat: coords.lat,
+                  lng: coords.lng,
+                });
+                setBookingDistances((prev) => ({
+                  ...prev,
+                  [b.id]: Math.round(miles * 10) / 10,
+                }));
               }
             } catch {}
           })(),
@@ -301,7 +316,10 @@ export default function AdminBookings() {
     return () => controller.abort();
   }, [bookings, bookingDistances]);
 
-  function getDistanceHighlightClass(distance?: number, status?: string): string {
+  function getDistanceHighlightClass(
+    distance?: number,
+    status?: string,
+  ): string {
     if (typeof distance !== "number" || !isFinite(distance)) return "";
     if (status !== "pending") return "";
     if (distance > 35) return "bg-red-50 border-red-300";
@@ -470,7 +488,7 @@ export default function AdminBookings() {
 
     if (booking.agreementSigned) {
       return (
-        <Badge 
+        <Badge
           className="flex items-center gap-1 bg-black text-white border-black hover:bg-black"
           title="Agreement: Signed"
         >
@@ -479,7 +497,7 @@ export default function AdminBookings() {
       );
     } else {
       return (
-        <Badge 
+        <Badge
           className="flex items-center gap-1 bg-white text-black border-black hover:bg-white"
           title="Agreement: Awaiting signature"
         >
@@ -489,10 +507,10 @@ export default function AdminBookings() {
     }
   };
 
-  // Get payment status badge for confirmed bookings (clickable for editing)
+  // Get payment status badge for confirmed and completed bookings (clickable for editing)
   const getPaymentBadge = (booking: any) => {
-    // Only show payment status for confirmed bookings
-    if (booking.status !== "confirmed") {
+    // Only show payment status for confirmed and completed bookings
+    if (booking.status !== "confirmed" && booking.status !== "completed") {
       return null;
     }
 
@@ -502,11 +520,11 @@ export default function AdminBookings() {
     const paymentType = booking.paymentType;
 
     // Handle new payment statuses
-    if (paymentStatus === 'paid_full') {
+    if (paymentStatus === "paid_full") {
       // Green - Paid in full
       return (
-        <Badge 
-          className="flex items-center gap-1 bg-green-100 text-green-800 border-green-200 hover:bg-green-200 cursor-pointer" 
+        <Badge
+          className="flex items-center gap-1 bg-green-100 text-green-800 border-green-200 hover:bg-green-200 cursor-pointer"
           title="Payment: Paid in full (click to edit)"
           onClick={(e) => {
             e.stopPropagation();
@@ -518,11 +536,11 @@ export default function AdminBookings() {
       );
     }
 
-    if (paymentStatus === 'deposit_paid') {
+    if (paymentStatus === "deposit_paid") {
       // Yellow - Deposit paid
       return (
-        <Badge 
-          className="flex items-center gap-1 bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200 cursor-pointer" 
+        <Badge
+          className="flex items-center gap-1 bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200 cursor-pointer"
           title="Payment: Deposit paid (click to edit)"
           onClick={(e) => {
             e.stopPropagation();
@@ -535,11 +553,11 @@ export default function AdminBookings() {
     }
 
     // Handle pending payments (default/fallback)
-    if (paymentStatus === 'pending' || !paymentStatus) {
+    if (paymentStatus === "pending" || !paymentStatus) {
       // Grey - No payment
       return (
-        <Badge 
-          className="flex items-center gap-1 bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200 cursor-pointer" 
+        <Badge
+          className="flex items-center gap-1 bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200 cursor-pointer"
           title="Payment: No Payment (click to edit)"
           onClick={(e) => {
             e.stopPropagation();
@@ -556,39 +574,45 @@ export default function AdminBookings() {
   };
 
   // Map booking payment status to admin UI payment status (now they match, so direct mapping)
-  const mapPaymentStatusToAdminUI = (paymentStatus?: string): 'pending' | 'deposit_paid' | 'paid_full' => {
+  const mapPaymentStatusToAdminUI = (
+    paymentStatus?: string,
+  ): "pending" | "deposit_paid" | "paid_full" => {
     switch (paymentStatus) {
-      case 'paid_full':
-        return 'paid_full';
-      case 'deposit_paid':
-        return 'deposit_paid';
-      case 'pending':
+      case "paid_full":
+        return "paid_full";
+      case "deposit_paid":
+        return "deposit_paid";
+      case "pending":
       default:
-        return 'pending';
+        return "pending";
     }
   };
 
   // Render payment status button (circular with £ symbol only)
   const getPaymentButton = (booking: Booking) => {
-    if (booking.status !== 'confirmed') return null;
+    if (booking.status !== "confirmed" && booking.status !== "completed")
+      return null;
 
     const paymentStatus = booking.paymentStatus;
-    
+
     // Determine button style and tooltip based on payment status
-    let buttonClass = '';
-    let tooltipText = '';
-    
+    let buttonClass = "";
+    let tooltipText = "";
+
     // Handle new payment statuses (same logic as getPaymentBadge)
-    if (paymentStatus === 'paid_full') {
-      buttonClass = 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200';
-      tooltipText = 'Payment: Paid Full (click to edit)';
-    } else if (paymentStatus === 'deposit_paid') {
-      buttonClass = 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200';
-      tooltipText = 'Payment: Deposit Paid (click to edit)';
+    if (paymentStatus === "paid_full") {
+      buttonClass =
+        "bg-green-100 text-green-800 border-green-200 hover:bg-green-200";
+      tooltipText = "Payment: Paid Full (click to edit)";
+    } else if (paymentStatus === "deposit_paid") {
+      buttonClass =
+        "bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200";
+      tooltipText = "Payment: Deposit Paid (click to edit)";
     } else {
       // pending, failed, cancelled, refunded, or no status
-      buttonClass = 'bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200';
-      tooltipText = 'Payment: No Payment (click to edit)';
+      buttonClass =
+        "bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200";
+      tooltipText = "Payment: No Payment (click to edit)";
     }
 
     return (
@@ -607,12 +631,12 @@ export default function AdminBookings() {
 
   // Handle opening payment edit modal
   const handlePaymentBadgeClick = (booking: Booking) => {
-    if (booking.status !== 'confirmed') return;
-    
+    if (booking.status !== "confirmed") return;
+
     setEditingBooking(booking);
     // Set current values as defaults with proper mapping
     setNewPaymentStatus(mapPaymentStatusToAdminUI(booking.paymentStatus));
-    setAdminComment('');
+    setAdminComment("");
     setShowPaymentEditModal(true);
   };
 
@@ -622,49 +646,53 @@ export default function AdminBookings() {
 
     // Validate that comment is provided
     if (!adminComment.trim()) {
-      toast.error('Please provide a comment explaining the payment status change');
+      toast.error(
+        "Please provide a comment explaining the payment status change",
+      );
       return;
     }
 
     setIsUpdatingPayment(true);
     try {
-      const response = await fetch(`/api/admin/bookings/${editingBooking.id}/update-payment`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `/api/admin/bookings/${editingBooking.id}/update-payment`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            paymentStatus: newPaymentStatus,
+            adminComment: adminComment.trim(),
+          }),
         },
-        body: JSON.stringify({
-          paymentStatus: newPaymentStatus,
-          adminComment: adminComment.trim(),
-        }),
-      });
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to update payment status');
+        throw new Error("Failed to update payment status");
       }
 
       const result = await response.json();
-      
+
       // Update the booking in the local state
-      setBookings(prevBookings => 
-        prevBookings.map(booking => 
-          booking.id === editingBooking.id 
-            ? { 
-                ...booking, 
+      setBookings((prevBookings) =>
+        prevBookings.map((booking) =>
+          booking.id === editingBooking.id
+            ? {
+                ...booking,
                 paymentStatus: newPaymentStatus,
-                updatedAt: new Date().toISOString()
+                updatedAt: new Date().toISOString(),
               }
-            : booking
-        )
+            : booking,
+        ),
       );
 
-      toast.success('Payment status updated successfully');
+      toast.success("Payment status updated successfully");
       setShowPaymentEditModal(false);
       setEditingBooking(null);
-      
     } catch (error) {
-      console.error('Error updating payment status:', error);
-      toast.error('Failed to update payment status');
+      console.error("Error updating payment status:", error);
+      toast.error("Failed to update payment status");
     } finally {
       setIsUpdatingPayment(false);
     }
@@ -811,12 +839,17 @@ Customer: ${booking.customerName}
 Email: ${booking.customerEmail}
 Phone: ${booking.customerPhone}
 Castle: ${booking.castleName}
-Ground Type: ${booking.eventGroundType ? (
-  booking.eventGroundType === 'grass' ? 'Grass' :
-  booking.eventGroundType === 'gravel' ? 'Gravel' :
-  booking.eventGroundType === 'unsure' ? 'Unsure' : 
-  booking.eventGroundType
-) : 'Not specified'}
+Ground Type: ${
+      booking.eventGroundType
+        ? booking.eventGroundType === "grass"
+          ? "Grass"
+          : booking.eventGroundType === "gravel"
+            ? "Gravel"
+            : booking.eventGroundType === "unsure"
+              ? "Unsure"
+              : booking.eventGroundType
+        : "Not specified"
+    }
 Duration: ${booking.eventDuration || 8} hours
 Special Requests: ${booking.notes || "[none]"}
 Total: £${booking.totalPrice}
@@ -1894,11 +1927,11 @@ Status: ${booking.status}`;
                   key={booking.id}
                   className={`flex items-start justify-between p-4 border rounded-lg cursor-pointer gap-3 transition-colors ${(() => {
                     const d = bookingDistances[booking.id];
-                    if (typeof d === 'number' && booking.status === 'pending') {
-                      if (d > 35) return 'bg-red-50 border-red-300';
-                      if (d > 20) return 'bg-yellow-50 border-yellow-300';
+                    if (typeof d === "number" && booking.status === "pending") {
+                      if (d > 35) return "bg-red-50 border-red-300";
+                      if (d > 20) return "bg-yellow-50 border-yellow-300";
                     }
-                    return 'hover:bg-gray-50';
+                    return "hover:bg-gray-50";
                   })()}`}
                   onClick={() => {
                     // Since filteredBookings only contains database bookings, always convert to calendar event format
@@ -1911,8 +1944,10 @@ Status: ${booking.status}`;
                       <div className="flex gap-2 items-center">
                         {getStatusBadge(booking.status, booking)}
                         {getAgreementBadge(booking)}
-                        {typeof bookingDistances[booking.id] === 'number' && (
-                          <span className="text-xs text-gray-600">{bookingDistances[booking.id]} mi</span>
+                        {typeof bookingDistances[booking.id] === "number" && (
+                          <span className="text-xs text-gray-600">
+                            {bookingDistances[booking.id]} mi
+                          </span>
                         )}
                       </div>
                     </div>
@@ -1935,16 +1970,24 @@ Status: ${booking.status}`;
                       <div>
                         <strong>Ground:</strong>{" "}
                         {booking.eventGroundType ? (
-                          <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                            booking.eventGroundType === 'grass' ? 'bg-green-100 text-green-800' :
-                            booking.eventGroundType === 'gravel' ? 'bg-blue-100 text-blue-800' :
-                            booking.eventGroundType === 'unsure' ? 'bg-orange-100 text-orange-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {booking.eventGroundType === 'grass' ? '🌱 Grass' :
-                             booking.eventGroundType === 'gravel' ? '🪨 Gravel' :
-                             booking.eventGroundType === 'unsure' ? '❓ Unsure' :
-                             booking.eventGroundType}
+                          <span
+                            className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                              booking.eventGroundType === "grass"
+                                ? "bg-green-100 text-green-800"
+                                : booking.eventGroundType === "gravel"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : booking.eventGroundType === "unsure"
+                                    ? "bg-orange-100 text-orange-800"
+                                    : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {booking.eventGroundType === "grass"
+                              ? "🌱 Grass"
+                              : booking.eventGroundType === "gravel"
+                                ? "🪨 Gravel"
+                                : booking.eventGroundType === "unsure"
+                                  ? "❓ Unsure"
+                                  : booking.eventGroundType}
                           </span>
                         ) : (
                           <span className="text-gray-400">Not specified</span>
@@ -1955,7 +1998,7 @@ Status: ${booking.status}`;
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Payment Status Button - Always Right Side */}
                   <div className="flex-shrink-0 ml-2">
                     {getPaymentButton(booking)}
@@ -2442,16 +2485,21 @@ Status: ${booking.status}`;
               <div className="space-y-4">
                 <div>
                   <p className="text-sm text-gray-600 mb-2">
-                    Booking: <strong>{editingBooking.bookingRef}</strong> - {editingBooking.customerName}
+                    Booking: <strong>{editingBooking.bookingRef}</strong> -{" "}
+                    {editingBooking.customerName}
                   </p>
                   <p className="text-sm text-gray-600">
-                    Total: £{editingBooking.totalPrice} | Deposit: £{editingBooking.deposit}
+                    Total: £{editingBooking.totalPrice} | Deposit: £
+                    {editingBooking.deposit}
                   </p>
                 </div>
 
                 <div>
                   <Label className="text-sm font-medium">Payment Status</Label>
-                  <Select value={newPaymentStatus} onValueChange={(value: any) => setNewPaymentStatus(value)}>
+                  <Select
+                    value={newPaymentStatus}
+                    onValueChange={(value: any) => setNewPaymentStatus(value)}
+                  >
                     <SelectTrigger className="mt-1">
                       <SelectValue />
                     </SelectTrigger>
@@ -2464,7 +2512,9 @@ Status: ${booking.status}`;
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium">Comment (Required)</Label>
+                  <Label className="text-sm font-medium">
+                    Comment (Required)
+                  </Label>
                   <textarea
                     value={adminComment}
                     onChange={(e) => setAdminComment(e.target.value)}
@@ -2474,13 +2524,17 @@ Status: ${booking.status}`;
                     required
                   />
                   {adminComment.trim().length === 0 && (
-                    <p className="text-xs text-red-600 mt-1">A comment is required to explain this change</p>
+                    <p className="text-xs text-red-600 mt-1">
+                      A comment is required to explain this change
+                    </p>
                   )}
                 </div>
 
                 <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
                   <p className="text-sm text-yellow-800">
-                    <strong>Note:</strong> This change will be logged as an admin modification and will update the booking's payment status in the database.
+                    <strong>Note:</strong> This change will be logged as an
+                    admin modification and will update the booking's payment
+                    status in the database.
                   </p>
                 </div>
 
@@ -2496,7 +2550,7 @@ Status: ${booking.status}`;
                         Updating...
                       </>
                     ) : (
-                      'Update Payment Status'
+                      "Update Payment Status"
                     )}
                   </Button>
                   <Button
