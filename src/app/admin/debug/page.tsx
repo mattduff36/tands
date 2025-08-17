@@ -1,21 +1,21 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Database, 
-  Calendar, 
-  RefreshCw, 
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Database,
+  Calendar,
+  RefreshCw,
   Eye,
   AlertCircle,
   CheckCircle,
   Clock,
-  Bug
-} from 'lucide-react';
-import { toast } from 'sonner';
+  Bug,
+} from "lucide-react";
+import { toast } from "sonner";
 
 interface Booking {
   id: number;
@@ -30,7 +30,7 @@ interface Booking {
   paymentMethod: string;
   totalPrice: number;
   deposit: number;
-  status: 'pending' | 'confirmed' | 'complete' | 'expired';
+  status: "pending" | "confirmed" | "complete" | "expired";
   notes?: string;
   createdAt: string;
   updatedAt: string;
@@ -96,7 +96,7 @@ export default function DebugPage() {
     setIsLoading(true);
     try {
       // Fetch bookings
-      const bookingsResponse = await fetch('/api/admin/bookings');
+      const bookingsResponse = await fetch("/api/admin/bookings");
       if (bookingsResponse.ok) {
         const bookingsData = await bookingsResponse.json();
         // Use admin list for quick summary, but prefer raw debug details when available
@@ -104,33 +104,35 @@ export default function DebugPage() {
       }
 
       // Fetch castles
-      const castlesResponse = await fetch('/api/admin/fleet');
+      const castlesResponse = await fetch("/api/admin/fleet");
       if (castlesResponse.ok) {
         const castlesData = await castlesResponse.json();
-        setCastles(castlesData.castles || []);
+        // The /api/admin/fleet endpoint returns the array directly, not wrapped in an object
+        setCastles(Array.isArray(castlesData) ? castlesData : []);
       }
 
       // Fetch calendar events
       const currentDate = new Date();
       const year = currentDate.getFullYear();
       const month = currentDate.getMonth() + 1;
-      
-      const eventsResponse = await fetch(`/api/admin/calendar/events?year=${year}&month=${month}`);
+
+      const eventsResponse = await fetch(
+        `/api/admin/calendar/events?year=${year}&month=${month}`,
+      );
       if (eventsResponse.ok) {
         const eventsData = await eventsResponse.json();
         setCalendarEvents(eventsData.events || []);
       }
 
       // Fetch raw debug data
-      const rawDataResponse = await fetch('/api/admin/debug');
+      const rawDataResponse = await fetch("/api/admin/debug");
       if (rawDataResponse.ok) {
         const rawDataResult = await rawDataResponse.json();
         setRawData(rawDataResult.data);
       }
-
     } catch (error) {
-      console.error('Error fetching debug data:', error);
-      toast.error('Failed to fetch debug data');
+      console.error("Error fetching debug data:", error);
+      toast.error("Failed to fetch debug data");
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -140,7 +142,7 @@ export default function DebugPage() {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await fetchDebugData();
-    toast.success('Debug data refreshed');
+    toast.success("Debug data refreshed");
   };
 
   useEffect(() => {
@@ -149,27 +151,47 @@ export default function DebugPage() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'pending':
-        return <Badge className="flex items-center gap-1 bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-100"><Clock className="w-3 h-3" /> Pending</Badge>;
-      case 'confirmed':
-        return <Badge className="flex items-center gap-1 bg-green-100 text-green-800 border-green-200 hover:bg-green-100"><CheckCircle className="w-3 h-3" /> Confirmed</Badge>;
-      case 'completed':
-        return <Badge className="flex items-center gap-1 bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100"><CheckCircle className="w-3 h-3" /> Completed</Badge>;
-      case 'expired':
-        return <Badge className="flex items-center gap-1 bg-gray-600 text-gray-100 border-gray-500 hover:bg-gray-600"><AlertCircle className="w-3 h-3" /> Expired</Badge>;
+      case "pending":
+        return (
+          <Badge className="flex items-center gap-1 bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-100">
+            <Clock className="w-3 h-3" /> Pending
+          </Badge>
+        );
+      case "confirmed":
+        return (
+          <Badge className="flex items-center gap-1 bg-green-100 text-green-800 border-green-200 hover:bg-green-100">
+            <CheckCircle className="w-3 h-3" /> Confirmed
+          </Badge>
+        );
+      case "completed":
+        return (
+          <Badge className="flex items-center gap-1 bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100">
+            <CheckCircle className="w-3 h-3" /> Completed
+          </Badge>
+        );
+      case "expired":
+        return (
+          <Badge className="flex items-center gap-1 bg-gray-600 text-gray-100 border-gray-500 hover:bg-gray-600">
+            <AlertCircle className="w-3 h-3" /> Expired
+          </Badge>
+        );
       default:
-        return <Badge className="flex items-center gap-1 bg-red-100 text-red-800 border-red-200 hover:bg-red-100"><AlertCircle className="w-3 h-3" /> Unknown</Badge>;
+        return (
+          <Badge className="flex items-center gap-1 bg-red-100 text-red-800 border-red-200 hover:bg-red-100">
+            <AlertCircle className="w-3 h-3" /> Unknown
+          </Badge>
+        );
     }
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-GB', {
-      weekday: 'short',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return new Date(dateString).toLocaleDateString("en-GB", {
+      weekday: "short",
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -195,94 +217,117 @@ export default function DebugPage() {
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Debug Dashboard</h1>
-              <p className="text-gray-600">Database contents and system status for troubleshooting</p>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                Debug Dashboard
+              </h1>
+              <p className="text-gray-600">
+                Database contents and system status for troubleshooting
+              </p>
             </div>
             <div className="flex gap-2">
-              <Button onClick={handleRefresh} disabled={isRefreshing} className="flex items-center gap-2">
-                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <Button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw
+                  className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`}
+                />
                 Refresh Data
               </Button>
-                             <Button 
-                 onClick={async () => {
-                   if (!confirm('⚠️ WARNING: This will update the database with your manual changes.\n\nThis is a powerful but dangerous operation. Make sure you have backed up your data and know exactly what you are doing.\n\nAre you sure you want to proceed?')) {
-                     return;
-                   }
-                   
-                   try {
-                     const response = await fetch('/api/admin/update-database', { 
-                       method: 'POST',
-                       headers: {
-                         'Content-Type': 'application/json',
-                       },
-                       body: JSON.stringify({ rawData })
-                     });
-                     const result = await response.json();
-                     if (result.success) {
-                       toast.success(result.message);
-                       fetchDebugData(); // Refresh the data
-                     } else {
-                       toast.error(result.error || 'Failed to update database');
-                     }
-                   } catch (error) {
-                     toast.error('Failed to update database');
-                   }
-                 }}
-                 variant="destructive"
-                 className="flex items-center gap-2"
-               >
-                 <AlertCircle className="w-4 h-4" />
-                 Update Database
-               </Button>
-               
-               <Button 
-                 onClick={async () => {
-                   if (!confirm('🔧 This will fix database sequence issues that prevent new bookings from being created.\n\nThis is safe to run and will resolve ID conflicts.\n\nAre you sure you want to proceed?')) {
-                     return;
-                   }
-                   
-                   try {
-                     const response = await fetch('/api/admin/fix-sequence', { 
-                       method: 'POST'
-                     });
-                     const result = await response.json();
-                     if (result.success) {
-                       toast.success(result.message);
-                       fetchDebugData(); // Refresh the data
-                     } else {
-                       toast.error(result.error || 'Failed to fix sequences');
-                     }
-                   } catch (error) {
-                     toast.error('Failed to fix sequences');
-                   }
-                 }}
-                 variant="outline"
-                 className="flex items-center gap-2 bg-yellow-50 hover:bg-yellow-100 border-yellow-300 text-yellow-700"
-               >
-                 <Bug className="w-4 h-4" />
-                 Fix Sequences
-               </Button>
-                               <Button 
-                  onClick={async () => {
-                    try {
-                      const response = await fetch('/api/admin/calendar/check-completed-events', { method: 'POST' });
-                      const result = await response.json();
-                      if (result.success) {
-                        toast.success(result.message);
-                        fetchDebugData(); // Refresh the data
-                      } else {
-                        toast.error(result.error || 'Failed to check completed events');
-                      }
-                    } catch (error) {
-                      toast.error('Failed to check completed events');
+              <Button
+                onClick={async () => {
+                  if (
+                    !confirm(
+                      "⚠️ WARNING: This will update the database with your manual changes.\n\nThis is a powerful but dangerous operation. Make sure you have backed up your data and know exactly what you are doing.\n\nAre you sure you want to proceed?",
+                    )
+                  ) {
+                    return;
+                  }
+
+                  try {
+                    const response = await fetch("/api/admin/update-database", {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({ rawData }),
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                      toast.success(result.message);
+                      fetchDebugData(); // Refresh the data
+                    } else {
+                      toast.error(result.error || "Failed to update database");
                     }
-                  }}
-                  variant="outline"
-                  className="flex items-center gap-2"
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  Check Completed Events
-                </Button>
+                  } catch (error) {
+                    toast.error("Failed to update database");
+                  }
+                }}
+                variant="destructive"
+                className="flex items-center gap-2"
+              >
+                <AlertCircle className="w-4 h-4" />
+                Update Database
+              </Button>
+
+              <Button
+                onClick={async () => {
+                  if (
+                    !confirm(
+                      "🔧 This will fix database sequence issues that prevent new bookings from being created.\n\nThis is safe to run and will resolve ID conflicts.\n\nAre you sure you want to proceed?",
+                    )
+                  ) {
+                    return;
+                  }
+
+                  try {
+                    const response = await fetch("/api/admin/fix-sequence", {
+                      method: "POST",
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                      toast.success(result.message);
+                      fetchDebugData(); // Refresh the data
+                    } else {
+                      toast.error(result.error || "Failed to fix sequences");
+                    }
+                  } catch (error) {
+                    toast.error("Failed to fix sequences");
+                  }
+                }}
+                variant="outline"
+                className="flex items-center gap-2 bg-yellow-50 hover:bg-yellow-100 border-yellow-300 text-yellow-700"
+              >
+                <Bug className="w-4 h-4" />
+                Fix Sequences
+              </Button>
+              <Button
+                onClick={async () => {
+                  try {
+                    const response = await fetch(
+                      "/api/admin/calendar/check-completed-events",
+                      { method: "POST" },
+                    );
+                    const result = await response.json();
+                    if (result.success) {
+                      toast.success(result.message);
+                      fetchDebugData(); // Refresh the data
+                    } else {
+                      toast.error(
+                        result.error || "Failed to check completed events",
+                      );
+                    }
+                  } catch (error) {
+                    toast.error("Failed to check completed events");
+                  }
+                }}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <CheckCircle className="w-4 h-4" />
+                Check Completed Events
+              </Button>
             </div>
           </div>
         </div>
@@ -326,53 +371,100 @@ export default function DebugPage() {
                 ) : (
                   <div className="space-y-4">
                     {(rawData?.bookings ?? bookings).map((booking: any) => (
-                      <Card key={booking.id} className="border-l-4 border-l-blue-500">
+                      <Card
+                        key={booking.id}
+                        className="border-l-4 border-l-blue-500"
+                      >
                         <CardContent className="p-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                              <h3 className="font-semibold text-gray-900 mb-2">Summary</h3>
+                              <h3 className="font-semibold text-gray-900 mb-2">
+                                Summary
+                              </h3>
                               <div className="space-y-1 text-sm">
-                                <p><strong>ID:</strong> {booking.id}</p>
-                                <p><strong>Ref:</strong> {booking.booking_ref || booking.bookingRef}</p>
-                                <p><strong>Status:</strong> {getStatusBadge((booking.status || 'unknown').toString())}</p>
-                                <p><strong>Date:</strong> {formatDate(booking.date || booking.start_date || booking.created_at)}</p>
-                                <p><strong>Castle:</strong> {booking.castle_name || booking.castleName}</p>
+                                <p>
+                                  <strong>ID:</strong> {booking.id}
+                                </p>
+                                <p>
+                                  <strong>Ref:</strong>{" "}
+                                  {booking.booking_ref || booking.bookingRef}
+                                </p>
+                                <p>
+                                  <strong>Status:</strong>{" "}
+                                  {getStatusBadge(
+                                    (booking.status || "unknown").toString(),
+                                  )}
+                                </p>
+                                <p>
+                                  <strong>Date:</strong>{" "}
+                                  {formatDate(
+                                    booking.date ||
+                                      booking.start_date ||
+                                      booking.created_at,
+                                  )}
+                                </p>
+                                <p>
+                                  <strong>Castle:</strong>{" "}
+                                  {booking.castle_name || booking.castleName}
+                                </p>
                               </div>
                             </div>
                             <div>
-                              <h3 className="font-semibold text-gray-900 mb-2">Raw Record</h3>
+                              <h3 className="font-semibold text-gray-900 mb-2">
+                                Raw Record
+                              </h3>
                               <pre className="text-xs text-gray-700 bg-gray-50 p-3 rounded overflow-x-auto">
                                 {JSON.stringify(booking, null, 2)}
                               </pre>
                             </div>
                           </div>
                           {/* Activity Log */}
-                          {Array.isArray(booking.audit_trail) && booking.audit_trail.length > 0 && (
-                            <div className="mt-4 pt-4 border-t">
-                              <h4 className="font-semibold text-gray-900 mb-2">Activity Log</h4>
-                              <ul className="space-y-2 text-sm">
-                                {booking.audit_trail
-                                  .slice()
-                                  .sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-                                  .map((entry: any, idx: number) => (
-                                    <li key={idx} className="bg-white border rounded p-2">
-                                      <div className="flex items-center justify-between">
-                                        <span className="font-medium">{entry.action || 'update'}</span>
-                                        <span className="text-gray-500">{formatDate(entry.timestamp)}</span>
-                                      </div>
-                                      {entry.details && (
-                                        <pre className="mt-1 text-xs text-gray-700 bg-gray-50 p-2 rounded overflow-x-auto">
-                                          {JSON.stringify(entry.details, null, 2)}
-                                        </pre>
-                                      )}
-                                      {entry.user && (
-                                        <div className="text-xs text-gray-600 mt-1">by {entry.user}</div>
-                                      )}
-                                    </li>
-                                  ))}
-                              </ul>
-                            </div>
-                          )}
+                          {Array.isArray(booking.audit_trail) &&
+                            booking.audit_trail.length > 0 && (
+                              <div className="mt-4 pt-4 border-t">
+                                <h4 className="font-semibold text-gray-900 mb-2">
+                                  Activity Log
+                                </h4>
+                                <ul className="space-y-2 text-sm">
+                                  {booking.audit_trail
+                                    .slice()
+                                    .sort(
+                                      (a: any, b: any) =>
+                                        new Date(a.timestamp).getTime() -
+                                        new Date(b.timestamp).getTime(),
+                                    )
+                                    .map((entry: any, idx: number) => (
+                                      <li
+                                        key={idx}
+                                        className="bg-white border rounded p-2"
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <span className="font-medium">
+                                            {entry.action || "update"}
+                                          </span>
+                                          <span className="text-gray-500">
+                                            {formatDate(entry.timestamp)}
+                                          </span>
+                                        </div>
+                                        {entry.details && (
+                                          <pre className="mt-1 text-xs text-gray-700 bg-gray-50 p-2 rounded overflow-x-auto">
+                                            {JSON.stringify(
+                                              entry.details,
+                                              null,
+                                              2,
+                                            )}
+                                          </pre>
+                                        )}
+                                        {entry.user && (
+                                          <div className="text-xs text-gray-600 mt-1">
+                                            by {entry.user}
+                                          </div>
+                                        )}
+                                      </li>
+                                    ))}
+                                </ul>
+                              </div>
+                            )}
                         </CardContent>
                       </Card>
                     ))}
@@ -400,32 +492,66 @@ export default function DebugPage() {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {castles.map((castle) => (
-                      <Card key={castle.id} className="border-l-4 border-l-green-500">
+                      <Card
+                        key={castle.id}
+                        className="border-l-4 border-l-green-500"
+                      >
                         <CardContent className="p-4">
                           <div className="space-y-2">
-                            <h3 className="font-semibold text-gray-900">{castle.name}</h3>
+                            <h3 className="font-semibold text-gray-900">
+                              {castle.name}
+                            </h3>
                             <div className="space-y-1 text-sm">
-                              <p><strong>Theme:</strong> {castle.theme}</p>
-                              <p><strong>Size:</strong> {castle.size}</p>
-                              <p><strong>Price:</strong> £{castle.price}</p>
-                              <p><strong>Status:</strong> 
-                                <Badge variant={castle.maintenanceStatus === 'available' ? 'default' : 'destructive'} className="ml-2">
+                              <p>
+                                <strong>Theme:</strong> {castle.theme}
+                              </p>
+                              <p>
+                                <strong>Size:</strong> {castle.size}
+                              </p>
+                              <p>
+                                <strong>Price:</strong> £{castle.price}
+                              </p>
+                              <p>
+                                <strong>Status:</strong>
+                                <Badge
+                                  variant={
+                                    castle.maintenanceStatus === "available"
+                                      ? "default"
+                                      : "destructive"
+                                  }
+                                  className="ml-2"
+                                >
                                   {castle.maintenanceStatus}
                                 </Badge>
                               </p>
                               {castle.maintenanceNotes && (
-                                <p><strong>Maintenance Notes:</strong> {castle.maintenanceNotes}</p>
+                                <p>
+                                  <strong>Maintenance Notes:</strong>{" "}
+                                  {castle.maintenanceNotes}
+                                </p>
                               )}
                               {castle.maintenanceStartDate && (
-                                <p><strong>Maintenance Start:</strong> {formatDate(castle.maintenanceStartDate)}</p>
+                                <p>
+                                  <strong>Maintenance Start:</strong>{" "}
+                                  {formatDate(castle.maintenanceStartDate)}
+                                </p>
                               )}
                               {castle.maintenanceEndDate && (
-                                <p><strong>Maintenance End:</strong> {formatDate(castle.maintenanceEndDate)}</p>
+                                <p>
+                                  <strong>Maintenance End:</strong>{" "}
+                                  {formatDate(castle.maintenanceEndDate)}
+                                </p>
                               )}
                             </div>
                             <div className="pt-2 border-t text-xs text-gray-500">
-                              <p><strong>Created:</strong> {formatDate(castle.createdAt)}</p>
-                              <p><strong>Updated:</strong> {formatDate(castle.updatedAt)}</p>
+                              <p>
+                                <strong>Created:</strong>{" "}
+                                {formatDate(castle.createdAt)}
+                              </p>
+                              <p>
+                                <strong>Updated:</strong>{" "}
+                                {formatDate(castle.updatedAt)}
+                              </p>
                             </div>
                           </div>
                         </CardContent>
@@ -455,41 +581,79 @@ export default function DebugPage() {
                 ) : (
                   <div className="space-y-4">
                     {calendarEvents.map((event) => (
-                      <Card key={event.id} className="border-l-4 border-l-purple-500">
+                      <Card
+                        key={event.id}
+                        className="border-l-4 border-l-purple-500"
+                      >
                         <CardContent className="p-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                              <h3 className="font-semibold text-gray-900 mb-2">Event Details</h3>
+                              <h3 className="font-semibold text-gray-900 mb-2">
+                                Event Details
+                              </h3>
                               <div className="space-y-1 text-sm">
-                                <p><strong>ID:</strong> {event.id}</p>
-                                <p><strong>Summary:</strong> {event.summary}</p>
-                                <p><strong>Status:</strong> {event.status || 'N/A'}</p>
-                                <p><strong>Location:</strong> {event.location || 'N/A'}</p>
+                                <p>
+                                  <strong>ID:</strong> {event.id}
+                                </p>
+                                <p>
+                                  <strong>Summary:</strong> {event.summary}
+                                </p>
+                                <p>
+                                  <strong>Status:</strong>{" "}
+                                  {event.status || "N/A"}
+                                </p>
+                                <p>
+                                  <strong>Location:</strong>{" "}
+                                  {event.location || "N/A"}
+                                </p>
                               </div>
                             </div>
                             <div>
-                              <h3 className="font-semibold text-gray-900 mb-2">Timing</h3>
+                              <h3 className="font-semibold text-gray-900 mb-2">
+                                Timing
+                              </h3>
                               <div className="space-y-1 text-sm">
-                                <p><strong>Start:</strong> {event.start.dateTime ? formatDate(event.start.dateTime) : event.start.date}</p>
-                                <p><strong>End:</strong> {event.end.dateTime ? formatDate(event.end.dateTime) : event.end.date}</p>
-                                {event.attendees && event.attendees.length > 0 && (
-                                  <div>
-                                    <p><strong>Attendees:</strong></p>
-                                    <ul className="ml-4">
-                                      {event.attendees.map((attendee, index) => (
-                                        <li key={index}>
-                                          {attendee.displayName || attendee.email} ({attendee.responseStatus || 'N/A'})
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  </div>
-                                )}
+                                <p>
+                                  <strong>Start:</strong>{" "}
+                                  {event.start.dateTime
+                                    ? formatDate(event.start.dateTime)
+                                    : event.start.date}
+                                </p>
+                                <p>
+                                  <strong>End:</strong>{" "}
+                                  {event.end.dateTime
+                                    ? formatDate(event.end.dateTime)
+                                    : event.end.date}
+                                </p>
+                                {event.attendees &&
+                                  event.attendees.length > 0 && (
+                                    <div>
+                                      <p>
+                                        <strong>Attendees:</strong>
+                                      </p>
+                                      <ul className="ml-4">
+                                        {event.attendees.map(
+                                          (attendee, index) => (
+                                            <li key={index}>
+                                              {attendee.displayName ||
+                                                attendee.email}{" "}
+                                              (
+                                              {attendee.responseStatus || "N/A"}
+                                              )
+                                            </li>
+                                          ),
+                                        )}
+                                      </ul>
+                                    </div>
+                                  )}
                               </div>
                             </div>
                           </div>
                           {event.description && (
                             <div className="mt-4 pt-4 border-t">
-                              <h4 className="font-semibold text-gray-900 mb-2">Description</h4>
+                              <h4 className="font-semibold text-gray-900 mb-2">
+                                Description
+                              </h4>
                               <pre className="text-sm text-gray-700 bg-gray-50 p-3 rounded overflow-x-auto">
                                 {event.description}
                               </pre>
@@ -501,115 +665,136 @@ export default function DebugPage() {
                   </div>
                 )}
               </CardContent>
-                         </Card>
-           </TabsContent>
+            </Card>
+          </TabsContent>
 
-           {/* Raw Data Tab */}
-           <TabsContent value="raw" className="space-y-4">
-             <Card>
-               <CardHeader>
-                 <CardTitle className="flex items-center gap-2">
-                   <Bug className="w-5 h-5" />
-                   Raw Database Data
-                 </CardTitle>
-               </CardHeader>
-                               <CardContent>
-                  {!rawData ? (
-                    <div className="text-center py-8 text-gray-500">
-                      <Bug className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                      <p>No raw data available</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-6">
-                      {/* Warning Section */}
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                        <div className="flex items-start">
-                          <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
-                          <div>
-                            <h3 className="text-sm font-medium text-red-800 mb-2">
-                              ⚠️ Use with Caution
-                            </h3>
-                            <div className="text-sm text-red-700 space-y-1">
-                              <p>• This section allows direct database editing</p>
-                              <p>• Changes are applied immediately when you click "Update Database"</p>
-                              <p>• Always backup your data before making changes</p>
-                              <p>• Invalid JSON will be ignored</p>
-                              <p>• Use this feature only for emergency fixes</p>
-                            </div>
+          {/* Raw Data Tab */}
+          <TabsContent value="raw" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Bug className="w-5 h-5" />
+                  Raw Database Data
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {!rawData ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Bug className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                    <p>No raw data available</p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {/* Warning Section */}
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                      <div className="flex items-start">
+                        <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
+                        <div>
+                          <h3 className="text-sm font-medium text-red-800 mb-2">
+                            ⚠️ Use with Caution
+                          </h3>
+                          <div className="text-sm text-red-700 space-y-1">
+                            <p>• This section allows direct database editing</p>
+                            <p>
+                              • Changes are applied immediately when you click
+                              "Update Database"
+                            </p>
+                            <p>
+                              • Always backup your data before making changes
+                            </p>
+                            <p>• Invalid JSON will be ignored</p>
+                            <p>• Use this feature only for emergency fixes</p>
                           </div>
                         </div>
                       </div>
-                                           {/* Database Schema */}
-                      <div>
-                        <h3 className="font-semibold text-gray-900 mb-4">Database Schema (Editable)</h3>
-                        <div className="bg-gray-50 p-4 rounded-lg">
-                          <textarea
-                            className="w-full h-64 text-sm text-gray-700 bg-white border border-gray-300 rounded p-2 font-mono"
-                            value={JSON.stringify(rawData.schema, null, 2)}
-                            onChange={(e) => {
-                              try {
-                                const newSchema = JSON.parse(e.target.value);
-                                setRawData((prev: RawData | null) => prev ? ({ ...prev, schema: newSchema }) : null);
-                              } catch (error) {
-                                // Invalid JSON, ignore
-                              }
-                            }}
-                            placeholder="Edit schema data here..."
-                          />
-                        </div>
+                    </div>
+                    {/* Database Schema */}
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-4">
+                        Database Schema (Editable)
+                      </h3>
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <textarea
+                          className="w-full h-64 text-sm text-gray-700 bg-white border border-gray-300 rounded p-2 font-mono"
+                          value={JSON.stringify(rawData.schema, null, 2)}
+                          onChange={(e) => {
+                            try {
+                              const newSchema = JSON.parse(e.target.value);
+                              setRawData((prev: RawData | null) =>
+                                prev ? { ...prev, schema: newSchema } : null,
+                              );
+                            } catch (error) {
+                              // Invalid JSON, ignore
+                            }
+                          }}
+                          placeholder="Edit schema data here..."
+                        />
                       </div>
+                    </div>
 
-                                           {/* Raw Bookings Data */}
-                      <div>
-                        <h3 className="font-semibold text-gray-900 mb-4">Raw Bookings Data (Editable)</h3>
-                        <div className="bg-gray-50 p-4 rounded-lg">
-                          <textarea
-                            className="w-full h-64 text-sm text-gray-700 bg-white border border-gray-300 rounded p-2 font-mono"
-                            value={JSON.stringify(rawData.bookings, null, 2)}
-                            onChange={(e) => {
-                              try {
-                                const newBookings = JSON.parse(e.target.value);
-                                setRawData((prev: RawData | null) => prev ? ({ ...prev, bookings: newBookings }) : null);
-                              } catch (error) {
-                                // Invalid JSON, ignore
-                              }
-                            }}
-                            placeholder="Edit bookings data here..."
-                          />
-                        </div>
+                    {/* Raw Bookings Data */}
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-4">
+                        Raw Bookings Data (Editable)
+                      </h3>
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <textarea
+                          className="w-full h-64 text-sm text-gray-700 bg-white border border-gray-300 rounded p-2 font-mono"
+                          value={JSON.stringify(rawData.bookings, null, 2)}
+                          onChange={(e) => {
+                            try {
+                              const newBookings = JSON.parse(e.target.value);
+                              setRawData((prev: RawData | null) =>
+                                prev
+                                  ? { ...prev, bookings: newBookings }
+                                  : null,
+                              );
+                            } catch (error) {
+                              // Invalid JSON, ignore
+                            }
+                          }}
+                          placeholder="Edit bookings data here..."
+                        />
                       </div>
+                    </div>
 
-                      {/* Raw Castles Data */}
-                      <div>
-                        <h3 className="font-semibold text-gray-900 mb-4">Raw Castles Data (Editable)</h3>
-                        <div className="bg-gray-50 p-4 rounded-lg">
-                          <textarea
-                            className="w-full h-64 text-sm text-gray-700 bg-white border border-gray-300 rounded p-2 font-mono"
-                            value={JSON.stringify(rawData.castles, null, 2)}
-                            onChange={(e) => {
-                              try {
-                                const newCastles = JSON.parse(e.target.value);
-                                setRawData((prev: RawData | null) => prev ? ({ ...prev, castles: newCastles }) : null);
-                              } catch (error) {
-                                // Invalid JSON, ignore
-                              }
-                            }}
-                            placeholder="Edit castles data here..."
-                          />
-                        </div>
+                    {/* Raw Castles Data */}
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-4">
+                        Raw Castles Data (Editable)
+                      </h3>
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <textarea
+                          className="w-full h-64 text-sm text-gray-700 bg-white border border-gray-300 rounded p-2 font-mono"
+                          value={JSON.stringify(rawData.castles, null, 2)}
+                          onChange={(e) => {
+                            try {
+                              const newCastles = JSON.parse(e.target.value);
+                              setRawData((prev: RawData | null) =>
+                                prev ? { ...prev, castles: newCastles } : null,
+                              );
+                            } catch (error) {
+                              // Invalid JSON, ignore
+                            }
+                          }}
+                          placeholder="Edit castles data here..."
+                        />
                       </div>
+                    </div>
 
-                     {/* Timestamp */}
-                     <div className="text-sm text-gray-500">
-                       <p><strong>Data fetched at:</strong> {rawData.timestamp}</p>
-                     </div>
-                   </div>
-                 )}
-               </CardContent>
-             </Card>
-           </TabsContent>
-         </Tabs>
-       </div>
-     </div>
-   );
- } 
+                    {/* Timestamp */}
+                    <div className="text-sm text-gray-500">
+                      <p>
+                        <strong>Data fetched at:</strong> {rawData.timestamp}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+}
