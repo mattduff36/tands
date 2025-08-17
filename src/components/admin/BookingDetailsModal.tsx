@@ -86,13 +86,44 @@ export function BookingDetailsModal({
 
   // Check if event has ended (with buffer time to avoid marking as completed too early)
   const now = new Date();
-  const eventEnd = new Date(
-    event.end?.dateTime ||
-      event.end?.date ||
-      event.start?.dateTime ||
-      event.start?.date ||
-      "",
-  );
+
+  // Calculate proper event end time based on event type and duration
+  let eventEnd: Date;
+
+  if (event.end?.dateTime) {
+    // Event has specific end time
+    eventEnd = new Date(event.end.dateTime);
+  } else if (event.end?.date) {
+    // All-day event - need to calculate proper end time based on duration
+    const endDate = new Date(event.end.date);
+
+    // Extract duration from description to set proper end time
+    const description = event.description || "";
+    const durationMatch = description.match(/Duration: (\d+) hours/);
+    const duration = durationMatch ? parseInt(durationMatch[1]) : 8; // Default to 8 hours
+
+    if (duration === 24) {
+      // 24-hour booking: ends at 11:59 PM
+      endDate.setHours(23, 59, 0, 0);
+    } else {
+      // 8-hour booking: ends at 6:00 PM
+      endDate.setHours(18, 0, 0, 0);
+    }
+
+    eventEnd = endDate;
+  } else if (event.start?.dateTime) {
+    // Fallback: use start time + default duration
+    const startTime = new Date(event.start.dateTime);
+    eventEnd = new Date(startTime.getTime() + 8 * 60 * 60 * 1000); // Add 8 hours
+  } else if (event.start?.date) {
+    // Fallback: all-day event starting today, default 8-hour duration
+    const startDate = new Date(event.start.date);
+    startDate.setHours(18, 0, 0, 0); // End at 6 PM
+    eventEnd = startDate;
+  } else {
+    // Ultimate fallback
+    eventEnd = new Date();
+  }
 
   // Add a 2-hour buffer after the scheduled end time before marking as completed
   // This accounts for collection time and prevents premature completion marking
