@@ -1395,6 +1395,34 @@ Status: ${booking.status}`;
               await updateResponse.text(),
             );
           }
+        } else {
+          // If NOT saving as confirmed, send hire agreement email to customer
+          console.log("Step 3: Sending hire agreement email to customer...");
+          try {
+            const emailResponse = await fetch(
+              `/api/admin/bookings/${bookingId}/send-agreement`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              },
+            );
+
+            if (emailResponse.ok) {
+              console.log("✅ Hire agreement email sent successfully");
+            } else {
+              const emailError = await emailResponse.json();
+              console.warn(
+                "⚠️ Failed to send hire agreement email:",
+                emailError,
+              );
+              // Don't fail the whole process, just warn
+            }
+          } catch (emailError) {
+            console.warn("⚠️ Error sending hire agreement email:", emailError);
+            // Don't fail the whole process, just warn
+          }
         }
 
         // Success message based on options
@@ -1402,7 +1430,7 @@ Status: ${booking.status}`;
           toast.success("Booking created, confirmed, and signed by admin!");
         } else {
           toast.success(
-            "Booking created and confirmed! Status: 'awaiting signature'",
+            "Booking created and confirmed! Hire agreement email sent to customer.",
           );
         }
 
