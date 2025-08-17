@@ -69,7 +69,9 @@ export function BookingDetailsModal({
 }: BookingDetailsModalProps) {
   // Hooks must be declared before any early returns
   const [showDeclineDialog, setShowDeclineDialog] = useState(false);
-  const [declineReason, setDeclineReason] = useState<"distance_too_far" | "castle_unavailable" | "other">("distance_too_far");
+  const [declineReason, setDeclineReason] = useState<
+    "distance_too_far" | "castle_unavailable" | "other"
+  >("distance_too_far");
   const [declineMessage, setDeclineMessage] = useState("");
 
   if (!open || !event) return null;
@@ -82,7 +84,7 @@ export function BookingDetailsModal({
     status = "completed";
   }
 
-  // Check if event has ended
+  // Check if event has ended (with buffer time to avoid marking as completed too early)
   const now = new Date();
   const eventEnd = new Date(
     event.end?.dateTime ||
@@ -91,7 +93,15 @@ export function BookingDetailsModal({
       event.start?.date ||
       "",
   );
-  if (eventEnd < now && status !== "completed") {
+
+  // Add a 2-hour buffer after the scheduled end time before marking as completed
+  // This accounts for collection time and prevents premature completion marking
+  const bufferHours = 2;
+  const completionThreshold = new Date(
+    eventEnd.getTime() + bufferHours * 60 * 60 * 1000,
+  );
+
+  if (completionThreshold < now && status !== "completed") {
     status = "completed";
   }
 
@@ -408,8 +418,13 @@ export function BookingDetailsModal({
                       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-2">
                         <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
                           <div className="p-4 border-b">
-                            <h3 className="text-lg font-semibold">Decline Booking</h3>
-                            <p className="text-sm text-gray-600 mt-1">Select a reason to include in the email to the customer.</p>
+                            <h3 className="text-lg font-semibold">
+                              Decline Booking
+                            </h3>
+                            <p className="text-sm text-gray-600 mt-1">
+                              Select a reason to include in the email to the
+                              customer.
+                            </p>
                           </div>
                           <div className="p-4 space-y-3">
                             <div className="space-y-2">
@@ -418,8 +433,10 @@ export function BookingDetailsModal({
                                   type="radio"
                                   name="decline_reason"
                                   value="distance_too_far"
-                                  checked={declineReason === 'distance_too_far'}
-                                  onChange={() => setDeclineReason('distance_too_far')}
+                                  checked={declineReason === "distance_too_far"}
+                                  onChange={() =>
+                                    setDeclineReason("distance_too_far")
+                                  }
                                 />
                                 Distance too far
                               </label>
@@ -428,8 +445,12 @@ export function BookingDetailsModal({
                                   type="radio"
                                   name="decline_reason"
                                   value="castle_unavailable"
-                                  checked={declineReason === 'castle_unavailable'}
-                                  onChange={() => setDeclineReason('castle_unavailable')}
+                                  checked={
+                                    declineReason === "castle_unavailable"
+                                  }
+                                  onChange={() =>
+                                    setDeclineReason("castle_unavailable")
+                                  }
                                 />
                                 Castle unavailable
                               </label>
@@ -438,56 +459,83 @@ export function BookingDetailsModal({
                                   type="radio"
                                   name="decline_reason"
                                   value="other"
-                                  checked={declineReason === 'other'}
-                                  onChange={() => setDeclineReason('other')}
+                                  checked={declineReason === "other"}
+                                  onChange={() => setDeclineReason("other")}
                                 />
                                 Other
                               </label>
                             </div>
 
-                            {declineReason === 'other' && (
+                            {declineReason === "other" && (
                               <div>
-                                <label className="block text-sm font-medium mb-1">Reason (required)</label>
+                                <label className="block text-sm font-medium mb-1">
+                                  Reason (required)
+                                </label>
                                 <textarea
                                   className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                   rows={3}
                                   value={declineMessage}
-                                  onChange={(e) => setDeclineMessage(e.target.value)}
+                                  onChange={(e) =>
+                                    setDeclineMessage(e.target.value)
+                                  }
                                   placeholder="Please explain the reason"
                                 />
                               </div>
                             )}
                           </div>
                           <div className="px-4 py-3 border-t flex gap-2 justify-end">
-                            <Button variant="outline" onClick={() => setShowDeclineDialog(false)}>Cancel</Button>
+                            <Button
+                              variant="outline"
+                              onClick={() => setShowDeclineDialog(false)}
+                            >
+                              Cancel
+                            </Button>
                             <Button
                               className="bg-red-600 hover:bg-red-700 text-white"
                               onClick={() => {
-                                if (declineReason === 'other' && !declineMessage.trim()) {
+                                if (
+                                  declineReason === "other" &&
+                                  !declineMessage.trim()
+                                ) {
                                   alert('Please provide a reason for "Other"');
                                   return;
                                 }
                                 // Pass event id via onDelete but we need to include reason; we'll encode it globally via window event
                                 // Instead, call DELETE here with body, then close parent modal
-                                fetch(`/api/admin/bookings/${event.id.replace('db_','')}`, {
-                                  method: 'DELETE',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({
-                                    reasonKey: declineReason,
-                                    adminMessage: declineReason === 'other' ? declineMessage.trim() : undefined,
-                                  }),
-                                }).then(async (res) => {
-                                  if (!res.ok) {
-                                    const msg = await res.json().catch(() => ({}));
-                                    alert(msg.error || 'Failed to decline booking');
-                                  } else {
-                                    // Notify parent via onDelete to refresh list
-                                    onDelete(event.id);
-                                  }
-                                  setShowDeclineDialog(false);
-                                }).catch(() => {
-                                  alert('Network error. Please try again.');
-                                });
+                                fetch(
+                                  `/api/admin/bookings/${event.id.replace("db_", "")}`,
+                                  {
+                                    method: "DELETE",
+                                    headers: {
+                                      "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify({
+                                      reasonKey: declineReason,
+                                      adminMessage:
+                                        declineReason === "other"
+                                          ? declineMessage.trim()
+                                          : undefined,
+                                    }),
+                                  },
+                                )
+                                  .then(async (res) => {
+                                    if (!res.ok) {
+                                      const msg = await res
+                                        .json()
+                                        .catch(() => ({}));
+                                      alert(
+                                        msg.error ||
+                                          "Failed to decline booking",
+                                      );
+                                    } else {
+                                      // Notify parent via onDelete to refresh list
+                                      onDelete(event.id);
+                                    }
+                                    setShowDeclineDialog(false);
+                                  })
+                                  .catch(() => {
+                                    alert("Network error. Please try again.");
+                                  });
                               }}
                             >
                               Confirm Decline & Email

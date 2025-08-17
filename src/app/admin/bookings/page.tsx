@@ -1472,13 +1472,23 @@ Status: ${booking.status}`;
       return "completed";
     }
 
-    // Check if event has ended
+    // Check if event has ended (with buffer time to avoid marking as completed too early)
     const eventEndDate = event.end?.dateTime
       ? new Date(event.end.dateTime)
       : event.end?.date
         ? new Date(event.end.date)
         : null;
-    const isComplete = eventEndDate && eventEndDate < new Date();
+
+    if (!eventEndDate) return "confirmed";
+
+    // Add a 2-hour buffer after the scheduled end time before marking as completed
+    // This accounts for collection time and prevents premature completion marking
+    const bufferHours = 2;
+    const completionThreshold = new Date(
+      eventEndDate.getTime() + bufferHours * 60 * 60 * 1000,
+    );
+    const isComplete = completionThreshold < new Date();
+
     return isComplete ? "completed" : "confirmed";
   };
 
