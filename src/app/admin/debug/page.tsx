@@ -328,6 +328,29 @@ export default function DebugPage() {
                 <CheckCircle className="w-4 h-4" />
                 Check Completed Events
               </Button>
+              <Button
+                onClick={async () => {
+                  try {
+                    const response = await fetch("/api/admin/clear-cache", {
+                      method: "POST",
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                      toast.success(result.message);
+                      fetchDebugData(); // Refresh the data
+                    } else {
+                      toast.error(result.error || "Failed to clear cache");
+                    }
+                  } catch (error) {
+                    toast.error("Failed to clear cache");
+                  }
+                }}
+                variant="outline"
+                className="flex items-center gap-2 bg-purple-50 hover:bg-purple-100 border-purple-300 text-purple-700"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Clear Cache
+              </Button>
             </div>
           </div>
         </div>
