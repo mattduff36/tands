@@ -2,52 +2,41 @@
  * Next.js middleware for security, rate limiting, and authentication
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { rateLimitMiddleware, csrfMiddleware, securityHeadersMiddleware } from './src/lib/auth/middleware';
+import { NextRequest, NextResponse } from "next/server";
+import { getIronSession, SessionOptions } from "iron-session";
 
-export async function middleware(request: NextRequest) {
-  let response: NextResponse;
+type SessionData = {
+  user?: {
+    username: string;
+  };
+};
 
-  try {
-    // Apply rate limiting
-    const rateLimitResponse = rateLimitMiddleware(request);
-    if (rateLimitResponse) {
-      return securityHeadersMiddleware(rateLimitResponse);
-    }
+const sessionOptions: SessionOptions = {
+  password: process.env.SESSION_PASSWORD!,
+  cookieName: "auth",
+  cookieOptions: {
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+  },
+};
 
-    // Apply CSRF protection
-    const csrfResponse = csrfMiddleware(request);
-    if (csrfResponse) {
-      return securityHeadersMiddleware(csrfResponse);
-    }
+const PROTECTED = [/^\/admin/, /^\/api\/admin/];
 
-    // Continue with the request
-    response = NextResponse.next();
+export async function middleware(req: NextRequest) {
+  const url = req.nextUrl.clone();
+  const isProtected = PROTECTED.some((rx) => rx.test(url.pathname));
+  if (!isProtected) return NextResponse.next();
 
-    // Apply security headers to all responses
-    response = securityHeadersMiddleware(response);
+  const res = NextResponse.next();
+  const session = await getIronSession<SessionData>(req, res, sessionOptions);
+  if (session?.user?.username) return res;
 
-    return response;
-  } catch (error) {
-    console.error('Middleware error:', error);
-    
-    // Return a safe error response
-    const errorResponse = NextResponse.json(
-      { 
-        success: false,
-        error: 'Internal server error' 
-      },
-      { status: 500 }
-    );
-    
-    return securityHeadersMiddleware(errorResponse);
-  }
+  url.pathname = "/admin/signin";
+  url.searchParams.set("next", req.nextUrl.pathname + req.nextUrl.search);
+  return NextResponse.redirect(url);
 }
 
-// Configure which routes the middleware should run on
 export const config = {
-  matcher: [
-    // Match all request paths except static files and images
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-  ],
+  matcher: ["/admin/:path*", "/api/admin/:path*"],
 };

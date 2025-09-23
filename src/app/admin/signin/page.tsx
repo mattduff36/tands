@@ -1,63 +1,202 @@
-'use client';
+"use client";
+import { useEffect, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
-import { signIn } from 'next-auth/react';
-import { useState } from 'react';
-
-export default function AdminSignIn() {
+function LoginForm() {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [csrfToken, setCsrfToken] = useState("");
+  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const router = useRouter();
+  const sp = useSearchParams();
+  const next = sp.get("next") || "/admin";
 
-  const handleGoogleSignIn = async () => {
+  useEffect(() => {
+    fetch("/api/csrf")
+      .then((r) => r.json())
+      .then((d) => setCsrfToken(d.token))
+      .catch(() => {});
+  }, []);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
     setIsLoading(true);
+
     try {
-      await signIn('google', {
-        callbackUrl: '/admin',
-        redirect: true,
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password, csrfToken }),
       });
-    } catch (error) {
-      console.error('Sign in error:', error);
+
+      if (res.status === 204) {
+        setIsRedirecting(true);
+        // Keep loading state active during redirect
+        // Small delay to ensure session is fully established, then redirect
+        setTimeout(() => {
+          // Use window.location for a more reliable redirect
+          window.location.href = next;
+        }, 300);
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        setError(errorData.error || "Login failed");
+        setIsLoading(false);
+      }
+    } catch (err) {
+      setError("Login failed");
       setIsLoading(false);
     }
-  };
+  }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb', padding: '48px 16px' }}>
-      <div style={{ maxWidth: '400px', width: '100%', textAlign: 'center' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1f2937', marginBottom: '16px' }}>
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "#f9fafb",
+        padding: "48px 16px",
+      }}
+    >
+      <div style={{ maxWidth: "400px", width: "100%", textAlign: "center" }}>
+        <h1
+          style={{
+            fontSize: "24px",
+            fontWeight: "bold",
+            color: "#1f2937",
+            marginBottom: "16px",
+          }}
+        >
           T&S Admin Portal
         </h1>
-        <p style={{ color: '#6b7280', marginBottom: '32px' }}>
+        <p style={{ color: "#6b7280", marginBottom: "32px" }}>
           Sign in to access the admin dashboard
         </p>
-        
-        <div style={{ backgroundColor: 'white', padding: '32px', borderRadius: '8px', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}>
-          <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '24px' }}>
-            Admin Sign In
-          </h2>
-          
-          <button
-            onClick={handleGoogleSignIn}
-            disabled={isLoading}
+
+        <div
+          style={{
+            backgroundColor: "white",
+            padding: "32px",
+            borderRadius: "8px",
+            boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1)",
+          }}
+        >
+          <h2
             style={{
-              width: '100%',
-              padding: '12px 24px',
-              backgroundColor: '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              fontSize: '16px',
-              fontWeight: '500',
-              cursor: isLoading ? 'not-allowed' : 'pointer',
-              opacity: isLoading ? 0.7 : 1,
+              fontSize: "20px",
+              fontWeight: "600",
+              marginBottom: "24px",
             }}
           >
-            {isLoading ? 'Signing in...' : 'Sign in with Google'}
-          </button>
-          
-          <p style={{ marginTop: '24px', fontSize: '14px', color: '#6b7280' }}>
+            Admin Sign In
+          </h2>
+
+          <form onSubmit={onSubmit} style={{ textAlign: "left" }}>
+            <div style={{ marginBottom: "16px" }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "4px",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  color: "#374151",
+                }}
+              >
+                Username
+              </label>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "6px",
+                  fontSize: "16px",
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: "24px" }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "4px",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  color: "#374151",
+                }}
+              >
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "6px",
+                  fontSize: "16px",
+                }}
+              />
+            </div>
+
+            <input type="hidden" value={csrfToken} readOnly />
+
+            <button
+              type="submit"
+              disabled={isLoading || isRedirecting}
+              style={{
+                width: "100%",
+                padding: "12px 24px",
+                backgroundColor: isRedirecting ? "#10b981" : "#3b82f6",
+                color: "white",
+                border: "none",
+                borderRadius: "6px",
+                fontSize: "16px",
+                fontWeight: "500",
+                cursor: isLoading || isRedirecting ? "not-allowed" : "pointer",
+                opacity: isLoading || isRedirecting ? 0.7 : 1,
+              }}
+            >
+              {isRedirecting
+                ? "Success! Redirecting..."
+                : isLoading
+                  ? "Signing in..."
+                  : "Sign in"}
+            </button>
+          </form>
+
+          {error ? (
+            <p
+              style={{ marginTop: "16px", fontSize: "14px", color: "#dc2626" }}
+            >
+              {error}
+            </p>
+          ) : null}
+
+          <p style={{ marginTop: "24px", fontSize: "14px", color: "#6b7280" }}>
             Only authorized administrators can access this portal.
           </p>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }

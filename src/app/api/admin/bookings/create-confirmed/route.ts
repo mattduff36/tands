@@ -1,19 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth/nextauth.config";
+import { getServerSession } from "@/lib/auth-helpers";
 import { createConfirmedBooking } from "@/lib/database/bookings";
 
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(null, request);
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Check admin access
-    const adminEmails = process.env.ADMIN_EMAILS?.split(",") || [];
-    if (!adminEmails.includes(session.user.email)) {
+    const allowedUsers = process.env.ACCOUNTS?.split(",") || [];
+    if (!allowedUsers.includes(session.user?.username)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

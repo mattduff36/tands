@@ -1,37 +1,44 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/nextauth.config';
-import { getPool } from '@/lib/database/connection';
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "@/lib/auth-helpers";
+
+import { getPool } from "@/lib/database/connection";
 //import { log } from '@/lib/utils/logger';
 
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(null, request);
     if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Check if user is admin
-    const adminEmails = process.env.ADMIN_EMAILS?.split(',') || [];
-    if (!adminEmails.includes(session.user.email)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const allowedUsers = process.env.ACCOUNTS?.split(",") || [];
+    if (!allowedUsers.includes(session.user?.username)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const body = await request.json();
     const { rawData } = body;
 
     if (!rawData || !rawData.bookings || !rawData.castles) {
-      return NextResponse.json({ 
-        error: 'Invalid data format. Expected rawData with bookings and castles arrays.' 
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          error:
+            "Invalid data format. Expected rawData with bookings and castles arrays.",
+        },
+        { status: 400 },
+      );
     }
 
     const client = await getPool().connect();
 
     try {
-      console.log('Manual database update initiated', session.user.email || 'unknown');
-      
+      console.log(
+        "Manual database update initiated",
+        session.user?.username || "unknown",
+      );
+
       let updatedBookings = 0;
       let updatedCastles = 0;
       let errors = [];
@@ -39,7 +46,8 @@ export async function POST(request: NextRequest) {
       // Update bookings
       for (const booking of rawData.bookings) {
         try {
-          const result = await client.query(`
+          const result = await client.query(
+            `
             UPDATE bookings 
             SET 
               customer_name = $1,
@@ -59,28 +67,32 @@ export async function POST(request: NextRequest) {
               agreement_signed_by = $15,
               updated_at = CURRENT_TIMESTAMP
             WHERE id = $16
-          `, [
-            booking.customer_name,
-            booking.customer_email,
-            booking.customer_phone,
-            booking.customer_address,
-            booking.castle_id,
-            booking.castle_name,
-            booking.date,
-            booking.payment_method,
-            booking.total_price,
-            booking.deposit,
-            booking.status,
-            booking.notes,
-            booking.agreement_signed || false,
-            booking.agreement_signed_at,
-            booking.agreement_signed_by,
-            booking.id
-          ]);
+          `,
+            [
+              booking.customer_name,
+              booking.customer_email,
+              booking.customer_phone,
+              booking.customer_address,
+              booking.castle_id,
+              booking.castle_name,
+              booking.date,
+              booking.payment_method,
+              booking.total_price,
+              booking.deposit,
+              booking.status,
+              booking.notes,
+              booking.agreement_signed || false,
+              booking.agreement_signed_at,
+              booking.agreement_signed_by,
+              booking.id,
+            ],
+          );
 
           if (result.rowCount && result.rowCount > 0) {
             updatedBookings++;
-            console.log('Booking updated successfully', { bookingId: booking.id });
+            console.log("Booking updated successfully", {
+              bookingId: booking.id,
+            });
           }
         } catch (error) {
           console.error(`❌ Error updating booking ID ${booking.id}:`, error);
@@ -91,7 +103,8 @@ export async function POST(request: NextRequest) {
       // Update castles
       for (const castle of rawData.castles) {
         try {
-          const result = await client.query(`
+          const result = await client.query(
+            `
             UPDATE castles 
             SET 
               name = $1,
@@ -106,23 +119,25 @@ export async function POST(request: NextRequest) {
               maintenance_end_date = $10,
               updated_at = CURRENT_TIMESTAMP
             WHERE id = $11
-          `, [
-            castle.name,
-            castle.theme,
-            castle.size,
-            castle.price,
-            castle.description,
-            castle.image_url,
-            castle.maintenance_status || 'available',
-            castle.maintenance_notes,
-            castle.maintenance_start_date,
-            castle.maintenance_end_date,
-            castle.id
-          ]);
+          `,
+            [
+              castle.name,
+              castle.theme,
+              castle.size,
+              castle.price,
+              castle.description,
+              castle.image_url,
+              castle.maintenance_status || "available",
+              castle.maintenance_notes,
+              castle.maintenance_start_date,
+              castle.maintenance_end_date,
+              castle.id,
+            ],
+          );
 
           if (result.rowCount && result.rowCount > 0) {
             updatedCastles++;
-            console.log('Castle updated successfully', { castleId: castle.id });
+            console.log("Castle updated successfully", { castleId: castle.id });
           }
         } catch (error) {
           console.error(`❌ Error updating castle ID ${castle.id}:`, error);
@@ -132,7 +147,11 @@ export async function POST(request: NextRequest) {
 
       const message = `Database updated: ${updatedBookings} bookings, ${updatedCastles} castles`;
       if (errors.length > 0) {
-        console.error('Some database updates failed', new Error('Multiple update failures'), { errors });
+        console.error(
+          "Some database updates failed",
+          new Error("Multiple update failures"),
+          { errors },
+        );
       }
 
       return NextResponse.json({
@@ -140,18 +159,16 @@ export async function POST(request: NextRequest) {
         message,
         updatedBookings,
         updatedCastles,
-        errors: errors.length > 0 ? errors : undefined
+        errors: errors.length > 0 ? errors : undefined,
       });
-
     } finally {
       client.release();
     }
-
   } catch (error) {
-    console.error('Error updating database:', error);
+    console.error("Error updating database:", error);
     return NextResponse.json(
-      { error: 'Failed to update database', details: (error as Error).message },
-      { status: 500 }
+      { error: "Failed to update database", details: (error as Error).message },
+      { status: 500 },
     );
   }
-} 
+}

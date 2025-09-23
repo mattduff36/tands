@@ -1,28 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth/nextauth.config";
+import { getServerSession } from "@/lib/auth-helpers";
 import { revalidatePath, revalidateTag } from "next/cache";
 
 // POST - Clear cache for castle data (admin only)
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(null, request);
 
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Check if user is authorized admin
-    const adminEmails =
-      process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(",").map((email) =>
-        email.trim(),
-      ) || [];
-    const userEmail = session.user?.email?.toLowerCase();
-
-    if (
-      !userEmail ||
-      !adminEmails.some((email) => email.toLowerCase() === userEmail)
-    ) {
+    // Check if user is admin
+    const allowedUsers = process.env.ACCOUNTS?.split(",") || [];
+    if (!allowedUsers.includes(session.user?.username)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

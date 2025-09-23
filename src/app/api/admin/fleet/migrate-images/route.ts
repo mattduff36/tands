@@ -1,26 +1,31 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth/nextauth.config';
-import { google } from 'googleapis';
-import fs from 'fs';
-import path from 'path';
-import { getCastles, updateCastleImageUrls } from '@/lib/database/castles';
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession, authOptions } from "@/lib/auth-helpers";
+
+import { google } from "googleapis";
+import fs from "fs";
+import path from "path";
+import { getCastles, updateCastleImageUrls } from "@/lib/database/castles";
 
 // Google Drive setup
-const SCOPES = ['https://www.googleapis.com/auth/drive.file'];
-const FOLDER_NAME = 'Bouncy Castle Images';
+const SCOPES = ["https://www.googleapis.com/auth/drive.file"];
+const FOLDER_NAME = "Bouncy Castle Images";
 
 async function getGoogleDriveClient() {
   try {
     // Use environment variables for service account credentials
-    if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
-      throw new Error('Missing Google service account credentials in environment variables');
+    if (
+      !process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ||
+      !process.env.GOOGLE_PRIVATE_KEY
+    ) {
+      throw new Error(
+        "Missing Google service account credentials in environment variables",
+      );
     }
 
     // Create JWT client
     const jwtClient = new google.auth.JWT({
       email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n"),
       scopes: SCOPES,
     });
 
@@ -28,11 +33,11 @@ async function getGoogleDriveClient() {
     await jwtClient.authorize();
 
     // Create Drive client
-    const drive = google.drive({ version: 'v3', auth: jwtClient });
-    
+    const drive = google.drive({ version: "v3", auth: jwtClient });
+
     return drive;
   } catch (error) {
-    console.error('Error setting up Google Drive client:', error);
+    console.error("Error setting up Google Drive client:", error);
     throw error;
   }
 }
@@ -42,7 +47,7 @@ async function getOrCreateFolder(drive: any, folderName: string) {
     // Search for existing folder
     const response = await drive.files.list({
       q: `name='${folderName}' and mimeType='application/vnd.google-apps.folder'`,
-      fields: 'files(id, name)',
+      fields: "files(id, name)",
     });
 
     if (response.data.files && response.data.files.length > 0) {
@@ -53,19 +58,24 @@ async function getOrCreateFolder(drive: any, folderName: string) {
     const folderResponse = await drive.files.create({
       requestBody: {
         name: folderName,
-        mimeType: 'application/vnd.google-apps.folder',
+        mimeType: "application/vnd.google-apps.folder",
       },
-      fields: 'id',
+      fields: "id",
     });
 
     return folderResponse.data.id;
   } catch (error) {
-    console.error('Error getting/creating folder:', error);
+    console.error("Error getting/creating folder:", error);
     throw error;
   }
 }
 
-async function uploadImageToDrive(drive: any, filePath: string, fileName: string, folderId: string) {
+async function uploadImageToDrive(
+  drive: any,
+  filePath: string,
+  fileName: string,
+  folderId: string,
+) {
   try {
     const fileStream = fs.createReadStream(filePath);
 
@@ -75,57 +85,55 @@ async function uploadImageToDrive(drive: any, filePath: string, fileName: string
         parents: [folderId],
       },
       media: {
-        mimeType: 'image/jpeg',
+        mimeType: "image/jpeg",
         body: fileStream,
       },
-      fields: 'id, webViewLink, webContentLink',
+      fields: "id, webViewLink, webContentLink",
     });
 
     // Make the file publicly viewable
     await drive.permissions.create({
       fileId: response.data.id,
       requestBody: {
-        role: 'reader',
-        type: 'anyone',
+        role: "reader",
+        type: "anyone",
       },
     });
 
     // Get the direct image URL
     const imageUrl = `https://drive.google.com/uc?id=${response.data.id}`;
-    
+
     return {
       fileId: response.data.id,
       imageUrl,
       webViewLink: response.data.webViewLink,
     };
   } catch (error) {
-    console.error('Error uploading image to Drive:', error);
+    console.error("Error uploading image to Drive:", error);
     throw error;
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    
+    const session = await getServerSession(null, request);
+
     if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Check if user is authorized admin
-    const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(',').map(email => email.trim()) || [];
-    const userEmail = session.user?.email?.toLowerCase();
-    
-    if (!userEmail || !adminEmails.some(email => email.toLowerCase() === userEmail)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    // Check if user is admin
+    const allowedUsers = process.env.ACCOUNTS?.split(",") || [];
+    if (!allowedUsers.includes(session.user?.username)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const results: any[] = [];
-    const publicDir = path.join(process.cwd(), 'public');
+    const publicDir = path.join(process.cwd(), "public");
 
     // Set up Google Drive client
     const drive = await getGoogleDriveClient();
-    
+
     // Get or create the images folder
     const folderId = await getOrCreateFolder(drive, FOLDER_NAME);
 
@@ -136,30 +144,33 @@ export async function POST(request: NextRequest) {
     for (const castle of castles) {
       try {
         // Skip if already using a Google Drive URL
-        if (castle.imageUrl.includes('drive.google.com')) {
+        if (castle.imageUrl.includes("drive.google.com")) {
           results.push({
             castleId: castle.id,
             name: castle.name,
-            status: 'skipped',
-            reason: 'Already using Google Drive URL',
+            status: "skipped",
+            reason: "Already using Google Drive URL",
             originalUrl: castle.imageUrl,
-            newUrl: castle.imageUrl
+            newUrl: castle.imageUrl,
           });
           continue;
         }
 
         // Get the local file path
-        const localImagePath = path.join(publicDir, castle.imageUrl.replace(/^\//, ''));
-        
+        const localImagePath = path.join(
+          publicDir,
+          castle.imageUrl.replace(/^\//, ""),
+        );
+
         // Check if file exists
         if (!fs.existsSync(localImagePath)) {
           results.push({
             castleId: castle.id,
             name: castle.name,
-            status: 'failed',
-            reason: 'Local file not found',
+            status: "failed",
+            reason: "Local file not found",
             originalUrl: castle.imageUrl,
-            filePath: localImagePath
+            filePath: localImagePath,
           });
           continue;
         }
@@ -170,61 +181,62 @@ export async function POST(request: NextRequest) {
           drive,
           localImagePath,
           fileName,
-          folderId
+          folderId,
         );
 
         results.push({
           castleId: castle.id,
           name: castle.name,
-          status: 'success',
+          status: "success",
           originalUrl: castle.imageUrl,
           newUrl: uploadResult.imageUrl,
-          driveFileId: uploadResult.fileId
+          driveFileId: uploadResult.fileId,
         });
-
       } catch (error) {
         console.error(`Error processing castle ${castle.id}:`, error);
         results.push({
           castleId: castle.id,
           name: castle.name,
-          status: 'failed',
-          reason: error instanceof Error ? error.message : 'Unknown error',
-          originalUrl: castle.imageUrl
+          status: "failed",
+          reason: error instanceof Error ? error.message : "Unknown error",
+          originalUrl: castle.imageUrl,
         });
       }
     }
 
     // Update castle image URLs in persistent storage
-    const successfulUploads = results.filter(r => r.status === 'success');
+    const successfulUploads = results.filter((r) => r.status === "success");
     if (successfulUploads.length > 0) {
       try {
-        const updates = successfulUploads.map(upload => ({
+        const updates = successfulUploads.map((upload) => ({
           id: upload.castleId,
-          imageUrl: upload.newUrl
+          imageUrl: upload.newUrl,
         }));
-        
+
         await updateCastleImageUrls(updates);
       } catch (error) {
-        console.error('Error updating castle data:', error);
-        return NextResponse.json({
-          success: false,
-          error: 'Failed to update castle data',
-          results
-        }, { status: 500 });
+        console.error("Error updating castle data:", error);
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Failed to update castle data",
+            results,
+          },
+          { status: 500 },
+        );
       }
     }
 
     return NextResponse.json({
       success: true,
-      message: `Migration completed. ${results.filter(r => r.status === 'success').length} images uploaded successfully.`,
-      results
+      message: `Migration completed. ${results.filter((r) => r.status === "success").length} images uploaded successfully.`,
+      results,
     });
-
   } catch (error) {
-    console.error('Error migrating images:', error);
+    console.error("Error migrating images:", error);
     return NextResponse.json(
-      { error: 'Failed to migrate images' }, 
-      { status: 500 }
+      { error: "Failed to migrate images" },
+      { status: 500 },
     );
   }
 }

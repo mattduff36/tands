@@ -1,0 +1,375 @@
+Replace Google OAuth with a simple username/password login that reads credentials from environment variables. Do not break the current site in any way, only change the method of authentication for logging in. If there are things that might break from doing this, stop, and inform me of your concerns. Target Next.js on Vercel. If the repo is not Next.js, follow the same intent with the project’s stack and explain deviations.
+
+Goals
+
+* Remove Google OAuth entirely
+* Add a username/password login form
+* Validate against three accounts: mpdee, tyler, shellee
+* Store passwords in environment variables
+* Support .env.local for dev and Vercel Environment Variables for prod
+* Secure session with an HTTP-only cookie
+* Protect authenticated pages and APIs
+* Ship minimal, audited code
+
+Constraints and security
+
+* Do not store plaintext passwords in code or git
+* Use bcrypt password hashes in env vars
+* Use iron-session for sessions
+* Set cookies httpOnly, secure in prod, sameSite=lax, path=/
+* Add basic rate limiting on login route
+* Log auth failures without leaking which field failed
+* Never echo the password back to the client
+* CSRF protection on login POST
+
+Environment variables
+
+* ACCOUNTS=mpdee,tyler,shellee
+* PASS\_HASH\_MPDEE=<bcrypt hash>
+* PASS\_HASH\_TYLER=<bcrypt hash>
+* PASS\_HASH\_SHELLEE=<bcrypt hash>
+* SESSION\_PASSWORD=<32+ char strong secret for iron-session>
+* RATE\_LIMIT\_WINDOW\_MS=60000
+* RATE\_LIMIT\_MAX=10
+
+Dev helper script
+
+* Add a small node script scripts/hash-password.mjs to output bcrypt hash for a given password
+* Document usage in README
+
+Implementation plan (Next.js App Router preferred)
+
+1. Remove Google OAuth
+
+* Remove next-auth Google provider or any OAuth package
+* Delete OAuth-specific callback code, provider config, and UI
+* Remove GOOGLE\_\* env vars from .env files and Vercel
+* Cleanup unused imports and dead routes
+
+2. Add iron-session
+
+* Install iron-session and bcrypt
+* Create lib/session.ts exporting getIronSession helpers with a typed session { user?: { username: string } }
+* Configure cookieName="auth", password=process.env.SESSION\_PASSWORD, cookieOptions based on NODE\_ENV
+
+3. Credential store
+
+* Create lib/credentials.ts that:
+
+  * Reads ACCOUNTS and maps usernames to env var names for their bcrypt hashes
+  * Exposes async verify(username, password) -> boolean using bcrypt.compare
+  * Timing-safe username lookup
+  * Never throws on missing user; return false
+
+4. Login API route
+
+* Route: app/api/login/route.ts (POST)
+* Input: JSON { username, password, csrfToken }
+* Validate input; throttle by IP with simple in-memory Map keyed by IP and minute window using RATE\_LIMIT\_\* envs
+* On success: session.user={ username }, save session, return 204
+* On failure: increment rate limit, sleep 200–400ms jitter, return 401
+* Include CSRF check using a double-submit token stored in a non-httpOnly cookie and echoed in body
+
+5. Logout API route
+
+* Route: app/api/logout/route.ts (POST)
+* Destroys session, clears cookie, returns 204
+
+6. Auth middleware
+
+* middleware.ts guards protected routes
+* If no session and path matches protected matchers (e.g., /dashboard, /account, /api/private), redirect to /login with next param
+* Allow static assets and public routes
+
+7. Login page
+
+* app/login/page.tsx
+* Form with username and password fields
+* Get CSRF token from a GET to /api/csrf or generate on first render and set cookie
+* On submit, POST to /api/login then redirect to next param or /
+* Show generic error on 401; do not reveal whether username or password failed
+* If already authenticated, redirect to /
+
+8. Header UI
+
+* Show current username in nav when authenticated
+* Add Logout button POSTing to /api/logout then reload
+
+9. Protect server actions and API routes
+
+* Add helper requireUser(session) in lib/auth.ts
+* Use in any server action or route handler to assert session.user
+
+10. Types and tests
+
+* Add minimal unit tests for credentials.verify and rate limiter
+* Add e2e test: successful login, bad password path, logout, middleware redirect
+
+11. README updates
+
+* Document how to generate bcrypt hashes with scripts/hash-password.mjs
+* Show example .env.local with placeholders
+* Document Vercel env setup and required variables
+* Document how to add or rotate a password: update env var with new bcrypt hash and redeploy
+
+Code to create
+
+## scripts/hash-password.mjs
+
+import bcrypt from "bcryptjs";
+const pwd = process.argv\[2];
+if (!pwd) {
+console.error("Usage: node scripts/hash-password.mjs <password>");
+process.exit(1);
+}
+const rounds = 12;
+bcrypt.hash(pwd, rounds).then(h => {
+console.log(h);
+});
+
+## lib/session.ts
+
+import { getIronSession, IronSessionOptions } from "iron-session";
+import { cookies, headers } from "next/headers";
+
+export type SessionData = { user?: { username: string } };
+
+const sessionOptions: IronSessionOptions = {
+password: process.env.SESSION\_PASSWORD!,
+cookieName: "auth",
+cookieOptions: {
+httpOnly: true,
+secure: process.env.NODE\_ENV === "production",
+sameSite: "lax",
+path: "/"
+}
+};
+
+export async function getSession() {
+const cookieStore = await cookies();
+const headerStore = await headers();
+return getIronSession<SessionData>(cookieStore, headerStore, sessionOptions);
+}
+
+## lib/credentials.ts
+
+import bcrypt from "bcryptjs";
+
+const usernameToEnv = (u: string) => {
+const key = u.trim().toUpperCase();
+return `PASS_HASH_${key}`;
+};
+
+export async function verify(username: string, password: string) {
+const envKey = usernameToEnv(username);
+const hash = process.env\[envKey];
+if (!hash) return false;
+try {
+return await bcrypt.compare(password, hash);
+} catch {
+return false;
+}
+}
+
+export function allowedUser(username: string) {
+const list = (process.env.ACCOUNTS || "").split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+return list.includes(username.trim().toLowerCase());
+}
+
+## lib/csrf.ts
+
+import crypto from "crypto";
+import { cookies } from "next/headers";
+
+const CSRF\_COOKIE = "csrf\_token";
+
+export async function getOrSetCsrf() {
+const c = await cookies();
+const existing = c.get(CSRF\_COOKIE)?.value;
+if (existing) return existing;
+const token = crypto.randomBytes(16).toString("hex");
+c.set(CSRF\_COOKIE, token, { httpOnly: false, sameSite: "lax", path: "/", secure: process.env.NODE\_ENV === "production" });
+return token;
+}
+
+export async function validateCsrf(token: string | undefined) {
+const c = await cookies();
+return Boolean(token && c.get(CSRF\_COOKIE)?.value === token);
+}
+
+## app/api/login/route.ts
+
+import { NextRequest, NextResponse } from "next/server";
+import { getSession } from "@/lib/session";
+import { verify, allowedUser } from "@/lib/credentials";
+import { validateCsrf } from "@/lib/csrf";
+
+const windowMs = Number(process.env.RATE\_LIMIT\_WINDOW\_MS || 60000);
+const maxReq = Number(process.env.RATE\_LIMIT\_MAX || 10);
+const buckets = new Map\<string, { count: number; ts: number }>();
+
+function throttle(ip: string) {
+const now = Date.now();
+const b = buckets.get(ip);
+if (!b || now - b.ts > windowMs) {
+buckets.set(ip, { count: 1, ts: now });
+return false;
+}
+b.count += 1;
+return b.count > maxReq;
+}
+
+function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
+
+export async function POST(req: NextRequest) {
+const ip = req.headers.get("x-forwarded-for")?.split(",")\[0]?.trim() || "unknown";
+if (throttle(ip)) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+
+const { username, password, csrfToken } = await req.json().catch(() => ({}));
+if (!username || !password) return NextResponse.json({ error: "Invalid credentials" }, { status: 400 });
+if (!(await validateCsrf(csrfToken))) return NextResponse.json({ error: "Invalid CSRF" }, { status: 400 });
+
+const bad = !allowedUser(username) || !(await verify(username, password));
+await sleep(200 + Math.floor(Math.random() \* 200));
+if (bad) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+const session = await getSession();
+session.user = { username };
+await session.save();
+return new NextResponse(null, { status: 204 });
+}
+
+## app/api/logout/route.ts
+
+import { NextResponse } from "next/server";
+import { getSession } from "@/lib/session";
+
+export async function POST() {
+const session = await getSession();
+await session.destroy();
+return new NextResponse(null, { status: 204 });
+}
+
+## app/api/csrf/route.ts
+
+import { NextResponse } from "next/server";
+import { getOrSetCsrf } from "@/lib/csrf";
+
+export async function GET() {
+const token = await getOrSetCsrf();
+return NextResponse.json({ token });
+}
+
+## middleware.ts
+
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { getIronSession } from "iron-session/edge";
+
+const sessionOptions = {
+password: process.env.SESSION\_PASSWORD!,
+cookieName: "auth",
+cookieOptions: {
+secure: process.env.NODE\_ENV === "production",
+sameSite: "lax",
+path: "/"
+}
+};
+
+const PROTECTED = \[/^/dashboard/, /^/account/, /^/api/private/];
+
+export async function middleware(req: NextRequest) {
+const url = req.nextUrl.clone();
+const isProtected = PROTECTED.some(rx => rx.test(url.pathname));
+if (!isProtected) return NextResponse.next();
+
+const res = NextResponse.next();
+const session = await getIronSession(req, res, sessionOptions as any);
+if (session?.user?.username) return res;
+
+url.pathname = "/login";
+url.searchParams.set("next", req.nextUrl.pathname + req.nextUrl.search);
+return NextResponse.redirect(url);
+}
+
+export const config = {
+matcher: \["/dashboard/\:path\*", "/account/\:path\*", "/api/private/\:path\*"]
+};
+
+## app/login/page.tsx
+
+"use client";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+
+export default function LoginPage() {
+const \[username, setUsername] = useState("");
+const \[password, setPassword] = useState("");
+const \[csrfToken, setCsrfToken] = useState("");
+const \[error, setError] = useState("");
+const router = useRouter();
+const sp = useSearchParams();
+const next = sp.get("next") || "/";
+
+useEffect(() => {
+fetch("/api/csrf").then(r => r.json()).then(d => setCsrfToken(d.token)).catch(() => {});
+}, \[]);
+
+async function onSubmit(e: React.FormEvent) {
+e.preventDefault();
+setError("");
+const res = await fetch("/api/login", {
+method: "POST",
+headers: { "Content-Type": "application/json" },
+body: JSON.stringify({ username, password, csrfToken })
+});
+if (res.status === 204) {
+router.replace(next);
+} else {
+setError("Login failed");
+}
+}
+
+return (
+\<div style={{ maxWidth: 360, margin: "4rem auto", fontFamily: "system-ui" }}> <h1>Sign in</h1> <form onSubmit={onSubmit}> <label>Username</label>
+\<input value={username} onChange={e => setUsername(e.target.value)} required /> <label>Password</label>
+\<input type="password" value={password} onChange={e => setPassword(e.target.value)} required /> <input type="hidden" value={csrfToken} readOnly /> <button type="submit">Sign in</button> </form>
+{error ? <p>{error}</p> : null} </div>
+);
+}
+
+Cleanup checklist
+
+* Remove next-auth and OAuth packages from package.json if present
+* Remove OAuth provider components and callback routes
+* Delete unused env vars on Vercel
+* Confirm protected routes list reflects project
+* Add basic tests under /**tests**/auth
+* Update CI to run tests
+
+Acceptance criteria
+
+* Visiting a protected route while unauthenticated redirects to /login
+* Logging in with a correct username and password redirects to the original route
+* Logging out clears the session and redirects on next protected hit
+* Wrong username or password returns 401 with generic error
+* Rate limiting returns 429 after RATE\_LIMIT\_MAX attempts within RATE\_LIMIT\_WINDOW\_MS
+* Cookie is httpOnly and secure in prod
+* No Google OAuth code or env vars remain
+
+Env setup examples (do not commit real hashes)
+.env.local
+ACCOUNTS=mpdee,tyler,shellee
+PASS\_HASH\_MPDEE=\$2a\$12\$xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+PASS\_HASH\_TYLER=\$2a\$12\$yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+PASS\_HASH\_SHELLEE=\$2a\$12\$zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+SESSION\_PASSWORD=change-me-to-a-strong-secret
+RATE\_LIMIT\_WINDOW\_MS=60000
+RATE\_LIMIT\_MAX=10
+
+If the project is not using Next.js App Router, adapt to Pages Router or the framework in repo:
+
+* Express: add /api/login and /api/logout routes, express-session with same cookie flags, and middleware to guard routes
+* Remix / SvelteKit: use their session utilities with the same env-driven bcrypt approach
+
+Proceed with the implementation, then output a diff of all added/changed files and a short confirmation checklist.

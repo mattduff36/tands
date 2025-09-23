@@ -1,14 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth/nextauth.config';
-import { CalendarSyncService } from '@/lib/sync/calendar-sync';
-import { z } from 'zod';
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession, authOptions } from "@/lib/auth-helpers";
+
+import { CalendarSyncService } from "@/lib/sync/calendar-sync";
+import { z } from "zod";
 
 // Schema for sync request validation
 const SyncRequestSchema = z.object({
   bookingId: z.string().optional(),
   eventId: z.string().optional(),
-  force: z.boolean().optional().default(false)
+  force: z.boolean().optional().default(false),
 });
 
 const syncService = new CalendarSyncService();
@@ -18,14 +18,14 @@ const syncService = new CalendarSyncService();
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(null, request);
     if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
-    const bookingId = searchParams.get('bookingId');
-    const eventId = searchParams.get('eventId');
+    const bookingId = searchParams.get("bookingId");
+    const eventId = searchParams.get("eventId");
 
     if (bookingId) {
       const status = await syncService.getSyncStatus();
@@ -42,16 +42,15 @@ export async function GET(request: NextRequest) {
       isHealthy: true,
       lastSyncTime: new Date().toISOString(),
       pendingOperations: 0,
-      errors: []
+      errors: [],
     };
 
     return NextResponse.json(healthStatus);
-
   } catch (error) {
-    console.error('Error getting sync status:', error);
+    console.error("Error getting sync status:", error);
     return NextResponse.json(
-      { error: 'Failed to get sync status' },
-      { status: 500 }
+      { error: "Failed to get sync status" },
+      { status: 500 },
     );
   }
 }
@@ -61,18 +60,18 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(null, request);
     if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await request.json();
     const validation = SyncRequestSchema.safeParse(body);
-    
+
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid request', details: validation.error.issues },
-        { status: 400 }
+        { error: "Invalid request", details: validation.error.issues },
+        { status: 400 },
       );
     }
 
@@ -83,7 +82,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: `Sync queued for booking ${bookingId}`,
-        bookingId
+        bookingId,
       });
     }
 
@@ -92,24 +91,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: `Sync queued for calendar event ${eventId}`,
-        eventId
+        eventId,
       });
     }
 
     // Trigger overall sync status check
     const syncStatus = await syncService.getSyncStatus();
-    
+
     return NextResponse.json({
       success: true,
-      message: 'Sync operation completed',
-      syncStatus
+      message: "Sync operation completed",
+      syncStatus,
     });
-
   } catch (error) {
-    console.error('Error performing sync:', error);
+    console.error("Error performing sync:", error);
     return NextResponse.json(
-      { error: 'Sync operation failed', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
+      {
+        error: "Sync operation failed",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
     );
   }
 }

@@ -1,13 +1,9 @@
-'use client';
+"use client";
 
-import { SessionProvider } from 'next-auth/react';
-import { useSession } from 'next-auth/react';
-import { useRouter, usePathname } from 'next/navigation';
-import { useEffect, ReactNode } from 'react';
-//import { log } from '@/lib/utils/logger';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { signOut } from 'next-auth/react';
+import { useRouter, usePathname } from "next/navigation";
+import { useEffect, ReactNode, useState } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import {
   Calendar,
   Users,
@@ -18,42 +14,43 @@ import {
   Menu,
   X,
   Castle,
-  Bug
-} from 'lucide-react';
-import { useState } from 'react';
+  Bug,
+} from "lucide-react";
 
 interface AdminLayoutProps {
   children: ReactNode;
 }
 
 function AdminAuthWrapper({ children }: { children: ReactNode }) {
-  const { data: session, status } = useSession();
+  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<{ username: string } | null>(null);
   const router = useRouter();
 
   useEffect(() => {
-    if (status === 'loading') return; // Still loading
+    // Small delay to ensure any recent login session is established
+    const checkAuth = () => {
+      fetch("/api/admin/auth?action=status")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.authenticated && data.user) {
+            setUser(data.user);
+          } else {
+            router.push("/admin/signin");
+          }
+        })
+        .catch(() => {
+          router.push("/admin/signin");
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    };
 
-    if (!session) {
-      router.push('/admin/signin');
-      return;
-    }
+    // Add a small delay to allow session to be established after login
+    setTimeout(checkAuth, 100);
+  }, [router]);
 
-    // Check if user is authorized admin
-    const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(',').map(email => email.trim()) || [];
-    const userEmail = session.user?.email?.toLowerCase();
-    
-    console.log('Admin access check', { adminEmails, userEmail });
-    
-    if (!userEmail || !adminEmails.some(email => email.toLowerCase() === userEmail)) {
-      console.warn('Admin access denied', { userEmail });
-      router.push('/admin/error?error=access_denied');
-      return;
-    }
-    
-    console.log('Admin access granted', { userEmail });
-  }, [session, status, router]);
-
-  if (status === 'loading') {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
@@ -61,16 +58,8 @@ function AdminAuthWrapper({ children }: { children: ReactNode }) {
     );
   }
 
-  if (!session) {
+  if (!user) {
     return null;
-  }
-
-  // Check if user is authorized admin before rendering children
-  const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(',').map(email => email.trim()) || [];
-  const userEmail = session.user?.email?.toLowerCase();
-  
-  if (!userEmail || !adminEmails.some(email => email.toLowerCase() === userEmail)) {
-    return null; // Will redirect via useEffect
   }
 
   return <>{children}</>;
@@ -78,17 +67,34 @@ function AdminAuthWrapper({ children }: { children: ReactNode }) {
 
 function AdminNavigation() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { data: session } = useSession();
+  const [user, setUser] = useState<{ username: string } | null>(null);
+
+  useEffect(() => {
+    // Get user info for display
+    fetch("/api/admin/auth?action=status")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.authenticated && data.user) {
+          setUser(data.user);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const navigation = [
-    { name: 'Dashboard', href: '/admin', icon: Home },
-    { name: 'Bookings', href: '/admin/bookings', icon: Users },
-    { name: 'Fleet', href: '/admin/fleet', icon: Castle },
-    { name: 'Reports', href: '/admin/reports', icon: BarChart3 },
+    { name: "Dashboard", href: "/admin", icon: Home },
+    { name: "Bookings", href: "/admin/bookings", icon: Users },
+    { name: "Fleet", href: "/admin/fleet", icon: Castle },
+    { name: "Reports", href: "/admin/reports", icon: BarChart3 },
   ];
 
-  const handleSignOut = () => {
-    signOut({ callbackUrl: '/' });
+  const handleSignOut = async () => {
+    try {
+      await fetch("/api/logout", { method: "POST" });
+      window.location.href = "/admin/signin";
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   return (
@@ -117,11 +123,11 @@ function AdminNavigation() {
               })}
             </div>
           </div>
-          
+
           <div className="hidden sm:ml-6 sm:flex sm:items-center">
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-700">
-                {session?.user?.name || session?.user?.email}
+                {user?.username || "Admin"}
               </span>
               <Link
                 href="/admin/settings"
@@ -184,16 +190,13 @@ function AdminNavigation() {
               <div className="flex-shrink-0">
                 <div className="h-8 w-8 bg-gray-200 rounded-full flex items-center justify-center">
                   <span className="text-sm font-medium text-gray-600">
-                    {session?.user?.name?.[0] || session?.user?.email?.[0] || 'A'}
+                    {user?.username?.[0] || "A"}
                   </span>
                 </div>
               </div>
               <div className="ml-3">
                 <div className="text-base font-medium text-gray-800">
-                  {session?.user?.name || 'Admin'}
-                </div>
-                <div className="text-sm font-medium text-gray-500">
-                  {session?.user?.email}
+                  {user?.username || "Admin"}
                 </div>
               </div>
             </div>
@@ -227,29 +230,24 @@ function AdminNavigation() {
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname();
-  const isAuthPage = pathname === '/admin/signin' || pathname === '/admin/error';
+  const isAuthPage =
+    pathname === "/admin/signin" || pathname === "/admin/error";
 
   if (isAuthPage) {
-    // For signin and error pages, only provide SessionProvider without auth wrapper
-    return (
-      <SessionProvider>
-        {children}
-      </SessionProvider>
-    );
+    // For signin and error pages, render without auth wrapper
+    return <>{children}</>;
   }
 
   return (
-    <SessionProvider>
-      <AdminAuthWrapper>
-        <div className="min-h-screen bg-gray-50">
-          <AdminNavigation />
-          <main className="py-10">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              {children}
-            </div>
-          </main>
-        </div>
-      </AdminAuthWrapper>
-    </SessionProvider>
+    <AdminAuthWrapper>
+      <div className="min-h-screen bg-gray-50">
+        <AdminNavigation />
+        <main className="py-10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            {children}
+          </div>
+        </main>
+      </div>
+    </AdminAuthWrapper>
   );
 }

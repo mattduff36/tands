@@ -3,16 +3,20 @@
  * Provides consistent error handling, logging, and response formatting
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/nextauth.config';
-import { APIError, AuthenticationError, AuthorizationError, createErrorHandler } from '@/lib/errors/APIError';
-import { logger } from '@/lib/utils/logger';
-import { performanceMonitor } from '@/lib/utils/performance-monitor';
+import { NextRequest, NextResponse } from "next/server";
+import { getSession } from "@/lib/session";
+import {
+  APIError,
+  AuthenticationError,
+  AuthorizationError,
+  createErrorHandler,
+} from "@/lib/errors/APIError";
+import { logger } from "@/lib/utils/logger";
+import { performanceMonitor } from "@/lib/utils/performance-monitor";
 
 export interface APIHandlerOptions {
   requireAuth?: boolean;
-  requiredRole?: 'admin' | 'user';
+  requiredRole?: "admin" | "user";
   rateLimit?: {
     requests: number;
     windowMs: number;
@@ -37,44 +41,53 @@ export type APIHandler<T = any> = (context: APIContext) => Promise<T>;
  */
 export function withAPIHandler<T>(
   handler: APIHandler<T>,
-  options: APIHandlerOptions = {}
+  options: APIHandlerOptions = {},
 ) {
   return async (req: NextRequest): Promise<NextResponse> => {
     const correlationId = generateCorrelationId();
-    const method = req.method || 'GET';
+    const method = req.method || "GET";
     const path = new URL(req.url).pathname;
-    
+
     // Set correlation ID for this request
     logger.setCorrelationId(correlationId);
-    
+
     // Start performance monitoring
-    const timer = performanceMonitor.startTimer(`api_${method}_${path.replace(/\//g, '_')}`, {
-      method,
-      path,
-      correlationId,
-    });
+    const timer = performanceMonitor.startTimer(
+      `api_${method}_${path.replace(/\//g, "_")}`,
+      {
+        method,
+        path,
+        correlationId,
+      },
+    );
 
     try {
-      logger.api(method, path, 0, 0, { correlationId, stage: 'started' });
+      logger.api(method, path, 0, 0, { correlationId, stage: "started" });
 
       // Handle CORS preflight
-      if (method === 'OPTIONS' && options.cors) {
+      if (method === "OPTIONS" && options.cors) {
         return handleCORS(options.cors);
       }
 
       // Authentication check
       let session = null;
       if (options.requireAuth) {
-        session = await getServerSession(authOptions);
-        if (!session?.user?.email) {
-          throw new AuthenticationError('Authentication required', correlationId);
+        session = await getSession();
+        if (!session?.user?.username) {
+          throw new AuthenticationError(
+            "Authentication required",
+            correlationId,
+          );
         }
 
         // Role-based authorization
-        if (options.requiredRole === 'admin') {
-          const adminEmails = process.env.ADMIN_EMAILS?.split(',') || [];
-          if (!adminEmails.includes(session.user.email)) {
-            throw new AuthorizationError('Admin access required', correlationId);
+        if (options.requiredRole === "admin") {
+          const allowedUsers = process.env.ACCOUNTS?.split(",") || [];
+          if (!allowedUsers.includes(session.user.username)) {
+            throw new AuthorizationError(
+              "Admin access required",
+              correlationId,
+            );
           }
         }
       }
@@ -95,9 +108,9 @@ export function withAPIHandler<T>(
       const duration = timer.end();
 
       // Log successful response
-      logger.api(method, path, 200, duration, { 
-        correlationId, 
-        stage: 'completed',
+      logger.api(method, path, 200, duration, {
+        correlationId,
+        stage: "completed",
         resultType: typeof result,
       });
 
@@ -110,25 +123,23 @@ export function withAPIHandler<T>(
       }
 
       return response;
-
     } catch (error) {
       const duration = timer.end();
       const errorHandler = createErrorHandler(correlationId);
       const apiError = errorHandler(error);
-      
+
       // Log the error with correlation ID
-      logger.api(method, path, apiError.statusCode, duration, { 
-        correlationId, 
-        stage: 'error',
+      logger.api(method, path, apiError.statusCode, duration, {
+        correlationId,
+        stage: "error",
         errorCode: apiError.errorCode,
         errorMessage: apiError.message,
       });
 
       // Create error response
-      const errorResponse = NextResponse.json(
-        apiError.getClientError(),
-        { status: apiError.statusCode }
-      );
+      const errorResponse = NextResponse.json(apiError.getClientError(), {
+        status: apiError.statusCode,
+      });
 
       // Apply CORS headers if configured
       if (options.cors) {
@@ -136,7 +147,6 @@ export function withAPIHandler<T>(
       }
 
       return errorResponse;
-
     } finally {
       // Clear correlation ID
       logger.clearCorrelationId();
@@ -154,7 +164,9 @@ function generateCorrelationId(): string {
 /**
  * Handle CORS preflight requests
  */
-function handleCORS(corsOptions: NonNullable<APIHandlerOptions['cors']>): NextResponse {
+function handleCORS(
+  corsOptions: NonNullable<APIHandlerOptions["cors"]>,
+): NextResponse {
   const response = new NextResponse(null, { status: 200 });
   applyCORSHeaders(response, corsOptions);
   return response;
@@ -163,19 +175,26 @@ function handleCORS(corsOptions: NonNullable<APIHandlerOptions['cors']>): NextRe
 /**
  * Apply CORS headers to response
  */
-function applyCORSHeaders(response: NextResponse, corsOptions: NonNullable<APIHandlerOptions['cors']>) {
-  const { origin = '*', methods = ['GET', 'POST', 'PUT', 'DELETE'], headers = ['Content-Type', 'Authorization'] } = corsOptions;
+function applyCORSHeaders(
+  response: NextResponse,
+  corsOptions: NonNullable<APIHandlerOptions["cors"]>,
+) {
+  const {
+    origin = "*",
+    methods = ["GET", "POST", "PUT", "DELETE"],
+    headers = ["Content-Type", "Authorization"],
+  } = corsOptions;
 
-  if (typeof origin === 'string') {
-    response.headers.set('Access-Control-Allow-Origin', origin);
+  if (typeof origin === "string") {
+    response.headers.set("Access-Control-Allow-Origin", origin);
   } else {
     // For multiple origins, you'd need to check the request origin
-    response.headers.set('Access-Control-Allow-Origin', origin[0] || '*');
+    response.headers.set("Access-Control-Allow-Origin", origin[0] || "*");
   }
 
-  response.headers.set('Access-Control-Allow-Methods', methods.join(', '));
-  response.headers.set('Access-Control-Allow-Headers', headers.join(', '));
-  response.headers.set('Access-Control-Max-Age', '86400'); // 24 hours
+  response.headers.set("Access-Control-Allow-Methods", methods.join(", "));
+  response.headers.set("Access-Control-Allow-Headers", headers.join(", "));
+  response.headers.set("Access-Control-Max-Age", "86400"); // 24 hours
 }
 
 /**
@@ -185,15 +204,18 @@ const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
 async function checkRateLimit(
   req: NextRequest,
-  rateLimit: NonNullable<APIHandlerOptions['rateLimit']>,
-  correlationId: string
+  rateLimit: NonNullable<APIHandlerOptions["rateLimit"]>,
+  correlationId: string,
 ) {
-  const clientIP = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+  const clientIP =
+    req.headers.get("x-forwarded-for") ||
+    req.headers.get("x-real-ip") ||
+    "unknown";
   const key = `rate_limit_${clientIP}`;
   const now = Date.now();
-  
+
   const record = rateLimitStore.get(key);
-  
+
   if (!record || now > record.resetTime) {
     // Create new record or reset expired one
     rateLimitStore.set(key, {
@@ -202,27 +224,33 @@ async function checkRateLimit(
     });
     return;
   }
-  
+
   if (record.count >= rateLimit.requests) {
-    logger.warn('Rate limit exceeded', {
-      clientIP,
-      correlationId,
-      limit: rateLimit.requests,
-      windowMs: rateLimit.windowMs,
-    }, 'RATE_LIMIT');
-    
+    logger.warn(
+      "Rate limit exceeded",
+      {
+        clientIP,
+        correlationId,
+        limit: rateLimit.requests,
+        windowMs: rateLimit.windowMs,
+      },
+      "RATE_LIMIT",
+    );
+
     throw new APIError(
-      'Rate limit exceeded. Please try again later.',
+      "Rate limit exceeded. Please try again later.",
       429,
-      'RATE_LIMIT_EXCEEDED' as any,
-      [{
-        field: 'requests',
-        message: `Maximum ${rateLimit.requests} requests per ${rateLimit.windowMs}ms exceeded`,
-      }],
-      correlationId
+      "RATE_LIMIT_EXCEEDED" as any,
+      [
+        {
+          field: "requests",
+          message: `Maximum ${rateLimit.requests} requests per ${rateLimit.windowMs}ms exceeded`,
+        },
+      ],
+      correlationId,
     );
   }
-  
+
   // Increment counter
   record.count++;
   rateLimitStore.set(key, record);
@@ -234,7 +262,7 @@ async function checkRateLimit(
 export async function safeAsync<T>(
   operation: () => Promise<T>,
   errorMessage: string,
-  correlationId?: string
+  correlationId?: string,
 ): Promise<T> {
   try {
     return await operation();
@@ -250,34 +278,40 @@ export async function safeAsync<T>(
 export async function validateRequestBody<T>(
   req: NextRequest,
   schema: any,
-  correlationId?: string
+  correlationId?: string,
 ): Promise<T> {
   try {
     const body = await req.json();
-    
-    if (schema && typeof schema.parse === 'function') {
+
+    if (schema && typeof schema.parse === "function") {
       return schema.parse(body);
     }
-    
+
     return body;
   } catch (error) {
-    if (error instanceof Error && error.message.includes('JSON')) {
+    if (error instanceof Error && error.message.includes("JSON")) {
       throw new APIError(
-        'Invalid JSON in request body',
+        "Invalid JSON in request body",
         400,
-        'VALIDATION_ERROR' as any,
-        [{ field: 'body', message: 'Request body must be valid JSON' }],
-        correlationId
+        "VALIDATION_ERROR" as any,
+        [{ field: "body", message: "Request body must be valid JSON" }],
+        correlationId,
       );
     }
-    
+
     // Zod validation error
     throw new APIError(
-      'Request validation failed',
+      "Request validation failed",
       400,
-      'VALIDATION_ERROR' as any,
-      [{ field: 'body', message: error instanceof Error ? error.message : 'Invalid request body' }],
-      correlationId
+      "VALIDATION_ERROR" as any,
+      [
+        {
+          field: "body",
+          message:
+            error instanceof Error ? error.message : "Invalid request body",
+        },
+      ],
+      correlationId,
     );
   }
 }

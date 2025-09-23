@@ -1,31 +1,35 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/nextauth.config';
-import { getCastles } from '@/lib/database/castles';
-import { getBookingsByStatus } from '@/lib/database/bookings';
-import { performanceMonitor } from '@/lib/utils/performance-monitor';
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "@/lib/auth-helpers";
 
-export const dynamic = 'force-dynamic';
+import { getCastles } from "@/lib/database/castles";
+import { getBookingsByStatus } from "@/lib/database/bookings";
+import { performanceMonitor } from "@/lib/utils/performance-monitor";
+
+export const dynamic = "force-dynamic";
 
 // POST /api/admin/performance/test - Run performance tests on key operations
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(null, request);
     if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Check if user is admin
-    const adminEmails = process.env.ADMIN_EMAILS?.split(',') || [];
-    if (!adminEmails.includes(session.user.email)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const allowedUsers = process.env.ACCOUNTS?.split(",") || [];
+    if (!allowedUsers.includes(session.user?.username)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { testType = 'comprehensive', iterations = 5 } = await request.json().catch(() => ({}));
+    const { testType = "comprehensive", iterations = 5 } = await request
+      .json()
+      .catch(() => ({}));
 
-    console.log(`Starting performance test: ${testType} with ${iterations} iterations`);
-    
+    console.log(
+      `Starting performance test: ${testType} with ${iterations} iterations`,
+    );
+
     const testResults = {
       testType,
       iterations,
@@ -42,30 +46,44 @@ export async function POST(request: NextRequest) {
     const overallStart = performance.now();
 
     // Test 1: Castle data retrieval (should be fast due to caching)
-    if (testType === 'comprehensive' || testType === 'castles') {
-      console.log('Testing castle data retrieval...');
-      const castleResults = await runIterativeTest('getCastles', iterations, async () => {
-        return await getCastles();
-      });
+    if (testType === "comprehensive" || testType === "castles") {
+      console.log("Testing castle data retrieval...");
+      const castleResults = await runIterativeTest(
+        "getCastles",
+        iterations,
+        async () => {
+          return await getCastles();
+        },
+      );
       testResults.results.castles = castleResults;
     }
 
     // Test 2: Booking queries (should be fast due to indexes)
-    if (testType === 'comprehensive' || testType === 'bookings') {
-      console.log('Testing booking queries...');
-      const bookingResults = await runIterativeTest('getBookingsByStatus', iterations, async () => {
-        return await getBookingsByStatus('pending');
-      });
+    if (testType === "comprehensive" || testType === "bookings") {
+      console.log("Testing booking queries...");
+      const bookingResults = await runIterativeTest(
+        "getBookingsByStatus",
+        iterations,
+        async () => {
+          return await getBookingsByStatus("pending");
+        },
+      );
       testResults.results.bookings = bookingResults;
     }
 
     // Test 3: API endpoint tests (caching effectiveness)
-    if (testType === 'comprehensive' || testType === 'api') {
-      console.log('Testing API endpoints...');
-      const apiResults = await runIterativeTest('apiCastles', iterations, async () => {
-        const response = await fetch(`${process.env.NEXTAUTH_URL}/api/castles`);
-        return await response.json();
-      });
+    if (testType === "comprehensive" || testType === "api") {
+      console.log("Testing API endpoints...");
+      const apiResults = await runIterativeTest(
+        "apiCastles",
+        iterations,
+        async () => {
+          const response = await fetch(
+            `${process.env.NEXTAUTH_URL}/api/castles`,
+          );
+          return await response.json();
+        },
+      );
       testResults.results.api = apiResults;
     }
 
@@ -75,43 +93,51 @@ export async function POST(request: NextRequest) {
     // Calculate summary statistics
     const allResults = Object.values(testResults.results);
     testResults.summary.operationsTested = allResults.length;
-    testResults.summary.averageResponseTime = allResults.reduce((sum: number, result: any) => sum + result.average, 0) / allResults.length;
+    testResults.summary.averageResponseTime =
+      allResults.reduce((sum: number, result: any) => sum + result.average, 0) /
+      allResults.length;
 
     // Generate performance recommendations
-    testResults.summary.recommendations = generatePerformanceRecommendations(testResults.results);
+    testResults.summary.recommendations = generatePerformanceRecommendations(
+      testResults.results,
+    );
 
     // Get current performance monitoring data
     const monitoringData = performanceMonitor.getSummary();
 
-    console.log(`Performance test completed in ${overallDuration.toFixed(2)}ms`);
+    console.log(
+      `Performance test completed in ${overallDuration.toFixed(2)}ms`,
+    );
 
     return NextResponse.json({
       testResults,
       monitoring: monitoringData,
       optimizationStatus: {
         caching: {
-          serverSide: '✅ Implemented',
-          clientSide: '✅ Implemented', 
+          serverSide: "✅ Implemented",
+          clientSide: "✅ Implemented",
           effectiveness: calculateCachingEffectiveness(testResults.results),
         },
         database: {
-          indexes: '✅ Implemented',
-          queryOptimization: '✅ Implemented',
-          connectionPooling: '✅ Optimized',
+          indexes: "✅ Implemented",
+          queryOptimization: "✅ Implemented",
+          connectionPooling: "✅ Optimized",
         },
         monitoring: {
-          performanceTracking: '✅ Active',
-          slowQueryDetection: '✅ Active',
-          poolHealthMonitoring: '✅ Active',
+          performanceTracking: "✅ Active",
+          slowQueryDetection: "✅ Active",
+          poolHealthMonitoring: "✅ Active",
         },
       },
     });
-
   } catch (error) {
-    console.error('Error running performance tests:', error);
+    console.error("Error running performance tests:", error);
     return NextResponse.json(
-      { error: 'Failed to run performance tests', message: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
+      {
+        error: "Failed to run performance tests",
+        message: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
     );
   }
 }
@@ -120,7 +146,7 @@ export async function POST(request: NextRequest) {
 async function runIterativeTest(
   operationName: string,
   iterations: number,
-  operation: () => Promise<any>
+  operation: () => Promise<any>,
 ) {
   const results: number[] = [];
   let errors = 0;
@@ -168,29 +194,43 @@ async function runIterativeTest(
 }
 
 // Generate performance recommendations based on test results
-function generatePerformanceRecommendations(results: Record<string, any>): string[] {
+function generatePerformanceRecommendations(
+  results: Record<string, any>,
+): string[] {
   const recommendations: string[] = [];
 
   Object.values(results).forEach((result: any) => {
     if (result.average > 1000) {
-      recommendations.push(`${result.operation}: Average response time ${result.average}ms is slow (>1000ms)`);
+      recommendations.push(
+        `${result.operation}: Average response time ${result.average}ms is slow (>1000ms)`,
+      );
     } else if (result.average > 500) {
-      recommendations.push(`${result.operation}: Response time ${result.average}ms could be improved (>500ms)`);
+      recommendations.push(
+        `${result.operation}: Response time ${result.average}ms could be improved (>500ms)`,
+      );
     } else if (result.average < 100) {
-      recommendations.push(`${result.operation}: Excellent performance ${result.average}ms (<100ms)`);
+      recommendations.push(
+        `${result.operation}: Excellent performance ${result.average}ms (<100ms)`,
+      );
     }
 
     if (result.errors > 0) {
-      recommendations.push(`${result.operation}: ${result.errors} errors detected during testing`);
+      recommendations.push(
+        `${result.operation}: ${result.errors} errors detected during testing`,
+      );
     }
 
-    if ((result.max - result.min) > result.average) {
-      recommendations.push(`${result.operation}: High variance in response times (min: ${result.min}ms, max: ${result.max}ms)`);
+    if (result.max - result.min > result.average) {
+      recommendations.push(
+        `${result.operation}: High variance in response times (min: ${result.min}ms, max: ${result.max}ms)`,
+      );
     }
   });
 
   if (recommendations.length === 0) {
-    recommendations.push('All operations performing within acceptable parameters');
+    recommendations.push(
+      "All operations performing within acceptable parameters",
+    );
   }
 
   return recommendations;
@@ -199,18 +239,18 @@ function generatePerformanceRecommendations(results: Record<string, any>): strin
 // Calculate caching effectiveness based on response time consistency
 function calculateCachingEffectiveness(results: Record<string, any>): string {
   const apiResult = results.api;
-  if (!apiResult) return 'Unknown';
+  if (!apiResult) return "Unknown";
 
   const variance = apiResult.max - apiResult.min;
   const averageTime = apiResult.average;
 
   if (averageTime < 50 && variance < 20) {
-    return 'Excellent - Fast and consistent responses';
+    return "Excellent - Fast and consistent responses";
   } else if (averageTime < 200 && variance < 100) {
-    return 'Good - Acceptable performance with some variance';
+    return "Good - Acceptable performance with some variance";
   } else if (averageTime < 500) {
-    return 'Fair - Room for improvement';
+    return "Fair - Room for improvement";
   } else {
-    return 'Poor - Caching may not be effective';
+    return "Poor - Caching may not be effective";
   }
 }

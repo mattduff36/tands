@@ -1,23 +1,23 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/nextauth.config';
-import { getBookingsByStatus } from '@/lib/database/bookings';
-import { getPool } from '@/lib/database/connection';
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "@/lib/auth-helpers";
 
-export const dynamic = 'force-dynamic';
+import { getBookingsByStatus } from "@/lib/database/bookings";
+import { getPool } from "@/lib/database/connection";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
     // Check authentication
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const session = await getServerSession(null, request);
+    if (!session?.user?.username) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Check if user is admin
-    const adminEmails = process.env.ADMIN_EMAILS?.split(',') || [];
-    if (!adminEmails.includes(session.user.email)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const allowedUsers = process.env.ACCOUNTS?.split(",") || [];
+    if (!allowedUsers.includes(session.user?.username)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const client = await getPool().connect();
@@ -57,19 +57,17 @@ export async function GET(request: NextRequest) {
           bookings: bookingsResult.rows,
           castles: castlesResult.rows,
           schema: schemaResult.rows,
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       });
-
     } finally {
       client.release();
     }
-
   } catch (error) {
-    console.error('Error fetching debug data:', error);
+    console.error("Error fetching debug data:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch debug data' },
-      { status: 500 }
+      { error: "Failed to fetch debug data" },
+      { status: 500 },
     );
   }
-} 
+}

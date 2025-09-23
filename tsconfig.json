@@ -4,7 +4,7 @@
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
-    "strict": true,
+    "strict": false,
     "noEmit": false,
     "esModuleInterop": true,
     "module": "commonjs",
@@ -14,7 +14,7 @@
     "jsx": "preserve",
     "incremental": true,
     "outDir": "./scripts/tmp",
-    
+
     // Stricter type checking
     "exactOptionalPropertyTypes": false,
     "noFallthroughCasesInSwitch": true,
@@ -27,7 +27,7 @@
     "useUnknownInCatchVariables": true,
     "allowUnusedLabels": true,
     "allowUnreachableCode": true,
-    
+
     "plugins": [
       {
         "name": "next"

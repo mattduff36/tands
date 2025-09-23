@@ -1,50 +1,55 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/nextauth.config';
-import { getPool } from '@/lib/database/connection';
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "@/lib/auth-helpers";
+import { getPool } from "@/lib/database/connection";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 // POST /api/admin/bookings/[id]/update-payment - Update payment status with admin audit
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
   try {
     // Check authentication
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(null, request);
     if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Check if user is admin
-    const adminEmails = process.env.ADMIN_EMAILS?.split(',') || [];
-    if (!adminEmails.includes(session.user.email)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const allowedUsers = process.env.ACCOUNTS?.split(",") || [];
+    if (!allowedUsers.includes(session.user?.username)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const bookingId = parseInt(params.id);
     if (isNaN(bookingId)) {
-      return NextResponse.json({ error: 'Invalid booking ID' }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid booking ID" },
+        { status: 400 },
+      );
     }
 
     const body = await request.json();
     const { paymentStatus, adminComment } = body;
 
     // Validate payment status
-    const validStatuses = ['pending', 'deposit_paid', 'paid_full'];
+    const validStatuses = ["pending", "deposit_paid", "paid_full"];
     if (!paymentStatus || !validStatuses.includes(paymentStatus)) {
       return NextResponse.json(
-        { error: 'Invalid payment status. Must be: pending, deposit_paid, or paid_full' },
-        { status: 400 }
+        {
+          error:
+            "Invalid payment status. Must be: pending, deposit_paid, or paid_full",
+        },
+        { status: 400 },
       );
     }
 
     // Validate admin comment is provided
     if (!adminComment || !adminComment.trim()) {
       return NextResponse.json(
-        { error: 'Admin comment is required' },
-        { status: 400 }
+        { error: "Admin comment is required" },
+        { status: 400 },
       );
     }
 
@@ -52,12 +57,15 @@ export async function POST(
     try {
       // First, get the current booking details for audit trail
       const currentBooking = await client.query(
-        'SELECT * FROM bookings WHERE id = $1',
-        [bookingId]
+        "SELECT * FROM bookings WHERE id = $1",
+        [bookingId],
       );
 
       if (currentBooking.rows.length === 0) {
-        return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+        return NextResponse.json(
+          { error: "Booking not found" },
+          { status: 404 },
+        );
       }
 
       const booking = currentBooking.rows[0];
@@ -65,19 +73,22 @@ export async function POST(
       // Create audit trail entry
       const auditEntry = {
         timestamp: new Date(),
-        action: 'payment_status_update',
-        actor: 'admin',
-        actorDetails: session.user.email,
-        method: 'manual_admin_update',
-        ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
-        userAgent: request.headers.get('user-agent') || 'unknown',
+        action: "payment_status_update",
+        actor: "admin",
+        actorDetails: session.user?.username,
+        method: "manual_admin_update",
+        ipAddress:
+          request.headers.get("x-forwarded-for") ||
+          request.headers.get("x-real-ip") ||
+          "unknown",
+        userAgent: request.headers.get("user-agent") || "unknown",
         details: {
           bookingRef: booking.booking_ref,
           previousPaymentStatus: booking.payment_status,
           newPaymentStatus: paymentStatus,
           adminComment: adminComment.trim(),
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       };
 
       // Update the booking with new payment status and audit trail
@@ -94,42 +105,45 @@ export async function POST(
         WHERE id = $5`,
         [
           paymentStatus,
-          (paymentStatus === 'deposit_paid' || paymentStatus === 'paid_full') ? new Date() : null,
+          paymentStatus === "deposit_paid" || paymentStatus === "paid_full"
+            ? new Date()
+            : null,
           adminComment.trim(),
           JSON.stringify(updatedAuditTrail),
-          bookingId
-        ]
+          bookingId,
+        ],
       );
 
       console.log(`✅ Admin payment status update:`, {
         bookingId,
         bookingRef: booking.booking_ref,
-        adminEmail: session.user.email,
+        adminEmail: session.user?.username,
         previousStatus: booking.payment_status,
         newStatus: paymentStatus,
-        adminComment: adminComment.trim()
+        adminComment: adminComment.trim(),
       });
 
       return NextResponse.json({
         success: true,
-        message: 'Payment status updated successfully',
+        message: "Payment status updated successfully",
         booking: {
           id: bookingId,
           paymentStatus,
-          updatedAt: new Date().toISOString()
+          updatedAt: new Date().toISOString(),
         },
-        auditEntry
+        auditEntry,
       });
-
     } finally {
       client.release();
     }
-
   } catch (error) {
-    console.error('Error updating payment status:', error);
+    console.error("Error updating payment status:", error);
     return NextResponse.json(
-      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
+      {
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
     );
   }
 }
