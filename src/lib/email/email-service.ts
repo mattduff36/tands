@@ -3,9 +3,9 @@
  * Handles automated email sending for booking confirmations and agreements
  */
 
-import nodemailer from 'nodemailer';
-import fs from 'fs';
-import path from 'path';
+import nodemailer from "nodemailer";
+import fs from "fs";
+import path from "path";
 
 export interface EmailConfig {
   host: string;
@@ -31,7 +31,7 @@ export interface BookingEmailData {
   endDate: string;
   eventDuration?: number;
   eventAddress?: string;
-  eventGroundType?: 'grass' | 'gravel' | 'unsure';
+  eventGroundType?: "grass" | "gravel" | "unsure";
   totalCost: number;
   deposit: number;
   notes?: string;
@@ -41,31 +41,31 @@ export interface BookingEmailData {
 // Format hire duration for display in emails
 function formatHireDuration(eventDuration?: number): string {
   if (!eventDuration) {
-    return 'Standard hire duration';
+    return "Standard hire duration";
   }
-  
+
   if (eventDuration === 24) {
-    return '24 Hours (Overnight)';
+    return "24 Hours (Overnight)";
   } else if (eventDuration === 8) {
-    return '8 Hours (10:00 - 18:00)';
+    return "8 Hours (10:00 - 18:00)";
   } else {
     return `${eventDuration} Hours`;
   }
 }
 
 // Format ground type for display in emails
-function formatGroundType(groundType?: 'grass' | 'gravel' | 'unsure'): string {
+function formatGroundType(groundType?: "grass" | "gravel" | "unsure"): string {
   if (!groundType) {
-    return 'Not specified';
+    return "Not specified";
   }
-  
+
   switch (groundType) {
-    case 'grass':
-      return 'Grass';
-    case 'gravel':
-      return 'Gravel';
-    case 'unsure':
-      return 'Customer unsure';
+    case "grass":
+      return "Grass";
+    case "gravel":
+      return "Gravel";
+    case "unsure":
+      return "Customer unsure";
     default:
       return groundType;
   }
@@ -74,24 +74,26 @@ function formatGroundType(groundType?: 'grass' | 'gravel' | 'unsure'): string {
 // Get email configuration from environment variables
 function getEmailConfig(): EmailConfig {
   return {
-    host: process.env.EMAIL_SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.EMAIL_SMTP_PORT || '587'),
-    secure: process.env.EMAIL_SMTP_SECURE === 'true',
-    user: process.env.EMAIL_SMTP_USER || '',
-    pass: process.env.EMAIL_SMTP_PASS || '',
-    fromName: process.env.EMAIL_FROM_NAME || 'Taylors & Smiths Bouncy Castles',
-    fromAddress: process.env.EMAIL_FROM_ADDRESS || '',
-    enabled: process.env.EMAIL_ENABLED === 'true',
-    debug: process.env.EMAIL_DEBUG === 'true'
+    host: process.env.EMAIL_SMTP_HOST || "smtp.gmail.com",
+    port: parseInt(process.env.EMAIL_SMTP_PORT || "587"),
+    secure: process.env.EMAIL_SMTP_SECURE === "true",
+    user: process.env.EMAIL_SMTP_USER || "",
+    pass: process.env.EMAIL_SMTP_PASS || "",
+    fromName: process.env.EMAIL_FROM_NAME || "Taylors & Smiths Bouncy Castles",
+    fromAddress: process.env.EMAIL_FROM_ADDRESS || "",
+    enabled: process.env.EMAIL_ENABLED === "true",
+    debug: process.env.EMAIL_DEBUG === "true",
   };
 }
 
 // Create nodemailer transporter
 function createTransporter() {
   const config = getEmailConfig();
-  
+
   if (!config.user || !config.pass) {
-    throw new Error('Email SMTP credentials not configured. Please set EMAIL_SMTP_USER and EMAIL_SMTP_PASS environment variables.');
+    throw new Error(
+      "Email SMTP credentials not configured. Please set EMAIL_SMTP_USER and EMAIL_SMTP_PASS environment variables.",
+    );
   }
 
   return nodemailer.createTransport({
@@ -106,51 +108,71 @@ function createTransporter() {
 }
 
 // Very small template renderer for {{placeholders}}
-function renderTemplate(template: string, variables: Record<string, string | number | undefined>): string {
-  if (!template) return '';
+function renderTemplate(
+  template: string,
+  variables: Record<string, string | number | undefined>,
+): string {
+  if (!template) return "";
   return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, key) => {
     const value = variables[key];
-    return value === undefined || value === null ? '' : String(value);
+    return value === undefined || value === null ? "" : String(value);
   });
 }
 
 // Load cancellation templates from JSON file
-function loadCancellationTemplates(): Record<string, { subject: string; html: string; text: string }> {
-  const templatesPath = path.join(process.cwd(), 'src', 'lib', 'email', 'templates', 'cancellation-reasons.json');
+function loadCancellationTemplates(): Record<
+  string,
+  { subject: string; html: string; text: string }
+> {
+  const templatesPath = path.join(
+    process.cwd(),
+    "src",
+    "lib",
+    "email",
+    "templates",
+    "cancellation-reasons.json",
+  );
   try {
-    const raw = fs.readFileSync(templatesPath, 'utf-8');
+    const raw = fs.readFileSync(templatesPath, "utf-8");
     return JSON.parse(raw);
   } catch (error) {
-    console.error('Failed to load cancellation templates JSON:', error);
+    console.error("Failed to load cancellation templates JSON:", error);
     // Provide safe defaults if file missing to avoid crashing
     return {
       distance_too_far: {
-        subject: 'Booking Request Cancelled - {{bookingRef}}',
-        html: '<p>Hi {{customerName}},</p><p>Unfortunately, we are unable to accept your booking request ({{bookingRef}}) because the event address is outside our service area.</p><p>Regards,<br/>{{fromName}}</p>',
-        text: 'Hi {{customerName}},\n\nUnfortunately, we are unable to accept your booking request ({{bookingRef}}) because the event address is outside our service area.\n\nRegards,\n{{fromName}}'
+        subject: "Booking Request Cancelled - {{bookingRef}}",
+        html: "<p>Hi {{customerName}},</p><p>Unfortunately, we are unable to accept your booking request ({{bookingRef}}) because the event address is outside our service area.</p><p>Regards,<br/>{{fromName}}</p>",
+        text: "Hi {{customerName}},\n\nUnfortunately, we are unable to accept your booking request ({{bookingRef}}) because the event address is outside our service area.\n\nRegards,\n{{fromName}}",
       },
       castle_unavailable: {
-        subject: 'Booking Request Cancelled - {{bookingRef}}',
-        html: '<p>Hi {{customerName}},</p><p>Unfortunately, we are unable to accept your booking request ({{bookingRef}}) because the selected castle is unavailable for the requested date.</p><p>Regards,<br/>{{fromName}}</p>',
-        text: 'Hi {{customerName}},\n\nUnfortunately, we are unable to accept your booking request ({{bookingRef}}) because the selected castle is unavailable for the requested date.\n\nRegards,\n{{fromName}}'
+        subject: "Booking Request Cancelled - {{bookingRef}}",
+        html: "<p>Hi {{customerName}},</p><p>Unfortunately, we are unable to accept your booking request ({{bookingRef}}) because the selected castle is unavailable for the requested date.</p><p>Regards,<br/>{{fromName}}</p>",
+        text: "Hi {{customerName}},\n\nUnfortunately, we are unable to accept your booking request ({{bookingRef}}) because the selected castle is unavailable for the requested date.\n\nRegards,\n{{fromName}}",
       },
       other: {
-        subject: 'Booking Request Cancelled - {{bookingRef}}',
-        html: '<p>Hi {{customerName}},</p><p>We are unable to accept your booking request ({{bookingRef}}).</p>{{adminMessageHtml}}<p>Regards,<br/>{{fromName}}</p>',
-        text: 'Hi {{customerName}},\n\nWe are unable to accept your booking request ({{bookingRef}}).\n\n{{adminMessage}}\n\nRegards,\n{{fromName}}'
-      }
+        subject: "Booking Request Cancelled - {{bookingRef}}",
+        html: "<p>Hi {{customerName}},</p><p>We are unable to accept your booking request ({{bookingRef}}).</p>{{adminMessageHtml}}<p>Regards,<br/>{{fromName}}</p>",
+        text: "Hi {{customerName}},\n\nWe are unable to accept your booking request ({{bookingRef}}).\n\n{{adminMessage}}\n\nRegards,\n{{fromName}}",
+      },
     };
   }
 }
 
 export async function sendCancellationEmail(
   bookingData: BookingEmailData,
-  options: { reasonKey: 'distance_too_far' | 'castle_unavailable' | 'other'; adminMessage?: string }
+  options: {
+    reasonKey: "distance_too_far" | "castle_unavailable" | "other";
+    adminMessage?: string;
+  },
 ): Promise<boolean> {
   const config = getEmailConfig();
 
   if (!config.enabled) {
-    console.log('Email service disabled. Would send cancellation email to:', bookingData.customerEmail, options);
+    console.log(
+      "Email service disabled. Would send cancellation email to:",
+      bookingData.customerEmail,
+      options,
+    );
     return false;
   }
 
@@ -159,23 +181,36 @@ export async function sendCancellationEmail(
 
   try {
     const transporter = createTransporter();
-    const dateFormatted = new Date(bookingData.date).toLocaleDateString('en-GB', {
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-    });
+    const dateFormatted = new Date(bookingData.date).toLocaleDateString(
+      "en-GB",
+      {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      },
+    );
 
-    const adminMessage = (options.reasonKey === 'other' && options.adminMessage) ? options.adminMessage.trim() : '';
-    const adminMessageHtml = adminMessage ? `<div style="background:#fff8e1;border:1px solid #ffe082;padding:12px;border-radius:6px;margin:12px 0"><p style="margin:0"><strong>Reason:</strong> ${adminMessage}</p></div>` : '';
+    const adminMessage =
+      options.reasonKey === "other" && options.adminMessage
+        ? options.adminMessage.trim()
+        : "";
+    const adminMessageHtml = adminMessage
+      ? `<div style="background:#fff8e1;border:1px solid #ffe082;padding:12px;border-radius:6px;margin:12px 0"><p style="margin:0"><strong>Reason:</strong> ${adminMessage}</p></div>`
+      : "";
 
     const variables = {
       bookingRef: bookingData.bookingRef,
       customerName: bookingData.customerName,
       castleName: bookingData.castleName,
-      eventAddress: bookingData.eventAddress || '',
+      eventAddress: bookingData.eventAddress || "",
       date: dateFormatted,
-      totalCost: bookingData.totalCost?.toFixed ? bookingData.totalCost.toFixed(2) : String(bookingData.totalCost || ''),
+      totalCost: bookingData.totalCost?.toFixed
+        ? bookingData.totalCost.toFixed(2)
+        : String(bookingData.totalCost || ""),
       fromName: config.fromName,
       adminMessage,
-      adminMessageHtml
+      adminMessageHtml,
     } as Record<string, string>;
 
     const mailOptions = {
@@ -183,43 +218,50 @@ export async function sendCancellationEmail(
       to: bookingData.customerEmail,
       subject: renderTemplate(template.subject, variables),
       html: renderTemplate(template.html, variables),
-      text: renderTemplate(template.text, variables)
+      text: renderTemplate(template.text, variables),
     };
 
     const result = await transporter.sendMail(mailOptions);
     if (config.debug) {
-      console.log('Cancellation email sent successfully:', result.messageId);
-      console.log('Preview URL:', nodemailer.getTestMessageUrl(result));
+      console.log("Cancellation email sent successfully:", result.messageId);
+      console.log("Preview URL:", nodemailer.getTestMessageUrl(result));
     }
     return true;
   } catch (error) {
-    console.error('Error sending cancellation email:', error);
+    console.error("Error sending cancellation email:", error);
     return false;
   }
 }
 
 // Generate tracking pixel HTML for email opens
 function generateTrackingPixel(bookingId: number): string {
-  const trackingEnabled = process.env.EMAIL_TRACKING_PIXEL_ENABLED === 'true';
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  
-  if (!trackingEnabled) return '';
-  
+  const trackingEnabled = process.env.EMAIL_TRACKING_PIXEL_ENABLED === "true";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+  if (!trackingEnabled) return "";
+
   return `<img src="${baseUrl}/api/email/track/open/${bookingId}" width="1" height="1" style="display:none;" alt="" />`;
 }
 
 // Send agreement email to customer
-export async function sendAgreementEmail(bookingData: BookingEmailData): Promise<boolean> {
+export async function sendAgreementEmail(
+  bookingData: BookingEmailData,
+): Promise<boolean> {
   const config = getEmailConfig();
-  
+
   if (!config.enabled) {
-    console.log('Email service disabled. Would send agreement email to:', bookingData.customerEmail);
+    console.log(
+      "Email service disabled. Would send agreement email to:",
+      bookingData.customerEmail,
+    );
     return false;
   }
 
   try {
     const transporter = createTransporter();
-    const baseUrl = process.env.NEXT_PUBLIC_AGREEMENT_BASE_URL || 'http://localhost:3000/hire-agreement';
+    const baseUrl =
+      process.env.NEXT_PUBLIC_AGREEMENT_BASE_URL ||
+      "http://localhost:3000/hire-agreement";
     const agreementUrl = `${baseUrl}?ref=${bookingData.bookingRef}`;
     const trackingPixel = generateTrackingPixel(bookingData.bookingId);
 
@@ -252,16 +294,18 @@ export async function sendAgreementEmail(bookingData: BookingEmailData): Promise
               <p><strong>Customer Name:</strong> ${bookingData.customerName}</p>
               <p><strong>Contact Number:</strong> ${bookingData.customerPhone}</p>
               <p><strong>Bouncy Castle:</strong> ${bookingData.castleName}</p>
-              ${bookingData.eventAddress ? `<p><strong>Event Address:</strong> ${bookingData.eventAddress}</p>` : ''}
+              ${bookingData.eventAddress ? `<p><strong>Event Address:</strong> ${bookingData.eventAddress}</p>` : ""}
               <p><strong>Ground Type:</strong> ${formatGroundType(bookingData.eventGroundType)}</p>
-              <p><strong>Event Date:</strong> ${new Date(bookingData.date).toLocaleDateString('en-GB', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
+              <p><strong>Event Date:</strong> ${new Date(
+                bookingData.date,
+              ).toLocaleDateString("en-GB", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
               })}</p>
               <p><strong>Hire Duration:</strong> ${formatHireDuration(bookingData.eventDuration)}</p>
-              <p><strong>Special Requests:</strong> ${bookingData.notes || '[none]'}</p>
+              <p><strong>Special Requests:</strong> ${bookingData.notes || "[none]"}</p>
               <p><strong>Total Cost:</strong> £${bookingData.totalCost.toFixed(2)}</p>
             </div>
             
@@ -300,12 +344,16 @@ Booking Details:
 - Booking Reference: ${bookingData.bookingRef}
 - Customer Name: ${bookingData.customerName}
 - Contact Number: ${bookingData.customerPhone}
-- Bouncy Castle: ${bookingData.castleName}${bookingData.eventAddress ? `
-- Event Address: ${bookingData.eventAddress}` : ''}
+- Bouncy Castle: ${bookingData.castleName}${
+        bookingData.eventAddress
+          ? `
+- Event Address: ${bookingData.eventAddress}`
+          : ""
+      }
 - Ground Type: ${formatGroundType(bookingData.eventGroundType)}
-- Event Date: ${new Date(bookingData.date).toLocaleDateString('en-GB')}
+- Event Date: ${new Date(bookingData.date).toLocaleDateString("en-GB")}
 - Hire Duration: ${formatHireDuration(bookingData.eventDuration)}
-- Special Requests: ${bookingData.notes || '[none]'}
+- Special Requests: ${bookingData.notes || "[none]"}
 - Total Cost: £${bookingData.totalCost.toFixed(2)}
 
 ACTION REQUIRED: Please sign the hire agreement to complete your booking.
@@ -313,14 +361,14 @@ Agreement Link: ${agreementUrl}
 
 Best regards,
 ${config.fromName}
-      `
+      `,
     };
 
     const result = await transporter.sendMail(mailOptions);
-    
+
     if (config.debug) {
-      console.log('Agreement email sent successfully:', result.messageId);
-      console.log('Preview URL:', nodemailer.getTestMessageUrl(result));
+      console.log("Agreement email sent successfully:", result.messageId);
+      console.log("Preview URL:", nodemailer.getTestMessageUrl(result));
     }
 
     // Track email sent (disabled - database schema doesn't include email tracking columns)
@@ -332,17 +380,22 @@ ${config.fromName}
 
     return true;
   } catch (error) {
-    console.error('Error sending agreement email:', error);
+    console.error("Error sending agreement email:", error);
     return false;
   }
 }
 
 // Send booking received email when a new booking is submitted
-export async function sendBookingReceivedEmail(bookingData: BookingEmailData): Promise<boolean> {
+export async function sendBookingReceivedEmail(
+  bookingData: BookingEmailData,
+): Promise<boolean> {
   const config = getEmailConfig();
-  
+
   if (!config.enabled) {
-    console.log('Email service disabled. Would send booking received email to:', bookingData.customerEmail);
+    console.log(
+      "Email service disabled. Would send booking received email to:",
+      bookingData.customerEmail,
+    );
     return false;
   }
 
@@ -379,16 +432,18 @@ export async function sendBookingReceivedEmail(bookingData: BookingEmailData): P
               <p><strong>Customer Name:</strong> ${bookingData.customerName}</p>
               <p><strong>Contact Number:</strong> ${bookingData.customerPhone}</p>
               <p><strong>Bouncy Castle:</strong> ${bookingData.castleName}</p>
-              ${bookingData.eventAddress ? `<p><strong>Event Address:</strong> ${bookingData.eventAddress}</p>` : ''}
+              ${bookingData.eventAddress ? `<p><strong>Event Address:</strong> ${bookingData.eventAddress}</p>` : ""}
               <p><strong>Ground Type:</strong> ${formatGroundType(bookingData.eventGroundType)}</p>
-              <p><strong>Event Date:</strong> ${new Date(bookingData.date).toLocaleDateString('en-GB', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
+              <p><strong>Event Date:</strong> ${new Date(
+                bookingData.date,
+              ).toLocaleDateString("en-GB", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
               })}</p>
               <p><strong>Hire Duration:</strong> ${formatHireDuration(bookingData.eventDuration)}</p>
-              <p><strong>Special Requests:</strong> ${bookingData.notes || '[none]'}</p>
+              <p><strong>Special Requests:</strong> ${bookingData.notes || "[none]"}</p>
               <p><strong>Total Cost:</strong> £${bookingData.totalCost.toFixed(2)}</p>
             </div>
             
@@ -429,12 +484,16 @@ Your Booking Request:
 - Booking Reference: ${bookingData.bookingRef}
 - Customer Name: ${bookingData.customerName}
 - Contact Number: ${bookingData.customerPhone}
-- Bouncy Castle: ${bookingData.castleName}${bookingData.eventAddress ? `
-- Event Address: ${bookingData.eventAddress}` : ''}
+- Bouncy Castle: ${bookingData.castleName}${
+        bookingData.eventAddress
+          ? `
+- Event Address: ${bookingData.eventAddress}`
+          : ""
+      }
 - Ground Type: ${formatGroundType(bookingData.eventGroundType)}
-- Event Date: ${new Date(bookingData.date).toLocaleDateString('en-GB')}
+- Event Date: ${new Date(bookingData.date).toLocaleDateString("en-GB")}
 - Hire Duration: ${formatHireDuration(bookingData.eventDuration)}
-- Special Requests: ${bookingData.notes || '[none]'}
+- Special Requests: ${bookingData.notes || "[none]"}
 - Total Cost: £${bookingData.totalCost.toFixed(2)}
 
 What happens next?
@@ -445,29 +504,37 @@ What happens next?
 
 Best regards,
 ${config.fromName}
-      `
+      `,
     };
 
     const result = await transporter.sendMail(mailOptions);
-    
+
     if (config.debug) {
-      console.log('Booking received email sent successfully:', result.messageId);
-      console.log('Preview URL:', nodemailer.getTestMessageUrl(result));
+      console.log(
+        "Booking received email sent successfully:",
+        result.messageId,
+      );
+      console.log("Preview URL:", nodemailer.getTestMessageUrl(result));
     }
 
     return true;
   } catch (error) {
-    console.error('Error sending booking received email:', error);
+    console.error("Error sending booking received email:", error);
     return false;
   }
 }
 
 // Send confirmation email after agreement is signed
-export async function sendConfirmationEmail(bookingData: BookingEmailData): Promise<boolean> {
+export async function sendConfirmationEmail(
+  bookingData: BookingEmailData,
+): Promise<boolean> {
   const config = getEmailConfig();
-  
+
   if (!config.enabled) {
-    console.log('Email service disabled. Would send confirmation email to:', bookingData.customerEmail);
+    console.log(
+      "Email service disabled. Would send confirmation email to:",
+      bookingData.customerEmail,
+    );
     return false;
   }
 
@@ -504,16 +571,18 @@ export async function sendConfirmationEmail(bookingData: BookingEmailData): Prom
               <p><strong>Customer Name:</strong> ${bookingData.customerName}</p>
               <p><strong>Contact Number:</strong> ${bookingData.customerPhone}</p>
               <p><strong>Bouncy Castle:</strong> ${bookingData.castleName}</p>
-              ${bookingData.eventAddress ? `<p><strong>Event Address:</strong> ${bookingData.eventAddress}</p>` : ''}
+              ${bookingData.eventAddress ? `<p><strong>Event Address:</strong> ${bookingData.eventAddress}</p>` : ""}
               <p><strong>Ground Type:</strong> ${formatGroundType(bookingData.eventGroundType)}</p>
-              <p><strong>Event Date:</strong> ${new Date(bookingData.date).toLocaleDateString('en-GB', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
+              <p><strong>Event Date:</strong> ${new Date(
+                bookingData.date,
+              ).toLocaleDateString("en-GB", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
               })}</p>
               <p><strong>Hire Duration:</strong> ${formatHireDuration(bookingData.eventDuration)}</p>
-              <p><strong>Special Requests:</strong> ${bookingData.notes || '[none]'}</p>
+              <p><strong>Special Requests:</strong> ${bookingData.notes || "[none]"}</p>
               <p><strong>Total Cost:</strong> £${bookingData.totalCost.toFixed(2)}</p>
               <p><strong>Deposit Paid:</strong> £${bookingData.deposit.toFixed(2)}</p>
             </div>
@@ -555,12 +624,16 @@ Booking Details:
 - Booking Reference: ${bookingData.bookingRef}
 - Customer Name: ${bookingData.customerName}
 - Contact Number: ${bookingData.customerPhone}
-- Bouncy Castle: ${bookingData.castleName}${bookingData.eventAddress ? `
-- Event Address: ${bookingData.eventAddress}` : ''}
+- Bouncy Castle: ${bookingData.castleName}${
+        bookingData.eventAddress
+          ? `
+- Event Address: ${bookingData.eventAddress}`
+          : ""
+      }
 - Ground Type: ${formatGroundType(bookingData.eventGroundType)}
-- Event Date: ${new Date(bookingData.date).toLocaleDateString('en-GB')}
+- Event Date: ${new Date(bookingData.date).toLocaleDateString("en-GB")}
 - Hire Duration: ${formatHireDuration(bookingData.eventDuration)}
-- Special Requests: ${bookingData.notes || '[none]'}
+- Special Requests: ${bookingData.notes || "[none]"}
 - Total Cost: £${bookingData.totalCost.toFixed(2)}
 - Deposit Paid: £${bookingData.deposit.toFixed(2)}
 
@@ -571,56 +644,189 @@ What happens next?
 - Collection will be arranged at the agreed time
 
 Thank you for choosing ${config.fromName}!
-      `
+      `,
     };
 
     const result = await transporter.sendMail(mailOptions);
-    
+
     if (config.debug) {
-      console.log('Confirmation email sent successfully:', result.messageId);
-      console.log('Preview URL:', nodemailer.getTestMessageUrl(result));
+      console.log("Confirmation email sent successfully:", result.messageId);
+      console.log("Preview URL:", nodemailer.getTestMessageUrl(result));
     }
 
     return true;
   } catch (error) {
-    console.error('Error sending confirmation email:', error);
+    console.error("Error sending confirmation email:", error);
     return false;
   }
 }
 
 // Test email configuration
-export async function testEmailConfiguration(): Promise<{ success: boolean; message: string; details?: any }> {
+export async function testEmailConfiguration(): Promise<{
+  success: boolean;
+  message: string;
+  details?: any;
+}> {
   const config = getEmailConfig();
-  
+
   if (!config.enabled) {
-    return { success: false, message: 'Email service is disabled (EMAIL_ENABLED=false)' };
+    return {
+      success: false,
+      message: "Email service is disabled (EMAIL_ENABLED=false)",
+    };
   }
 
   if (!config.user || !config.pass) {
-    return { success: false, message: 'Email SMTP credentials not configured' };
+    return { success: false, message: "Email SMTP credentials not configured" };
   }
 
   try {
     const transporter = createTransporter();
     await transporter.verify();
-    
-    return { 
-      success: true, 
-      message: 'Email configuration is valid and SMTP server is reachable',
+
+    return {
+      success: true,
+      message: "Email configuration is valid and SMTP server is reachable",
       details: {
         host: config.host,
         port: config.port,
         secure: config.secure,
         user: config.user,
         fromName: config.fromName,
-        fromAddress: config.fromAddress
-      }
+        fromAddress: config.fromAddress,
+      },
     };
   } catch (error: any) {
-    return { 
-      success: false, 
+    return {
+      success: false,
       message: `Email configuration test failed: ${error.message}`,
-      details: error
+      details: error,
     };
+  }
+}
+
+// Send admin notification email when a new booking is submitted
+export async function sendAdminBookingNotification(
+  bookingData: BookingEmailData,
+): Promise<boolean> {
+  const config = getEmailConfig();
+
+  if (!config.enabled) {
+    console.log(
+      "Email service disabled. Would send admin booking notification to:",
+      process.env.ADMIN_EMAILS,
+    );
+    return false;
+  }
+
+  // Get admin emails from environment variable
+  const adminEmails = process.env.ADMIN_EMAILS;
+  if (!adminEmails) {
+    console.warn(
+      "ADMIN_EMAILS environment variable not set. Skipping admin notification.",
+    );
+    return false;
+  }
+
+  // Split admin emails and filter out empty strings
+  const adminEmailList = adminEmails
+    .split(",")
+    .map((email) => email.trim())
+    .filter(Boolean);
+
+  if (adminEmailList.length === 0) {
+    console.warn(
+      "No valid admin emails found in ADMIN_EMAILS. Skipping admin notification.",
+    );
+    return false;
+  }
+
+  try {
+    const transporter = createTransporter();
+    const trackingPixel = generateTrackingPixel(bookingData.bookingId);
+
+    const mailOptions = {
+      from: `"${config.fromName}" <${config.fromAddress}>`,
+      to: adminEmailList.join(", "),
+      subject: `🎉 New Booking Request - ${bookingData.bookingRef} | ${config.fromName}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>New Booking Request</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+            <h1 style="margin: 0; font-size: 28px;">🎉 New Booking Request!</h1>
+            <p style="margin: 10px 0 0 0; opacity: 0.9;">A customer has submitted a new booking request</p>
+          </div>
+          
+          <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e9ecef;">
+            <div style="background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #10b981; margin: 20px 0;">
+              <h3 style="margin-top: 0; color: #10b981;">📋 Booking Details</h3>
+              <p><strong>Booking Reference:</strong> ${bookingData.bookingRef}</p>
+              <p><strong>Customer Name:</strong> ${bookingData.customerName}</p>
+              <p><strong>Customer Email:</strong> ${bookingData.customerEmail}</p>
+              <p><strong>Customer Phone:</strong> ${bookingData.customerPhone}</p>
+              <p><strong>Castle:</strong> ${bookingData.castleName}</p>
+              <p><strong>Event Date:</strong> ${new Date(
+                bookingData.date,
+              ).toLocaleDateString("en-GB", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}</p>
+              <p><strong>Event Time:</strong> ${formatHireDuration(bookingData.eventDuration)}</p>
+              <p><strong>Event Address:</strong> ${bookingData.eventAddress || "Not specified"}</p>
+              <p><strong>Ground Type:</strong> ${bookingData.eventGroundType ? bookingData.eventGroundType.charAt(0).toUpperCase() + bookingData.eventGroundType.slice(1) : "Not specified"}</p>
+              <p><strong>Total Cost:</strong> £${bookingData.totalCost}</p>
+              <p><strong>Deposit Required:</strong> £${bookingData.deposit}</p>
+              ${bookingData.notes ? `<p><strong>Special Requests:</strong> ${bookingData.notes}</p>` : ""}
+            </div>
+            
+            <div style="background: #e0f2fe; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <h3 style="margin-top: 0; color: #0277bd;">⚡ Quick Actions</h3>
+              <p style="margin: 10px 0;">
+                <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://www.bouncy-castle-hire.com"}/admin/bookings" 
+                   style="background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin-right: 10px;">
+                  View in Admin Panel
+                </a>
+                <a href="mailto:${bookingData.customerEmail}?subject=Re: Your Bouncy Castle Booking Request - ${bookingData.bookingRef}" 
+                   style="background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+                  Reply to Customer
+                </a>
+              </p>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e9ecef;">
+              <p style="color: #6b7280; font-size: 14px; margin: 0;">
+                This notification was sent automatically when a new booking was submitted through the website.
+              </p>
+              <p style="color: #6b7280; font-size: 12px; margin: 10px 0 0 0;">
+                ${config.fromName} | Admin Notification System
+              </p>
+            </div>
+          </div>
+          
+          ${trackingPixel}
+        </body>
+        </html>
+      `,
+    };
+
+    const result = await transporter.sendMail(mailOptions);
+    console.log("Admin booking notification sent successfully:", {
+      messageId: result.messageId,
+      to: adminEmailList,
+      bookingRef: bookingData.bookingRef,
+    });
+
+    return true;
+  } catch (error) {
+    console.error("Error sending admin booking notification:", error);
+    return false;
   }
 }

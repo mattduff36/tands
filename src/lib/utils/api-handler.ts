@@ -72,7 +72,7 @@ export function withAPIHandler<T>(
       // Authentication check
       let session = null;
       if (options.requireAuth) {
-        session = await getSession();
+        session = await getSession(req);
         if (!session?.user?.username) {
           throw new AuthenticationError(
             "Authentication required",

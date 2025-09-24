@@ -1,5 +1,5 @@
 import { getIronSession, SessionOptions } from "iron-session";
-import { cookies, headers } from "next/headers";
+import { NextRequest, NextResponse } from "next/server";
 
 export type SessionData = { user?: { username: string } };
 
@@ -14,8 +14,7 @@ const sessionOptions: SessionOptions = {
   },
 };
 
-export async function getSession() {
-  const cookieStore = await cookies();
-  const headerStore = await headers();
-  return getIronSession<SessionData>(cookieStore, headerStore, sessionOptions);
+export async function getSession(request: NextRequest) {
+  const response = NextResponse.next();
+  return getIronSession<SessionData>(request, response, sessionOptions);
 }
