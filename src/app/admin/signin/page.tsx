@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { clearBrowserCache } from "@/lib/cache-utils";
 
 function LoginForm() {
   const [username, setUsername] = useState("");
@@ -10,7 +9,6 @@ function LoginForm() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
-  const [isClearingCache, setIsClearingCache] = useState(false);
   const router = useRouter();
   const sp = useSearchParams();
   const next = sp.get("next") || "/admin";
@@ -74,17 +72,6 @@ function LoginForm() {
     }
   }
 
-  const handleClearCache = async () => {
-    setIsClearingCache(true);
-    try {
-      await clearBrowserCache();
-    } catch (error) {
-      console.error("Failed to clear cache:", error);
-    }
-    // Note: clearBrowserCache will reload the page, so we won't reach this
-    setIsClearingCache(false);
-  };
-
   return (
     <div
       style={{
@@ -145,8 +132,10 @@ function LoginForm() {
               <input
                 type="text"
                 value={username}
-                onChange={(e) => setUsername(e.target.value.toLowerCase())}
-                placeholder="username (lowercase only)"
+                onChange={(e) =>
+                  setUsername(e.target.value.toLowerCase().replace(/\s/g, ""))
+                }
+                placeholder="username (no spaces, lowercase only)"
                 required
                 style={{
                   width: "100%",
@@ -223,45 +212,6 @@ function LoginForm() {
           <p style={{ marginTop: "24px", fontSize: "14px", color: "#6b7280" }}>
             Only authorized administrators can access this portal.
           </p>
-
-          {/* Cache clearing button for troubleshooting */}
-          <div
-            style={{
-              marginTop: "16px",
-              paddingTop: "16px",
-              borderTop: "1px solid #e5e7eb",
-            }}
-          >
-            <p
-              style={{
-                fontSize: "12px",
-                color: "#9ca3af",
-                marginBottom: "8px",
-              }}
-            >
-              Having login issues? Try clearing your browser cache:
-            </p>
-            <button
-              type="button"
-              onClick={handleClearCache}
-              disabled={isClearingCache}
-              style={{
-                width: "100%",
-                padding: "8px 16px",
-                backgroundColor: "#f3f4f6",
-                color: "#374151",
-                border: "1px solid #d1d5db",
-                borderRadius: "4px",
-                fontSize: "12px",
-                cursor: isClearingCache ? "not-allowed" : "pointer",
-                opacity: isClearingCache ? 0.7 : 1,
-              }}
-            >
-              {isClearingCache
-                ? "Clearing Cache..."
-                : "Clear Browser Cache & Reload"}
-            </button>
-          </div>
         </div>
       </div>
     </div>
