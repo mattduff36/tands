@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { clearBrowserCache } from "@/lib/cache-utils";
 
 function LoginForm() {
   const [username, setUsername] = useState("");
@@ -9,12 +10,21 @@ function LoginForm() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [isClearingCache, setIsClearingCache] = useState(false);
   const router = useRouter();
   const sp = useSearchParams();
   const next = sp.get("next") || "/admin";
 
   useEffect(() => {
-    fetch("/api/csrf")
+    // Add cache-busting timestamp to prevent cached responses
+    const timestamp = Date.now();
+    fetch(`/api/csrf?t=${timestamp}`, {
+      cache: "no-store",
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+      },
+    })
       .then((r) => r.json())
       .then((d) => setCsrfToken(d.token))
       .catch(() => {});
@@ -26,9 +36,16 @@ function LoginForm() {
     setIsLoading(true);
 
     try {
-      const res = await fetch("/api/login", {
+      // Add cache-busting and force fresh request
+      const timestamp = Date.now();
+      const res = await fetch(`/api/login?t=${timestamp}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+        },
+        cache: "no-store",
         body: JSON.stringify({ username, password, csrfToken }),
       });
 
@@ -37,8 +54,14 @@ function LoginForm() {
         // Keep loading state active during redirect
         // Small delay to ensure session is fully established, then redirect
         setTimeout(() => {
-          // Use window.location for a more reliable redirect
-          window.location.href = next;
+          // Clear any cached data and force a fresh page load
+          if ("caches" in window) {
+            caches.keys().then((names) => {
+              names.forEach((name) => caches.delete(name));
+            });
+          }
+          // Use window.location for a more reliable redirect with cache busting
+          window.location.href = `${next}?t=${Date.now()}`;
         }, 300);
       } else {
         const errorData = await res.json().catch(() => ({}));
@@ -50,6 +73,17 @@ function LoginForm() {
       setIsLoading(false);
     }
   }
+
+  const handleClearCache = async () => {
+    setIsClearingCache(true);
+    try {
+      await clearBrowserCache();
+    } catch (error) {
+      console.error("Failed to clear cache:", error);
+    }
+    // Note: clearBrowserCache will reload the page, so we won't reach this
+    setIsClearingCache(false);
+  };
 
   return (
     <div
@@ -111,7 +145,8 @@ function LoginForm() {
               <input
                 type="text"
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                placeholder="username (lowercase only)"
                 required
                 style={{
                   width: "100%",
@@ -119,6 +154,7 @@ function LoginForm() {
                   border: "1px solid #d1d5db",
                   borderRadius: "6px",
                   fontSize: "16px",
+                  textTransform: "lowercase",
                 }}
               />
             </div>
@@ -187,6 +223,45 @@ function LoginForm() {
           <p style={{ marginTop: "24px", fontSize: "14px", color: "#6b7280" }}>
             Only authorized administrators can access this portal.
           </p>
+
+          {/* Cache clearing button for troubleshooting */}
+          <div
+            style={{
+              marginTop: "16px",
+              paddingTop: "16px",
+              borderTop: "1px solid #e5e7eb",
+            }}
+          >
+            <p
+              style={{
+                fontSize: "12px",
+                color: "#9ca3af",
+                marginBottom: "8px",
+              }}
+            >
+              Having login issues? Try clearing your browser cache:
+            </p>
+            <button
+              type="button"
+              onClick={handleClearCache}
+              disabled={isClearingCache}
+              style={{
+                width: "100%",
+                padding: "8px 16px",
+                backgroundColor: "#f3f4f6",
+                color: "#374151",
+                border: "1px solid #d1d5db",
+                borderRadius: "4px",
+                fontSize: "12px",
+                cursor: isClearingCache ? "not-allowed" : "pointer",
+                opacity: isClearingCache ? 0.7 : 1,
+              }}
+            >
+              {isClearingCache
+                ? "Clearing Cache..."
+                : "Clear Browser Cache & Reload"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

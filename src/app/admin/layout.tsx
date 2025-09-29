@@ -29,7 +29,15 @@ function AdminAuthWrapper({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Small delay to ensure any recent login session is established
     const checkAuth = () => {
-      fetch("/api/admin/auth?action=status")
+      // Add cache-busting timestamp to prevent cached responses
+      const timestamp = Date.now();
+      fetch(`/api/admin/auth?action=status&t=${timestamp}`, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+        },
+      })
         .then((res) => res.json())
         .then((data) => {
           if (data.authenticated && data.user) {
@@ -70,8 +78,15 @@ function AdminNavigation() {
   const [user, setUser] = useState<{ username: string } | null>(null);
 
   useEffect(() => {
-    // Get user info for display
-    fetch("/api/admin/auth?action=status")
+    // Get user info for display with cache-busting
+    const timestamp = Date.now();
+    fetch(`/api/admin/auth?action=status&t=${timestamp}`, {
+      cache: "no-store",
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+      },
+    })
       .then((res) => res.json())
       .then((data) => {
         if (data.authenticated && data.user) {

@@ -50,24 +50,54 @@ async function handleAuthStatus(request: NextRequest) {
       sessionOptions,
     );
 
+    const cacheHeaders = {
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
+      "Surrogate-Control": "no-store",
+      "X-Cache-Control": "no-cache",
+      "X-Debug-Timestamp": Date.now().toString(),
+      "X-Debug-Session-Check": session?.user?.username
+        ? "authenticated"
+        : "not-authenticated",
+    };
+
     if (!session?.user?.username) {
-      return NextResponse.json({
-        authenticated: false,
-        user: null,
-      });
+      return NextResponse.json(
+        {
+          authenticated: false,
+          user: null,
+        },
+        { headers: cacheHeaders },
+      );
     }
 
-    return NextResponse.json({
-      authenticated: true,
-      user: {
-        username: session.user.username,
+    return NextResponse.json(
+      {
+        authenticated: true,
+        user: {
+          username: session.user.username,
+        },
       },
-    });
+      { headers: cacheHeaders },
+    );
   } catch (error) {
     console.error("Auth status check error:", error);
-    return NextResponse.json({
-      authenticated: false,
-      user: null,
-    });
+    return NextResponse.json(
+      {
+        authenticated: false,
+        user: null,
+      },
+      {
+        headers: {
+          "Cache-Control":
+            "no-store, no-cache, must-revalidate, proxy-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+          "Surrogate-Control": "no-store",
+          "X-Cache-Control": "no-cache",
+        },
+      },
+    );
   }
 }

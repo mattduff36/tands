@@ -67,7 +67,18 @@ export default function AdminDashboard() {
   // Fetch user info and dashboard data
   const fetchUserInfo = async () => {
     try {
-      const response = await fetch("/api/admin/auth?action=status");
+      // Add cache-busting timestamp to prevent cached responses
+      const timestamp = Date.now();
+      const response = await fetch(
+        `/api/admin/auth?action=status&t=${timestamp}`,
+        {
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+          },
+        },
+      );
       const data = await response.json();
       if (data.authenticated && data.user) {
         setUser(data.user);

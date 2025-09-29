@@ -55,7 +55,19 @@ export async function POST(req: NextRequest) {
   await sleep(200 + Math.floor(Math.random() * 200));
   if (bad) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const response = new NextResponse(null, { status: 204 });
+  const response = new NextResponse(null, {
+    status: 204,
+    headers: {
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
+      "Surrogate-Control": "no-store",
+      "X-Cache-Control": "no-cache",
+      "X-Debug-Timestamp": Date.now().toString(),
+      "X-Debug-Login-Success": "true",
+      "X-Debug-Username": username,
+    },
+  });
   const session = await getIronSession<SessionData>(
     req,
     response,
