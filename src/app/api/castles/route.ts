@@ -13,6 +13,12 @@ export async function GET() {
     let castles;
     try {
       castles = await getCastles();
+      // Filter out castles that are out of service from public view
+      // Maintenance castles can still be shown, but out_of_service should be hidden
+      castles = castles.filter(
+        (castle) =>
+          (castle.maintenanceStatus || "available") !== "out_of_service",
+      );
     } catch (dbError) {
       console.warn("Database unavailable, using static castle data:", dbError);
       castles = staticCastles;
