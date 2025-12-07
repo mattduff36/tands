@@ -45,6 +45,9 @@ google-calendar-key.json
 *.json.key
 service-account-*.json
 
+# Database backups (contain sensitive customer data)
+/backups/
+
 # Local design files
 /public/leaflet/
 /public/leaflet.html

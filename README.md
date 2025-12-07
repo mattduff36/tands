@@ -13,6 +13,15 @@ This project is a booking management system for T&S Bouncy Castle Hire, featurin
 - 📧 Automated email workflows
 - 💳 Multiple payment methods (cash, bank transfer)
 
+### Infrastructure
+
+- **Database**: Neon PostgreSQL (serverless)
+- **Hosting**: Vercel
+- **Storage**: Vercel Blob (for images)
+- **Framework**: Next.js 14 (App Router)
+
+**Note**: Database migrated from Supabase to Neon on December 7, 2025. All 4 castles and 41 bookings migrated successfully with zero data loss. Backup available in `/backups/` directory.
+
 ## Getting Started
 
 First, run the development server:
